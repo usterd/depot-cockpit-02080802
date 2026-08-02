@@ -9,6 +9,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1117">
 <meta name="format-detection" content="telephone=no">
+<!-- Riegel gegen Datenabfluss: Selbst wenn durch eine manipulierte CSV- oder
+     Backup-Datei fremder Code in die Seite geriete, kann er nichts nach außen
+     senden – connect-src, img-src und form-action lassen keine fremde Adresse zu.
+     'unsafe-inline' ist nötig, weil die App als eine einzige Datei mit
+     onclick-Attributen arbeitet; die Sperre wirkt trotzdem beim Abfluss. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
@@ -561,7 +567,14 @@ const raw=n=> (n===null||n===undefined||!isFinite(n)) ? '' : String(n);
 const eur=n=> fmt(n)+' €';
 const sign=n=> `<span class="${n>0.004?'pos':n<-0.004?'neg':'mut'}">${n>0.004?'+':''}${eur(n)}</span>`;
 const de=d=> d? d.split('-').reverse().join('.') : '';
-const esc=s=> String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc=s=> String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* Wert, der in einem onclick-Attribut als JS-Zeichenkette landet: erst für
+   JavaScript entschärfen, dann für HTML. Ein Feld aus einer fremden CSV
+   (etwa eine ISIN mit Anführungszeichen) kann so nicht mehr ausbrechen. */
+const js=s=> esc(String(s??'').replace(/[\\'"]/g,'\\$&').replace(/\r?\n/g,'\\n'));
+/* Nur eingebettete Bilder zulassen. Eine Adresse auf einen fremden Server
+   würde beim Anzeigen einer Notiz einen Aufruf nach außen auslösen. */
+const safeImg=s=> /^data:image\/(png|jpe?g|gif|webp|avif);base64,[A-Za-z0-9+/=\s]+$/i.test(String(s||'')) ? String(s) : '';
 const TYPE_MAP={Buy:['Kauf','Buy'],Sell:['Verkauf','Sell'],'Savings plan':['Sparplan','Sparplan'],
     Distribution:['Ausschüttung','Dividende'],Deposit:['Einzahlung','Cash'],Withdrawal:['Auszahlung','Cash'],
     'Cash Transfer In':['Übertrag ein','Cash'],'Cash Transfer Out':['Übertrag aus','Cash'],
@@ -697,7 +710,7 @@ function dash(){
   document.getElementById('rank').innerHTML = top.map(p=>`
     <div style="margin-bottom:9px">
       <div class="row" style="justify-content:space-between;font-size:13px">
-        <span class="clickable" onclick="detail('${p.isin}')">${esc(p.name||p.isin)}</span>${sign(p.total)}
+        <span class="clickable" onclick="detail('${js(p.isin)}')">${esc(p.name||p.isin)}</span>${sign(p.total)}
       </div>
       <div class="bar"><i style="width:${Math.abs(p.total)/max*100}%;${p.total<0?'background:var(--neg)':''}"></i></div>
     </div>`).join('') || '<p class="hint">Noch keine Daten.</p>';
@@ -710,7 +723,7 @@ function dash(){
     document.getElementById('rankLoss').innerHTML = losses.map(p=>`
       <div style="margin-bottom:9px">
         <div class="row" style="justify-content:space-between;font-size:13px">
-          <span class="clickable" onclick="detail('${p.isin}')">${esc(p.name||p.isin)}</span>${sign(p.total)}
+          <span class="clickable" onclick="detail('${js(p.isin)}')">${esc(p.name||p.isin)}</span>${sign(p.total)}
         </div>
         <div class="bar"><i style="width:${Math.abs(p.total)/lmax*100}%;background:var(--neg)"></i></div>
       </div>`).join('');
@@ -751,7 +764,7 @@ function posView(){
       `<th class="${c[2]}" onclick="sortPos('${c[0]}')">${c[1]}${posSort.c===c[0]?(posSort.d>0?' ▲':' ▼'):''}</th>`
     ).join('')+'</tr></thead>';
 
-  const body='<tbody>'+P.map(p=>`<tr class="clickable" onclick="detail('${p.isin}')">
+  const body='<tbody>'+P.map(p=>`<tr class="clickable" onclick="detail('${js(p.isin)}')">
       <td><b>${esc(p.name||p.isin)}</b><br><span class="hint">${p.isin}${p.open?'':' · geschlossen'}${p.orphan?' · <span class="neg">⚠ Einstand unvollständig</span>':''}</span></td>
       <td class="num">${fmt(p.shares,p.shares%1?6:0)}</td>
       <td class="num">${eur(p.cost)}</td>
@@ -806,9 +819,9 @@ function txTableHtml(rows){
     return `<tr>
       <td>${de(r.date)}</td>
       <td class="mut">${(r.time||'').slice(0,5)}</td>
-      <td><span class="st ${r.status}">${r.status}</span></td>
+      <td><span class="st ${esc(r.status)}">${esc(r.status)}</span></td>
       <td>${typeTag(r)}</td>
-      <td>${r.isin?`<span class="clickable" onclick="detail('${r.isin}')">${esc(r.description||r.isin)}</span>`:esc(r.description||'–')}</td>
+      <td>${r.isin?`<span class="clickable" onclick="detail('${js(r.isin)}')">${esc(r.description||r.isin)}</span>`:esc(r.description||'–')}</td>
       <td class="num">${r.sharesN?fmt(r.sharesN,r.sharesN%1?6:0):'<span class="mut">–</span>'}</td>
       <td class="num mut">${r.priceN?fmt(r.priceN):'–'}</td>
       <td class="num">${r.amountN?sign(r.amountN):'<span class="mut">–</span>'}</td>
@@ -924,9 +937,9 @@ function commentHtml(key){
   const list=DB.cmt[key]||[];
   return `<div class="cmts" data-k="${esc(key)}">
     ${list.map((c,i)=>`<div class="cmt"><div class="meta">🕒 ${new Date(c.t).toLocaleString('de-DE')}
-      <button onclick="delCmt('${esc(key)}',${i})">löschen</button></div>
+      <button onclick="delCmt('${js(key)}',${i})">löschen</button></div>
       <div>${esc(c.text).replace(/\n/g,'<br>')}</div>
-      ${(c.imgs||[]).map(s=>`<img src="${s}" onclick="lb(this.src)" alt="">`).join('')}</div>`).join('')}
+      ${(c.imgs||[]).map(safeImg).filter(Boolean).map(s=>`<img src="${s}" onclick="lb(this.src)" alt="">`).join('')}</div>`).join('')}
     <textarea placeholder="Notiz schreiben… Screenshot mit Strg+V direkt einfügen"></textarea>
     <div class="shots"></div>
     <div class="row" style="margin-top:8px">
@@ -945,7 +958,7 @@ function bindComments(key){
     const ta=box.querySelector('textarea'), shots=box.querySelector('.shots'),
           fi=box.querySelector('input[type=file]');
     let buf=[];
-    const draw=()=> shots.innerHTML=buf.map((s,i)=>`<div class="th"><img src="${s}" alt=""><button class="x" data-i="${i}">✕</button></div>`).join('');
+    const draw=()=> shots.innerHTML=buf.map((s,i)=>`<div class="th"><img src="${esc(safeImg(s))}" alt=""><button class="x" data-i="${i}">✕</button></div>`).join('');
     shots.onclick=e=>{ if(e.target.dataset.i!==undefined){buf.splice(+e.target.dataset.i,1);draw();} };
     const addFiles=fs=>[...fs].filter(f=>f&&f.type.startsWith('image/')).forEach(f=>{
       const rd=new FileReader();
@@ -1004,11 +1017,50 @@ document.getElementById('expJson').onclick=()=>{
   saveFile('depot_backup_'+isoToday()+'.json', JSON.stringify(DB), 'application/json');
 };
 document.getElementById('impJson').onclick=()=>document.getElementById('jsonFile').click();
+/* Ein Backup ist eine Datei von außen. Übernommen wird deshalb nur, was hier
+   ausdrücklich erwartet wird – alle übrigen Felder werden verworfen, Zahlen
+   werden zu Zahlen und Bilder müssen eingebettete Daten sein. So kann eine
+   manipulierte Datei keine fremden Inhalte in die Anzeige einschleusen. */
+const str=v=> typeof v==='string' ? v : (v===undefined||v===null ? '' : String(v));
+const fin=v=> { const x=Number(v); return isFinite(x) ? x : 0; };
+function cleanBackup(d){
+  const tx={}, cmt={};
+  const src=(d && typeof d==='object' && d.tx && typeof d.tx==='object') ? d.tx : {};
+  Object.values(src).forEach(o=>{
+    if(!o || typeof o!=='object') return;
+    const r={};
+    COLS.forEach(c=> r[c]=str(o[c]));
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) return;      // ohne gültiges Datum unbrauchbar
+    r.sharesN=fin(o.sharesN); r.priceN=fin(o.priceN); r.amountN=fin(o.amountN);
+    r.feeN=fin(o.feeN); r.taxN=fin(o.taxN);
+    r.dt = r.date+' '+(r.time||'00:00:00');
+    r.id = txId(r);                                       // Kennung immer neu bilden
+    tx[r.id]=r;
+  });
+  const cs=(d && typeof d==='object' && d.cmt && typeof d.cmt==='object') ? d.cmt : {};
+  Object.entries(cs).forEach(([k,v])=>{
+    if(!Array.isArray(v)) return;
+    const list=v.filter(c=>c&&typeof c==='object').map(c=>({
+      t: fin(c.t) || Date.now(),
+      text: str(c.text).slice(0,20000),
+      imgs: Array.isArray(c.imgs) ? c.imgs.map(safeImg).filter(Boolean) : []
+    })).filter(c=> c.text || c.imgs.length);
+    if(list.length) cmt[str(k).slice(0,400)]=list;
+  });
+  return {tx,cmt};
+}
 document.getElementById('jsonFile').onchange=e=>{
   const rd=new FileReader(); rd.onload=()=>{ try{
     const d=JSON.parse(rd.result);
-    Object.assign(DB.tx,d.tx||{}); Object.assign(DB.cmt,d.cmt||{});
-    migrateIds(); save(); render(); toast('Backup eingespielt.');
+    const c=cleanBackup(d);
+    const dropTx  = Object.keys((d&&d.tx)||{}).length  - Object.keys(c.tx).length;
+    const dropCmt = Object.keys((d&&d.cmt)||{}).length - Object.keys(c.cmt).length;
+    if(!Object.keys(c.tx).length && !Object.keys(c.cmt).length)
+      return toast('In dieser Datei stehen keine verwertbaren Daten.');
+    Object.assign(DB.tx,c.tx); Object.assign(DB.cmt,c.cmt);
+    migrateIds(); save(); render();
+    toast('Backup eingespielt.'+((dropTx>0||dropCmt>0)
+      ? `\n${Math.max(dropTx,0)} Vorgänge und ${Math.max(dropCmt,0)} Notizfelder wurden dabei als unbrauchbar verworfen.` : ''));
   }catch(err){ toast('Ungültige Backup-Datei.'); } };
   rd.readAsText(e.target.files[0]);
 };

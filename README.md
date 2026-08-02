@@ -56,7 +56,7 @@ reliable `localStorage` persistence do not work over `file://`.
 When you change `index.html`:
 
 1. Edit the file in the repo.
-2. **Bump `VERSION` in `sw.js`** (`'v20'` → `'v20.1'`). This is the only step
+2. **Bump `VERSION` in `sw.js`** (`'v20.1'` → `'v20.2'`). This is the only step
    people forget — without it the phone keeps serving the cached old version.
 3. Commit. Open the app while online; it downloads the new version in the
    background and shows a notice.
@@ -66,7 +66,35 @@ When you change `index.html`:
 Your saved data is untouched by updates — the cache and `localStorage` are
 separate stores.
 
-## 4. Backups
+## 4. Security posture
+
+The app makes **no network requests of its own** — no `fetch`, no XHR, no
+WebSocket, no beacons, no external scripts, fonts or CDNs. Your transaction data
+only ever leaves the device when *you* trigger an export or backup and pick a
+destination in the iOS share sheet.
+
+Hardening applied:
+
+- **Content-Security-Policy** (`<meta>` tag in the head). `connect-src 'self'`,
+  `img-src 'self' data: blob:` and `form-action 'none'` mean that even injected
+  code could not transmit anything to a foreign host. Delivered as a meta tag
+  because GitHub Pages does not allow custom response headers.
+- **Escaping.** `esc()` now also escapes `'`; a new `js()` helper is used
+  wherever a value from a CSV lands inside an `onclick` attribute (ISINs,
+  comment keys), and the `status` field is escaped rather than injected raw
+  into a `class` attribute.
+- **Image sources validated.** Only embedded `data:image/...;base64` values are
+  rendered. Remote URLs, `svg+xml`, and attribute-breakout attempts are dropped.
+- **Backup import validated.** `cleanBackup()` accepts only the expected fields,
+  coerces numbers, rebuilds transaction IDs and filters images. A tampered
+  backup file can no longer inject content into the UI.
+
+Remaining consideration: `localStorage` is scoped to the **origin**
+(`username.github.io`), not to the subfolder. Any other site you publish under
+the same GitHub account can read this app's data. Other users' `github.io`
+subdomains cannot. Use a dedicated account or a separate domain if that matters.
+
+## 5. Backups
 
 `localStorage` is not permanent storage. iOS may clear it if the app is unused
 for a long stretch, and it is wiped if you delete the home-screen icon and
