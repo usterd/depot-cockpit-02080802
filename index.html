@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Depot">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1117">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<title>Depot Cockpit</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#151b23; --bg3:#1c232c; --line:#2a323d;
+  --fg:#e6edf3; --mut:#8b949e; --acc:#4f9cf9; --acc2:#7c5cff;
+  --pos:#3fb950; --neg:#f85149; --warn:#d29922;
+  --r:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);
+  -webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:contain}
+a{color:var(--acc)}
+header{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+.hd{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:12px max(20px,env(safe-area-inset-right)) 12px max(20px,env(safe-area-inset-left))}
+.logo{font-weight:700;font-size:17px;letter-spacing:.3px}
+.logo span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:transparent;border:1px solid transparent;color:var(--mut);padding:7px 14px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:500;min-height:36px}
+nav button:hover{color:var(--fg);background:var(--bg3)}
+nav button.on{color:#fff;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.filters{margin-left:auto;display:flex;gap:8px;align-items:center}
+/* 16px verhindert, dass Safari auf dem iPhone beim Antippen hineinzoomt */
+select,input,textarea,button.btn{background:var(--bg3);border:1px solid var(--line);color:var(--fg);padding:7px 10px;border-radius:8px;
+  font:inherit;font-size:16px;outline:none;-webkit-appearance:none;appearance:none;max-width:100%}
+select{padding-right:26px;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);
+  background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+input[type=checkbox]{-webkit-appearance:checkbox;appearance:checkbox;width:18px;height:18px}
+:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+select:focus,input:focus,textarea:focus{border-color:var(--acc)}
+button.btn{cursor:pointer}
+button.btn:hover{border-color:var(--acc)}
+button.pri{background:linear-gradient(90deg,var(--acc),var(--acc2));border:none;color:#fff;font-weight:600}
+main{max-width:1600px;margin:0 auto;
+  padding:20px max(20px,env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
+.view{display:none}.view.on{display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.card .k{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.7px}
+.card .v{font-size:22px;font-weight:650;margin-top:4px;font-variant-numeric:tabular-nums}
+.panel{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.panel h2{margin:0 0 12px;font-size:15px;font-weight:650}
+.panel h3{margin:16px 0 8px;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none;background:var(--bg2);position:sticky;top:0}
+thead th.num{text-align:right}
+td{padding:9px 10px;border-bottom:1px solid #1e242c;white-space:nowrap}
+tbody tr:hover{background:#1a2029}
+.num{text-align:right}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.mut{color:var(--mut)}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid}
+.t-Buy{color:#79c0ff;border-color:#1f6feb55;background:#1f6feb18}
+.t-Sell{color:#ffa657;border-color:#bb800955;background:#bb800918}
+.t-Sparplan{color:#a5d6ff;border-color:#388bfd55;background:#388bfd18}
+.t-Dividende{color:var(--pos);border-color:#3fb95055;background:#3fb95018}
+.t-Cash{color:#d2a8ff;border-color:#8957e555;background:#8957e518}
+.t-Sonst{color:var(--mut);border-color:var(--line);background:#ffffff08}
+.st{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}
+.st.Executed{color:var(--pos);border-color:#3fb95055}
+.st.Pending{color:var(--warn);border-color:#d2992255}
+.st.Cancelled{color:var(--neg);border-color:#f8514955;text-decoration:line-through}
+.clickable{cursor:pointer}
+.clickable:hover{color:var(--acc)}
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:34px;text-align:center;color:var(--mut);transition:.15s}
+.drop.hot{border-color:var(--acc);background:#4f9cf912;color:var(--fg)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal .dow{color:var(--mut);font-size:11px;text-transform:uppercase;text-align:center;padding:4px 0}
+.day{background:var(--bg3);border:1px solid var(--line);border-radius:8px;min-height:96px;padding:5px;font-size:11px;overflow:hidden;cursor:pointer}
+.day:hover{border-color:var(--acc)}
+.day.empty{background:transparent;border-color:transparent;cursor:default}
+.day.today{outline:1px solid var(--acc);outline-offset:-1px}
+.day .d{color:var(--mut);font-weight:600;margin-bottom:3px;display:flex;justify-content:space-between;align-items:baseline;gap:4px}
+.day .pnl{font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
+.day.win{border-color:#3fb95055;background:linear-gradient(180deg,#3fb95012,transparent)}
+.day.loss{border-color:#f8514955;background:linear-gradient(180deg,#f8514912,transparent)}
+#calTitle{min-width:200px;line-height:1.25;text-align:center}
+.ev{display:block;border-radius:4px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{height:8px;border-radius:4px;background:var(--bg3);overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.cmt{background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.cmt .meta{font-size:11px;color:var(--mut);margin-bottom:6px;display:flex;gap:8px;align-items:center}
+.cmt .meta button{margin-left:auto;background:none;border:none;color:var(--neg);cursor:pointer;font-size:11px}
+.cmt img{max-width:100%;border-radius:8px;margin-top:8px;border:1px solid var(--line);cursor:zoom-in}
+.shots{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.shots .th{position:relative}
+.shots img{height:56px;border-radius:6px;border:1px solid var(--line)}
+.shots .x{position:absolute;top:-6px;right:-6px;background:var(--neg);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:1}
+textarea{width:100%;min-height:70px;resize:vertical}
+.hint{font-size:12px;color:var(--mut)}
+#lightbox{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;z-index:200}
+#lightbox img{max-width:92vw;max-height:92vh;border-radius:10px}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--acc);padding:12px 16px;border-radius:10px;z-index:300;display:none;max-width:380px;white-space:pre-line}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.back{background:none;border:none;color:var(--acc);cursor:pointer;padding:0;margin-bottom:10px;font:inherit}
+.modal{position:fixed;inset:6% 0 auto 0;margin:0 auto;width:min(680px,92vw);z-index:150;max-height:84vh;overflow:auto;box-shadow:0 20px 60px #000a}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.dd{position:relative}
+.dd>button{white-space:nowrap}
+.dd .pop{position:absolute;right:0;top:calc(100% + 6px);min-width:210px;background:var(--bg2);border:1px solid var(--line);
+  border-radius:10px;padding:8px;z-index:80;display:none;box-shadow:0 14px 40px #000a}
+.dd.open .pop{display:block}
+.chk{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;white-space:nowrap;font-size:13px}
+.chk:hover{background:var(--bg3)}
+.chk input{margin:0}
+.chk .cnt{margin-left:auto;color:var(--mut);font-size:11px;font-variant-numeric:tabular-nums}
+.dd .pop hr{border:none;border-top:1px solid var(--line);margin:6px 0}
+.dd .pop .row button{font-size:12px;padding:4px 9px}
+.btn.note{padding:3px 10px;font-size:12px;min-height:30px}
+
+/* ---------- Touch- und iPhone-Anpassungen ---------- */
+@media (hover:none){
+  tbody tr:hover{background:transparent}
+  nav button:hover{color:var(--mut);background:transparent}
+  nav button.on{color:#fff}
+  .day:hover{border-color:var(--line)}
+}
+@media (max-width:820px){
+  .hd{gap:10px;padding-top:10px;padding-bottom:10px}
+  nav{order:3;width:100%;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  nav::-webkit-scrollbar{display:none}
+  nav button{flex:0 0 auto;min-height:40px}
+  .filters{order:4;margin-left:0;width:100%;flex-wrap:wrap}
+  .filters>*{flex:1 1 130px;min-height:40px}
+  .dd{position:static}
+  .dd .pop{left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));top:auto}
+  main{padding-top:14px}
+  .panel{padding:12px}
+  .cards{grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px}
+  .card{padding:11px 12px}
+  .card .v{font-size:19px}
+  td,thead th{padding:8px 7px;font-size:13px}
+  .btn.note{min-height:38px;min-width:44px}
+  .cal{gap:4px}
+  .day{min-height:58px;padding:4px}
+  .day .ev,.day .hint{display:none}
+  .day .d{font-size:12px}
+  .drop{padding:22px 14px}
+  .modal{inset:0;width:100%;max-height:100%;border-radius:0;
+    padding:calc(14px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))}
+  .toast{left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));max-width:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="hd">
+    <div class="logo">◆ Depot <span>Cockpit</span></div>
+    <nav>
+      <button data-v="dash" class="on">Übersicht</button>
+      <button data-v="pos">Positionen</button>
+      <button data-v="tx">Transaktionen</button>
+      <button data-v="cal">Kalender</button>
+      <button data-v="imp">Import / Daten</button>
+    </nav>
+    <div class="filters">
+      <select id="fYear"></select>
+      <select id="fMonth"></select>
+      <div class="dd" id="ddStatus">
+        <button class="btn" id="ddStatusBtn">Status ▾</button>
+        <div class="pop" id="ddStatusPop"></div>
+      </div>
+      <div class="dd" id="ddType">
+        <button class="btn" id="ddTypeBtn">Typ ▾</button>
+        <div class="pop" id="ddTypePop"></div>
+      </div>
+      <select id="fNum" title="Zahlenformat"></select>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- DASHBOARD -->
+  <section class="view on" id="v-dash">
+    <div class="cards" id="kpis"></div>
+    <div class="panel"><h2>Ertrag pro Position <span class="hint">(realisiert + Ausschüttungen − Gebühren − Steuern, gesamter Zeitraum)</span></h2>
+      <div id="rank"></div></div>
+    <div class="panel" id="lossPanel" style="display:none"><h2>Verluste pro Position <span class="hint">(nur Positionen mit negativem Ertrag, gesamter Zeitraum)</span></h2>
+      <div id="rankLoss"></div></div>
+    <div class="panel"><h2>Cashflow pro Monat</h2><div class="scroll"><table id="monthly"></table></div></div>
+  </section>
+
+  <!-- POSITIONEN -->
+  <section class="view" id="v-pos">
+    <div class="panel">
+      <div class="row" style="margin-bottom:10px">
+        <input id="posSearch" placeholder="Suche Name / ISIN…" style="flex:1;min-width:220px">
+        <label class="hint"><input type="checkbox" id="showClosed" checked> geschlossene Positionen zeigen</label>
+      </div>
+      <div class="scroll"><table id="posTable"></table></div>
+      <p class="hint">Bestand &amp; Einstand werden immer über die <b>gesamte</b> Historie berechnet (FIFO) und nur aus ausgeführten Vorgängen.
+        Jahr-, Monats- und Statusfilter oben wirken auf Transaktionen, Kalender und die Kennzahlen der Übersicht.</p>
+    </div>
+  </section>
+
+  <!-- DETAIL -->
+  <section class="view" id="v-det"></section>
+
+  <!-- TRANSAKTIONEN -->
+  <section class="view" id="v-tx">
+    <div class="panel">
+      <div class="row" style="margin-bottom:10px">
+        <input id="txSearch" placeholder="Suche…" style="flex:1;min-width:220px">
+        <button class="btn" id="expCsv">CSV exportieren</button>
+      </div>
+      <div class="scroll" id="txWrap"></div>
+    </div>
+  </section>
+
+  <!-- KALENDER -->
+  <section class="view" id="v-cal">
+    <div class="cards" id="calYear"></div>
+    <div class="panel">
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn" id="calPrev">‹</button>
+        <b id="calTitle"></b>
+        <button class="btn" id="calNext">›</button>
+        <span class="hint">Tag anklicken für Details</span>
+      </div>
+      <div class="cal" id="calGrid"></div>
+      <div class="legend">
+        <span><i style="background:#3fb95055"></i>Gewinntag</span>
+        <span><i style="background:#f8514955"></i>Verlusttag</span>
+        <span><i style="background:var(--line)"></i>ohne Realisierung</span>
+        <span>Der Tageswert enthält FIFO-Verkaufsgewinne abzüglich Steuern sowie Netto-Ausschüttungen.</span>
+      </div>
+    </div>
+    <div class="panel" id="calDetail" style="display:none"></div>
+  </section>
+
+  <!-- IMPORT -->
+  <section class="view" id="v-imp">
+    <div class="panel">
+      <h2>CSV hochladen</h2>
+      <div class="drop" id="drop">
+        <button class="btn pri" id="pick">Datei wählen</button><br>
+        <span class="hint" id="dropHint">oder CSV hierher ziehen · mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen</span>
+      </div>
+      <input type="file" id="file" accept=".csv,.txt,text/csv,text/comma-separated-values,application/csv,text/plain" multiple hidden>
+      <h3>Welche Status übernehmen?</h3>
+      <div class="row" id="impStatus"></div>
+      <p class="hint">Nicht gewählte Zeilen werden gar nicht erst gespeichert. Abgebrochene und offene Orders enthalten
+        bei Scalable keine Beträge – sie dokumentieren nur den Versuch. Bereits importierte Zeilen bleiben erhalten;
+        zum Aufräumen unten „Abgebrochene entfernen“ nutzen.</p>
+      <div id="report"></div>
+    </div>
+    <div class="panel">
+      <h2>Gespeicherte Daten</h2>
+      <div class="row">
+        <span id="dbInfo" class="hint"></span>
+        <button class="btn" id="expJson" style="margin-left:auto">Backup (JSON) sichern</button>
+        <button class="btn" id="impJson">Backup einspielen</button>
+        <button class="btn" id="dropCancelled">Abgebrochene entfernen</button>
+        <button class="btn" id="wipe" style="border-color:#f8514955;color:var(--neg)">Alles löschen</button>
+      </div>
+      <input type="file" id="jsonFile" accept=".json,application/json,text/plain" hidden>
+      <p class="hint">Backup enthält Transaktionen, Kommentare und Screenshots. Speicherort ist der Browser (localStorage) – für einen Gerätewechsel bitte Backup nutzen.</p>
+      <p class="hint" id="storageWarn" style="display:none"></p>
+    </div>
+  </section>
+</main>
+
+<div id="lightbox"><img alt=""></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================ Speicher ============================ */
+/* Safari sperrt localStorage bei file://-Aufruf und im privaten Modus komplett ab.
+   Ohne diesen Wrapper würde die erste Zeile eine Ausnahme werfen und die App bliebe leer.
+   Fällt der Speicher aus, läuft alles im Arbeitsspeicher weiter – nur eben ohne Sicherung. */
+const LS = (()=>{
+  const mem={}; let ok=false;
+  try{ localStorage.setItem('dc_probe','1'); localStorage.removeItem('dc_probe'); ok=true; }catch(e){}
+  return {
+    ok,
+    get(k){ if(ok){ try{ return localStorage.getItem(k); }catch(e){} } return k in mem ? mem[k] : null; },
+    set(k,v){ mem[k]=v; if(ok) localStorage.setItem(k,v); }   // Quota-Fehler bewusst weiterreichen
+  };
+})();
+const readJSON=(k)=>{ try{ return JSON.parse(LS.get(k) || '{}'); }catch(e){ return {}; } };
+const DB = { tx: readJSON('dc_tx'), cmt: readJSON('dc_cmt') };
+/* Safari darf gespeicherte Daten nach längerer Nichtnutzung löschen – hier bitten wir um dauerhaften Speicher */
+if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+/* Einstellungen: Zahlenformat, Status-Filter (Ansicht) und Status-Filter (Import) */
+const UI = Object.assign({
+  numfmt:'apo',
+  status:['Executed'],
+  type:[],
+  impStatus:['Executed','Pending','Cancelled']
+}, readJSON('dc_ui'));
+const saveUI = () => { try{ LS.set('dc_ui', JSON.stringify(UI)); }catch(e){} };
+const save = () => {
+  try{
+    LS.set('dc_tx',  JSON.stringify(DB.tx));
+    LS.set('dc_cmt', JSON.stringify(DB.cmt));
+  }catch(e){ toast('⚠️ Der Browserspeicher ist voll. Bitte ein Backup sichern und Screenshots entfernen – neue Eingaben gehen sonst beim Neuladen verloren.'); }
+};
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',5000);}
+
+/* Zeigegerät ohne Maus – bestimmt Hinweistexte (kein Drag & Drop, kein Strg+V auf dem iPhone) */
+const TOUCH = window.matchMedia && matchMedia('(hover:none) and (pointer:coarse)').matches;
+
+/* Heutiges Datum in lokaler Zeit – toISOString() rechnet nach UTC und markiert abends den falschen Tag */
+function isoToday(d=new Date()){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/* Fotos vom iPhone sind mehrere MB groß, der Browserspeicher fasst rund 5 MB.
+   Deshalb werden Bilder vor dem Speichern verkleinert. */
+const shrinkImage = (dataURL, max=1400, q=.72) => new Promise(res=>{
+  const img=new Image();
+  img.onload=()=>{
+    let w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+    if(!w||!h) return res(dataURL);
+    const s=Math.min(1, max/Math.max(w,h));
+    w=Math.round(w*s); h=Math.round(h*s);
+    try{
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      const out=c.toDataURL('image/jpeg',q);
+      res(out.length<dataURL.length ? out : dataURL);
+    }catch(e){ res(dataURL); }
+  };
+  img.onerror=()=>res(dataURL);
+  img.src=dataURL;
+});
+
+/* Datei ausgeben. Auf dem iPhone öffnet das Download-Attribut oft nur eine leere Seite,
+   deshalb zuerst das Teilen-Menü von iOS anbieten. */
+async function saveFile(name, text, mime){
+  const blob=new Blob([text],{type:mime});
+  try{
+    const file=new File([blob],name,{type:mime});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:name});
+      return;
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; }
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=name; a.rel='noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+
+/* ============================ Parser ============================ */
+/* Zahlen einlesen. Die Datei bestimmt ihr eigenes Format – deutsch (1.234,56) genauso wie
+   1,234.56 · 1'234.56 · 1234.56 –, damit auch ein hier exportiertes CSV wieder eingelesen werden kann.
+   fileDec ist das für die ganze Datei erkannte Dezimaltrennzeichen; nur so bleibt ein Wert
+   wie "11.838" eindeutig (deutsch = 11838, sonst = 11,838). */
+const GRP_C=/^-?[1-9]\d{0,2}(,\d{3})+$/, GRP_D=/^-?[1-9]\d{0,2}(\.\d{3})+$/;
+function detectDec(cells){
+  let de=0, en=0;
+  cells.forEach(v=>{
+    v=String(v||'').trim().replace(/[\s\u00A0'’]/g,'');
+    if(!/^-?\d[\d.,]*$/.test(v)) return;
+    const c=v.lastIndexOf(','), d=v.lastIndexOf('.');
+    if(c>-1 && d>-1){ c>d ? de++ : en++; return; }
+    if(c>-1 && !GRP_C.test(v)) de++;
+    if(d>-1 && !GRP_D.test(v)) en++;
+  });
+  return en>de ? '.' : ',';
+}
+function num(s, fileDec){
+  if(s===undefined||s===null) return 0;
+  s = String(s).trim(); if(!s) return 0;
+  const neg = /^-/.test(s) || /^\(.*\)$/.test(s);
+  s = s.replace(/[\s\u00A0'’´`]/g,'').replace(/[^0-9.,]/g,'');
+  if(!s) return 0;
+  const c = s.lastIndexOf(','), d = s.lastIndexOf('.');
+  let dec = '';
+  if(c>-1 && d>-1)      dec = c>d ? ',' : '.';
+  else if(c>-1)         dec = GRP_C.test(s) ? (fileDec===',' ? ',' : '') : ',';
+  else if(d>-1)         dec = GRP_D.test(s) ? (fileDec==='.' ? '.' : '') : '.';
+  if(dec){
+    s = s.split(dec===',' ? '.' : ',').join('').replace(dec,'.');
+  } else {
+    s = s.replace(/[.,]/g,'');
+  }
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : (neg ? -Math.abs(n) : n);
+}
+const COLS = ['date','time','status','reference','description','assetType','type','isin','shares','price','amount','fee','tax','currency'];
+
+/* Kennung einer Zeile – bewusst über den geparsten Betrag, damit dieselbe Buchung
+   in deutscher und in exportierter Schreibweise als Duplikat erkannt wird. */
+const txId = r => [r.reference,r.date,r.time,r.assetType,r.type,r.isin,
+                   (Number(r.amountN)||0).toFixed(6)].join('|');
+/* Altbestand (Kennung enthielt den Rohtext des Betrags) einmalig umschlüsseln, Notizen mitnehmen */
+function migrateIds(){
+  const map={}, nt={}; let changed=0;
+  Object.entries(DB.tx).forEach(([k,r])=>{
+    const nid=txId(r); map[k]=nid; if(nid!==k) changed++;
+    nt[nid]={...r,id:nid};
+  });
+  if(!changed) return;
+  DB.tx=nt;
+  const nc={};
+  Object.entries(DB.cmt).forEach(([k,v])=>{
+    if(k.startsWith('tx:')){ const o=k.slice(3); nc['tx:'+(map[o]||o)]=v; } else nc[k]=v;
+  });
+  DB.cmt=nc; save();
+}
+
+function parseCSV(text){
+  const out=[], bad=[], recs=[];
+  text.replace(/^\uFEFF/,'').split(/\r?\n/).forEach(raw=>{
+    let line = raw.replace(/"/g,'').trim();
+    if(!line) return;
+    line = line.replace(/[,;\s]+$/,'');
+    if(/^date;time;status/i.test(line)) return;
+    const p = line.split(';');
+    if(p.length < 11 || !/^\d{4}-\d{2}-\d{2}$/.test(p[0])){ bad.push(raw); return; }
+    const r={}; COLS.forEach((c,j)=> r[c]=(p[j]||'').trim());
+    recs.push(r);
+  });
+  const dec = detectDec(recs.flatMap(r=>[r.shares,r.price,r.amount,r.fee,r.tax]));
+  recs.forEach(r=>{
+    r.sharesN=num(r.shares,dec); r.priceN=num(r.price,dec); r.amountN=num(r.amount,dec);
+    r.feeN=num(r.fee,dec); r.taxN=num(r.tax,dec);
+    r.dt = r.date+' '+(r.time||'00:00:00');
+    r.id = txId(r);
+    out.push(r);
+  });
+  return {rows:out, bad, dec};
+}
+
+function importRows(rows){
+  let neu=0,dup=0,upd=0,skip=0;
+  rows.forEach(r=>{
+    if(UI.impStatus.length && !UI.impStatus.includes(r.status)){ skip++; return; }
+    const ex = DB.tx[r.id];
+    if(!ex) { DB.tx[r.id]=r; neu++; }
+    else if(JSON.stringify(ex)!==JSON.stringify(r)) { DB.tx[r.id]={...ex,...r}; upd++; }
+    else dup++;
+  });
+  save();
+  return {neu,dup,upd,skip};
+}
+
+/* ============================ Ableitungen ============================ */
+const all = () => Object.values(DB.tx).sort((a,b)=> a.dt<b.dt?1:a.dt>b.dt?-1:0);
+const F = {year:'', month:''};
+const ST_KNOWN=['Executed','Pending','Cancelled'];
+const ST_LABEL={Executed:'ausgeführt',Pending:'offen',Cancelled:'abgebrochen'};
+const stList=()=> [...new Set(ST_KNOWN.concat(Object.values(DB.tx).map(r=>r.status).filter(Boolean)))];
+const typeList=()=> [...new Set(Object.values(DB.tx).map(r=>r.type).filter(Boolean))]
+  .sort((a,b)=> (TYPE_MAP[a]?TYPE_MAP[a][0]:a).localeCompare(TYPE_MAP[b]?TYPE_MAP[b][0]:b,'de'));
+/* leere Auswahl = keine Einschränkung, damit die Ansicht nie ohne Grund leer bleibt */
+const statusOK = r => !UI.status.length || UI.status.includes(r.status);
+const typeOK   = r => !UI.type.length || UI.type.includes(r.type);
+function filtered(){
+  return all().filter(r=>
+    statusOK(r) && typeOK(r) &&
+    (!F.year  || r.date.slice(0,4)===F.year) &&
+    (!F.month || r.date.slice(5,7)===F.month)
+  );
+}
+const isBuy  = r => r.assetType==='Security' && (r.type==='Buy'||r.type==='Savings plan');
+const isSell = r => r.assetType==='Security' && r.type==='Sell';
+const isDiv  = r => r.type==='Distribution' && r.isin;
+const isCash = r => r.assetType==='Cash' && !r.isin;
+
+/* Realisiertes Ergebnis je Transaktion (RPL, netto) und je Tag (RPD) – gefüllt von positions().
+   RGR hält denselben Vorgang brutto, also vor Gebühren und Steuern – das ist die Größe,
+   die auf der Übersicht als „Realisiert (FIFO)" ausgewiesen wird. */
+let RPL={}, RPD={}, RGR={};
+
+function positions(){
+  RPL={}; RPD={}; RGR={};
+  const ex = all().filter(r=>r.status==='Executed').sort((a,b)=> a.dt<b.dt?-1:1);
+  const P = {};
+  const get = r => P[r.isin] || (P[r.isin]={isin:r.isin,name:r.description,shares:0,cost:0,lots:[],
+      realized:0,div:0,fees:0,taxes:0,buys:0,sells:0,last:0,orphan:0,lastDate:r.date,n:0});
+  ex.forEach(r=>{
+    if(!r.isin) return;
+    const p=get(r); p.n++; p.lastDate=r.date;
+    if(!p.name && r.description) p.name=r.description;
+    if(r.priceN) p.last=r.priceN;
+
+    if(isBuy(r)){
+      p.shares+=r.sharesN; p.fees+=r.feeN; p.buys+=Math.abs(r.amountN);
+      p.lots.push({sh:r.sharesN, pps: r.sharesN? Math.abs(r.amountN)/r.sharesN : 0});
+      p.cost=p.lots.reduce((s,l)=>s+l.sh*l.pps,0);
+
+    } else if(isSell(r)){
+      let rest=r.sharesN, basis=0;
+      while(rest>1e-9 && p.lots.length){
+        const l=p.lots[0], take=Math.min(l.sh,rest);
+        basis+=take*l.pps; l.sh-=take; rest-=take;
+        if(l.sh<=1e-9) p.lots.shift();
+      }
+      if(rest>1e-9) p.orphan+=rest;
+      const gain = Math.abs(r.amountN) - basis - r.taxN - r.feeN;
+      RPL[r.id]=gain; RPD[r.date]=(RPD[r.date]||0)+gain;
+      RGR[r.id]=Math.abs(r.amountN) - basis;
+      p.shares=Math.max(0, p.shares-r.sharesN);
+      p.cost=p.lots.reduce((s,l)=>s+l.sh*l.pps,0);
+      p.realized += Math.abs(r.amountN) - basis;
+      p.fees+=r.feeN; p.taxes+=r.taxN; p.sells+=Math.abs(r.amountN);
+
+    } else if(isDiv(r)){
+      p.div+=r.amountN; p.taxes+=r.taxN;
+      const net = r.amountN - r.taxN;
+      RPL[r.id]=net; RPD[r.date]=(RPD[r.date]||0)+net;
+
+    } else if(r.type==='Corporate action'){
+      p.shares=Math.max(0,p.shares+r.sharesN); p.realized+=r.amountN;
+      RGR[r.id]=r.amountN;
+      if(r.amountN){ RPL[r.id]=r.amountN; RPD[r.date]=(RPD[r.date]||0)+r.amountN; }
+    }
+  });
+  Object.values(P).forEach(p=>{
+    if(Math.abs(p.shares)<1e-8){p.shares=0;p.cost=0;p.lots=[];}
+    if(p.cost<0) p.cost=0;
+    p.value  = p.shares*p.last;
+    p.unreal = p.shares? p.value-p.cost : 0;
+    p.total  = p.realized + p.div - p.fees - p.taxes;
+    p.open   = p.shares>0;
+  });
+  return Object.values(P).sort((a,b)=> b.total-a.total);
+}
+
+/* ============================ Formatierung ============================ */
+/* Zahlenformate – Dezimaltrennzeichen ist überall der Punkt, Tausender wählbar */
+const NUMFMT={
+  apo  :{grp:"'", dec:'.', label:"1'234.56"},
+  comma:{grp:',', dec:'.', label:"1,234.56"},
+  space:{grp:' ', dec:'.', label:"1 234.56"},
+  none :{grp:'',  dec:'.', label:"1234.56"},
+  de   :{grp:'.', dec:',', label:"1.234,56"}
+};
+const nf=()=> NUMFMT[UI.numfmt] || NUMFMT.apo;
+function fmt(n,d=2){
+  if(n===null||n===undefined||!isFinite(n)) n=0;
+  const f=nf(), s=Math.abs(n).toFixed(d), neg = n<0 && parseFloat(s)!==0;
+  let [i,fr]=s.split('.');
+  if(f.grp) i=i.replace(/\B(?=(\d{3})+(?!\d))/g, f.grp);
+  return (neg?'-':'')+i+(fr?f.dec+fr:'');
+}
+/* Rohwert für Exporte: immer Punkt als Dezimaltrennzeichen, kein Tausendertrennzeichen */
+const raw=n=> (n===null||n===undefined||!isFinite(n)) ? '' : String(n);
+const eur=n=> fmt(n)+' €';
+const sign=n=> `<span class="${n>0.004?'pos':n<-0.004?'neg':'mut'}">${n>0.004?'+':''}${eur(n)}</span>`;
+const de=d=> d? d.split('-').reverse().join('.') : '';
+const esc=s=> String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TYPE_MAP={Buy:['Kauf','Buy'],Sell:['Verkauf','Sell'],'Savings plan':['Sparplan','Sparplan'],
+    Distribution:['Ausschüttung','Dividende'],Deposit:['Einzahlung','Cash'],Withdrawal:['Auszahlung','Cash'],
+    'Cash Transfer In':['Übertrag ein','Cash'],'Cash Transfer Out':['Übertrag aus','Cash'],
+    Taxes:['Steuern','Sonst'],'Corporate action':['Kapitalmaßnahme','Sonst']};
+function typeTag(r){
+  const [lbl,cls]=TYPE_MAP[r.type]||[r.type,'Sonst'];
+  return `<span class="tag t-${cls}">${esc(lbl)}</span>`;
+}
+
+/* ============================ Navigation ============================ */
+let view='dash';
+document.querySelectorAll('nav button').forEach(b=> b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  show(b.dataset.v);
+});
+function show(v){
+  view=v;
+  document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
+  document.getElementById('v-'+v).classList.add('on');
+  render();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ============================ Filter ============================ */
+const MON=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+function buildFilters(){
+  const ys=[...new Set(all().map(r=>r.date.slice(0,4)))].sort().reverse();
+  const y=document.getElementById('fYear');
+  y.innerHTML='<option value="">Alle Jahre</option>'+ys.map(v=>`<option ${F.year===v?'selected':''}>${v}</option>`).join('');
+  const m=document.getElementById('fMonth');
+  m.innerHTML='<option value="">Alle Monate</option>'+MON.map((n,i)=>{const v=String(i+1).padStart(2,'0');
+    return `<option value="${v}" ${F.month===v?'selected':''}>${n}</option>`}).join('');
+}
+document.getElementById('fYear').onchange=e=>{F.year=e.target.value;render()};
+document.getElementById('fMonth').onchange=e=>{F.month=e.target.value;render()};
+
+/* --- Status-Filter (Mehrfachauswahl) --- */
+const ddStatus=document.getElementById('ddStatus');
+document.getElementById('ddStatusBtn').onclick=e=>{e.stopPropagation();ddStatus.classList.toggle('open')};
+document.addEventListener('click',e=>{ if(!ddStatus.contains(e.target)) ddStatus.classList.remove('open'); });
+function buildStatusFilter(){
+  const list=stList(), cnt={};
+  Object.values(DB.tx).forEach(r=>cnt[r.status]=(cnt[r.status]||0)+1);
+  document.getElementById('ddStatusPop').innerHTML=
+    list.map(s=>`<label class="chk"><input type="checkbox" value="${esc(s)}" ${UI.status.includes(s)?'checked':''}>
+      <span class="st ${esc(s)}">${esc(s)}</span> <span>${ST_LABEL[s]||''}</span>
+      <span class="cnt">${cnt[s]||0}</span></label>`).join('')+
+    `<hr><div class="row"><button class="btn" data-p="all">alle</button>
+      <button class="btn" data-p="exec">nur ausgeführt</button></div>`;
+  const pop=document.getElementById('ddStatusPop');
+  pop.querySelectorAll('input').forEach(i=> i.onchange=()=>{
+    UI.status=[...pop.querySelectorAll('input:checked')].map(x=>x.value); saveUI(); render();
+  });
+  pop.querySelector('[data-p=all]').onclick =()=>{UI.status=stList();saveUI();render()};
+  pop.querySelector('[data-p=exec]').onclick=()=>{UI.status=['Executed'];saveUI();render()};
+  const n=UI.status.length;
+  document.getElementById('ddStatusBtn').textContent =
+    (!n||n===list.length) ? 'alle Status ▾'
+    : n===1 ? (ST_LABEL[UI.status[0]]||UI.status[0])+' ▾'
+    : `${n} Status ▾`;
+}
+
+/* --- Typ-Filter (Mehrfachauswahl) --- */
+const ddType=document.getElementById('ddType');
+document.getElementById('ddTypeBtn').onclick=e=>{e.stopPropagation();ddType.classList.toggle('open')};
+document.addEventListener('click',e=>{ if(!ddType.contains(e.target)) ddType.classList.remove('open'); });
+function buildTypeFilter(){
+  const list=typeList(), cnt={};
+  Object.values(DB.tx).forEach(r=>cnt[r.type]=(cnt[r.type]||0)+1);
+  document.getElementById('ddTypePop').innerHTML=
+    list.map(t=>`<label class="chk"><input type="checkbox" value="${esc(t)}" ${UI.type.includes(t)?'checked':''}>
+      ${typeTag({type:t})} <span class="cnt">${cnt[t]||0}</span></label>`).join('')+
+    `<hr><div class="row"><button class="btn" data-p="all">alle</button></div>`;
+  const pop=document.getElementById('ddTypePop');
+  pop.querySelectorAll('input').forEach(i=> i.onchange=()=>{
+    UI.type=[...pop.querySelectorAll('input:checked')].map(x=>x.value); saveUI(); render();
+  });
+  pop.querySelector('[data-p=all]').onclick =()=>{UI.type=[];saveUI();render()};
+  const n=UI.type.length;
+  document.getElementById('ddTypeBtn').textContent =
+    (!n) ? 'alle Typen ▾'
+    : n===1 ? (TYPE_MAP[UI.type[0]]?TYPE_MAP[UI.type[0]][0]:UI.type[0])+' ▾'
+    : `${n} Typen ▾`;
+}
+
+/* --- Zahlenformat --- */
+const fNum=document.getElementById('fNum');
+fNum.innerHTML=Object.entries(NUMFMT).map(([k,v])=>
+  `<option value="${k}" ${UI.numfmt===k?'selected':''}>${v.label}</option>`).join('');
+fNum.onchange=e=>{UI.numfmt=e.target.value;saveUI();render()};
+
+/* ============================ Render ============================ */
+function render(){
+  buildFilters(); buildStatusFilter(); buildTypeFilter(); buildImportFilter();
+  positions();   // füllt RPL / RPD für alle Ansichten
+  document.getElementById('dbInfo').textContent =
+    `${Object.keys(DB.tx).length} Transaktionen · ${Object.keys(DB.cmt).length} kommentierte Objekte · ${(JSON.stringify(DB).length/1024).toFixed(0)} KB`;
+  if(view==='dash') dash();
+  if(view==='pos')  posView();
+  if(view==='tx')   txView();
+  if(view==='cal')  calView();
+}
+
+/* --- Übersicht --- */
+function dash(){
+  const f=filtered(), P=positions();
+  const inv=f.filter(isBuy).reduce((s,r)=>s+Math.abs(r.amountN),0);
+  const sel=f.filter(isSell).reduce((s,r)=>s+Math.abs(r.amountN),0);
+  const fee=f.reduce((s,r)=>s+r.feeN,0);
+  const tax=f.reduce((s,r)=>s+r.taxN,0);
+  const dep=f.filter(r=>isCash(r)&&['Deposit','Cash Transfer In'].includes(r.type)).reduce((s,r)=>s+r.amountN,0);
+  const wit=f.filter(r=>isCash(r)&&['Withdrawal','Cash Transfer Out'].includes(r.type)).reduce((s,r)=>s+Math.abs(r.amountN),0);
+  /* Realisiert und Ausschüttungen folgen jetzt dem Zeitraumfilter. Grundlage sind die
+     Einzelvorgänge im gewählten Zeitraum; der FIFO-Einstand stammt weiterhin aus der
+     gesamten Historie, sonst wären Verkäufe ohne zugehörigen Kauf im Fenster falsch. */
+  const realTotal=f.reduce((s,r)=>s+(RGR[r.id]||0),0);
+  const divTotal=f.filter(isDiv).reduce((s,r)=>s+r.amountN,0);
+  const per=(F.year||F.month)? ' (Filter)':'';
+  const scope=(F.year||F.month)? 'gewählter Zeitraum':'gesamte Historie';
+
+  document.getElementById('kpis').innerHTML=[
+    ['Depotwert (geschätzt)', eur(P.reduce((s,p)=>s+p.value,0)), 'letzter bekannter Kurs'],
+    ['Ertrag gesamt'+per, sign(realTotal+divTotal-fee-tax), 'realisiert + Ausschüttungen − Kosten'],
+    ['Realisiert (FIFO)'+per, sign(realTotal), scope],
+    ['Ausschüttungen'+per, sign(divTotal), scope],
+    ['Käufe'+per, eur(inv), f.filter(isBuy).length+' Vorgänge'],
+    ['Verkäufe'+per, eur(sel), f.filter(isSell).length+' Vorgänge'],
+    ['Gebühren / Steuern'+per, eur(fee)+' / '+eur(tax), ''],
+    ['Ein-/Auszahlungen'+per, eur(dep)+' / '+eur(wit), '']
+  ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="hint">${h}</div></div>`).join('');
+
+  const top=P.filter(p=>p.n).slice(0,12), max=Math.max(...top.map(p=>Math.abs(p.total)),1);
+  document.getElementById('rank').innerHTML = top.map(p=>`
+    <div style="margin-bottom:9px">
+      <div class="row" style="justify-content:space-between;font-size:13px">
+        <span class="clickable" onclick="detail('${p.isin}')">${esc(p.name||p.isin)}</span>${sign(p.total)}
+      </div>
+      <div class="bar"><i style="width:${Math.abs(p.total)/max*100}%;${p.total<0?'background:var(--neg)':''}"></i></div>
+    </div>`).join('') || '<p class="hint">Noch keine Daten.</p>';
+
+  const losses=P.filter(p=>p.n&&p.total<-0.004).sort((a,b)=>a.total-b.total).slice(0,12);
+  const lossPanel=document.getElementById('lossPanel');
+  lossPanel.style.display = losses.length ? '' : 'none';
+  if(losses.length){
+    const lmax=Math.max(...losses.map(p=>Math.abs(p.total)),1);
+    document.getElementById('rankLoss').innerHTML = losses.map(p=>`
+      <div style="margin-bottom:9px">
+        <div class="row" style="justify-content:space-between;font-size:13px">
+          <span class="clickable" onclick="detail('${p.isin}')">${esc(p.name||p.isin)}</span>${sign(p.total)}
+        </div>
+        <div class="bar"><i style="width:${Math.abs(p.total)/lmax*100}%;background:var(--neg)"></i></div>
+      </div>`).join('');
+  }
+
+  const M={};
+  all().filter(r=>statusOK(r)&&typeOK(r)).forEach(r=>{
+    const k=r.date.slice(0,7); M[k]=M[k]||{k,buy:0,sell:0,div:0,fee:0,tax:0,pnl:0,n:0};
+    M[k].n++; if(isBuy(r))M[k].buy+=Math.abs(r.amountN); if(isSell(r))M[k].sell+=Math.abs(r.amountN);
+    if(isDiv(r))M[k].div+=r.amountN; M[k].fee+=r.feeN; M[k].tax+=r.taxN;
+    if(RPL[r.id]!==undefined) M[k].pnl+=RPL[r.id];
+  });
+  const ms=Object.values(M).sort((a,b)=>b.k.localeCompare(a.k));
+  document.getElementById('monthly').innerHTML=
+    `<thead><tr><th>Monat</th><th class="num">Vorgänge</th><th class="num">Käufe</th><th class="num">Verkäufe</th><th class="num">Ausschüttungen</th><th class="num">Gebühren</th><th class="num">Steuern</th><th class="num">realisiert</th></tr></thead><tbody>`+
+    ms.map(m=>{const [y,mo]=m.k.split('-');return `<tr class="clickable" onclick="jumpMonth('${y}','${mo}')">
+      <td>${MON[+mo-1]} ${y}</td><td class="num mut">${m.n}</td><td class="num">${eur(m.buy)}</td>
+      <td class="num">${eur(m.sell)}</td><td class="num pos">${eur(m.div)}</td><td class="num mut">${eur(m.fee)}</td>
+      <td class="num mut">${eur(m.tax)}</td><td class="num"><b>${sign(m.pnl)}</b></td></tr>`}).join('')+'</tbody>';
+}
+function jumpMonth(y,m){F.year=y;F.month=m;document.querySelector('nav button[data-v="tx"]').click();}
+
+/* --- Positionen --- */
+let posSort={c:'total',d:-1};
+function posView(){
+  const q=document.getElementById('posSearch').value.toLowerCase();
+  const closed=document.getElementById('showClosed').checked;
+  let P=positions().filter(p=>(closed||p.open)&&(((p.name||'')+p.isin).toLowerCase().includes(q)));
+  P.sort((a,b)=>{const x=a[posSort.c],y=b[posSort.c];
+    return (typeof x==='string'? String(x).localeCompare(String(y)): (x||0)-(y||0))*posSort.d});
+
+  const cols=[['name','Position',''],['shares','Stück','num'],['cost','Einstand','num'],['last','letzter Kurs','num'],
+    ['value','Wert (gesch.)','num'],['unreal','unrealisiert','num'],['realized','realisiert','num'],
+    ['div','Ausschüttung','num'],['fees','Gebühren','num'],['taxes','Steuern','num'],
+    ['total','Ertrag gesamt','num'],['n','Vorgänge','num']];
+
+  const head='<thead><tr>'+cols.map(c=>
+      `<th class="${c[2]}" onclick="sortPos('${c[0]}')">${c[1]}${posSort.c===c[0]?(posSort.d>0?' ▲':' ▼'):''}</th>`
+    ).join('')+'</tr></thead>';
+
+  const body='<tbody>'+P.map(p=>`<tr class="clickable" onclick="detail('${p.isin}')">
+      <td><b>${esc(p.name||p.isin)}</b><br><span class="hint">${p.isin}${p.open?'':' · geschlossen'}${p.orphan?' · <span class="neg">⚠ Einstand unvollständig</span>':''}</span></td>
+      <td class="num">${fmt(p.shares,p.shares%1?6:0)}</td>
+      <td class="num">${eur(p.cost)}</td>
+      <td class="num mut">${p.last?fmt(p.last):'–'}</td>
+      <td class="num">${eur(p.value)}</td>
+      <td class="num">${p.open?sign(p.unreal):'<span class="mut">–</span>'}</td>
+      <td class="num">${sign(p.realized)}</td>
+      <td class="num pos">${eur(p.div)}</td>
+      <td class="num mut">${eur(p.fees)}</td>
+      <td class="num mut">${eur(p.taxes)}</td>
+      <td class="num"><b>${sign(p.total)}</b></td>
+      <td class="num mut">${p.n}</td>
+    </tr>`).join('')+'</tbody>';
+
+  document.getElementById('posTable').innerHTML = head+body;
+}
+function sortPos(c){posSort.d = posSort.c===c? -posSort.d : -1; posSort.c=c; posView();}
+document.getElementById('posSearch').oninput=posView;
+document.getElementById('showClosed').onchange=posView;
+
+/* --- Detail --- */
+function detail(isin){
+  const p=positions().find(x=>x.isin===isin); if(!p) return;
+  const rows=all().filter(r=>r.isin===isin);
+  const stat=[['Bestand',fmt(p.shares,p.shares%1?6:0)+' Stück'],['Einstand (offen)',eur(p.cost)],
+    ['Ø Einstandskurs',eur(p.shares?p.cost/p.shares:0)],['Letzter Kurs',eur(p.last)],
+    ['Wert (geschätzt)',eur(p.value)],['Unrealisiert',p.open?sign(p.unreal):'–'],
+    ['Realisiert (FIFO)',sign(p.realized)],['Ausschüttungen',sign(p.div)],
+    ['Gebühren',eur(p.fees)],['Steuern',eur(p.taxes)],['Ertrag gesamt',`<b>${sign(p.total)}</b>`],
+    ['Erster Vorgang',rows.length?de(rows[rows.length-1].date):'–']];
+  document.getElementById('v-det').innerHTML=`
+    <button class="back" onclick="document.querySelector('nav button[data-v=pos]').click()">‹ zurück zu den Positionen</button>
+    <div class="panel"><h2>${esc(p.name||p.isin)} <span class="hint">${p.isin}</span></h2>
+      ${p.orphan?`<p class="hint neg">⚠ ${fmt(p.orphan,p.orphan%1?6:0)} Stück wurden verkauft, ohne dass ein passender Kauf im importierten Zeitraum liegt. Der realisierte Gewinn dieser Stücke ist dadurch zu hoch ausgewiesen.</p>`:''}
+      <div class="cards">${stat.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:17px">${v}</div></div>`).join('')}</div>
+    </div>
+    <div class="panel"><h2>Alle Vorgänge (${rows.length})</h2><div class="scroll">${txTableHtml(rows)}</div></div>
+    <div class="panel"><h2>Notizen &amp; Screenshots</h2>${commentHtml('isin:'+isin)}</div>`;
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
+  document.getElementById('v-det').classList.add('on'); view='det';
+  bindComments('isin:'+isin);
+  window.scrollTo({top:0});
+}
+
+/* --- Transaktionen --- */
+function txTableHtml(rows){
+  const cols=['Datum','Zeit','Status','Typ','Bezeichnung','Stück','Kurs','Betrag','realisiert','Geb.','Steuer','Referenz','Notiz'];
+  const nums=[5,6,7,8,9,10];
+  const head='<thead><tr>'+cols.map((c,i)=>`<th class="${nums.includes(i)?'num':''}" style="cursor:default">${c}</th>`).join('')+'</tr></thead>';
+  const body='<tbody>'+rows.map(r=>{const c=(DB.cmt['tx:'+r.id]||[]).length;
+    return `<tr>
+      <td>${de(r.date)}</td>
+      <td class="mut">${(r.time||'').slice(0,5)}</td>
+      <td><span class="st ${r.status}">${r.status}</span></td>
+      <td>${typeTag(r)}</td>
+      <td>${r.isin?`<span class="clickable" onclick="detail('${r.isin}')">${esc(r.description||r.isin)}</span>`:esc(r.description||'–')}</td>
+      <td class="num">${r.sharesN?fmt(r.sharesN,r.sharesN%1?6:0):'<span class="mut">–</span>'}</td>
+      <td class="num mut">${r.priceN?fmt(r.priceN):'–'}</td>
+      <td class="num">${r.amountN?sign(r.amountN):'<span class="mut">–</span>'}</td>
+      <td class="num">${RPL[r.id]!==undefined?`<b>${sign(RPL[r.id])}</b>`:'<span class="mut">–</span>'}</td>
+      <td class="num mut">${r.feeN?fmt(r.feeN):''}</td>
+      <td class="num mut">${r.taxN?fmt(r.taxN):''}</td>
+      <td class="mut" style="font-size:11px">${esc(r.reference).slice(0,22)}</td>
+      <td><button class="btn note" onclick="txNote(this.dataset.id)" data-id="${esc(r.id)}">💬${c?' '+c:''}</button></td>
+    </tr>`}).join('')+'</tbody>';
+  return '<table>'+head+body+'</table>';
+}
+function txView(){
+  const q=document.getElementById('txSearch').value.toLowerCase();
+  const rows=filtered().filter(r=>((r.description||'')+r.isin+r.reference+r.type).toLowerCase().includes(q));
+  const sum=rows.reduce((s,r)=>s+(RPL[r.id]||0),0);
+  document.getElementById('txWrap').innerHTML=
+    `<p class="hint">${rows.length} Vorgänge · realisiertes Ergebnis in der Auswahl: ${sign(sum)}</p>`+txTableHtml(rows);
+}
+document.getElementById('txSearch').oninput=txView;
+document.getElementById('expCsv').onclick=()=>{
+  const rows=filtered();
+  const NUMC={shares:'sharesN',price:'priceN',amount:'amountN',fee:'feeN',tax:'taxN'};
+  const cell=(r,c)=> NUMC[c] ? (r[c]===''||r[c]===undefined ? '' : raw(r[NUMC[c]])) : String(r[c]??'');
+  const csv=[COLS.concat(['realisiert']).join(';')]
+    .concat(rows.map(r=>COLS.map(c=>cell(r,c))
+      .concat([RPL[r.id]!==undefined?RPL[r.id].toFixed(2):'']).join(';'))).join('\n');
+  saveFile('depot_export_'+isoToday()+'.csv', csv, 'text/csv');
+};
+function txNote(id){
+  const r=DB.tx[id]; if(!r) return;
+  const box=document.createElement('div');
+  box.className='panel modal';
+  box.innerHTML=`<div class="row"><b>${esc(r.description||r.type)} · ${de(r.date)}</b>
+    <button class="btn" style="margin-left:auto" onclick="this.closest('.panel').remove()">✕</button></div>
+    <p class="hint">${esc(r.reference)}${RPL[id]!==undefined?' · realisiert: '+eur(RPL[id]):''}</p>${commentHtml('tx:'+id)}`;
+  document.body.appendChild(box); bindComments('tx:'+id);
+}
+
+/* --- Kalender --- */
+let calM = new Date();
+document.getElementById('calPrev').onclick=()=>{calM.setDate(1);calM.setMonth(calM.getMonth()-1);calView(true)};
+document.getElementById('calNext').onclick=()=>{calM.setDate(1);calM.setMonth(calM.getMonth()+1);calView(true)};
+function calView(manual){
+  if(!manual){
+    if(F.year)  calM.setFullYear(+F.year);
+    if(F.month){ calM.setDate(1); calM.setMonth(+F.month-1); }
+  }
+  const y=calM.getFullYear(), m=calM.getMonth();
+  const mk=`${y}-${String(m+1).padStart(2,'0')}`;
+  const monthPnl=Object.entries(RPD).filter(([d])=>d.startsWith(mk)).reduce((s,[,v])=>s+v,0);
+  document.getElementById('calTitle').innerHTML=
+    `${MON[m]} ${y}<br><span class="hint">realisiert: ${sign(monthPnl)}</span>`;
+  calYearBox(y);
+
+  const byDay={};
+  all().filter(r=>statusOK(r)&&typeOK(r)&&r.date.startsWith(mk))
+       .forEach(r=>{const d=+r.date.slice(8,10); (byDay[d]=byDay[d]||[]).push(r)});
+  const first=(new Date(y,m,1).getDay()+6)%7, days=new Date(y,m+1,0).getDate(), today=isoToday();
+  let h=['Mo','Di','Mi','Do','Fr','Sa','So'].map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<first;i++) h+='<div class="day empty"></div>';
+  for(let d=1;d<=days;d++){
+    const ev=byDay[d]||[], iso=`${mk}-${String(d).padStart(2,'0')}`, pnl=RPD[iso]||0;
+    const cls = pnl>0.004?'win' : pnl<-0.004?'loss' : '';
+    h+=`<div class="day ${iso===today?'today':''} ${cls}" onclick="calDay('${iso}')">
+        <div class="d"><span>${d}</span>${Math.abs(pnl)>0.004?`<span class="pnl ${pnl>0?'pos':'neg'}">${pnl>0?'+':''}${fmt(pnl,0)} €</span>`:''}</div>`+
+      ev.slice(0,3).map(r=>{const c=isBuy(r)?'t-Buy':isSell(r)?'t-Sell':isDiv(r)?'t-Dividende':isCash(r)?'t-Cash':'t-Sonst';
+        return `<span class="ev tag ${c}">${esc((r.description||r.type).slice(0,18))}</span>`}).join('')+
+      (ev.length>3?`<span class="hint">+${ev.length-3} weitere</span>`:'')+'</div>';
+  }
+  document.getElementById('calGrid').innerHTML=h;
+  document.getElementById('calDetail').style.display='none';
+}
+function calYearBox(y){
+  /* Jahreswerte des angezeigten Kalenderjahres – unabhängig vom Monatsfilter oben,
+     damit der Kasten immer zum sichtbaren Jahr passt. */
+  const yr=String(y);
+  const rows=all().filter(r=>r.date.slice(0,4)===yr && r.status==='Executed' && typeOK(r));
+  const sells=rows.filter(isSell), divs=rows.filter(isDiv);
+  const realized=rows.reduce((s,r)=>s+(RGR[r.id]||0),0);
+  const div=divs.reduce((s,r)=>s+r.amountN,0);
+  const fee=rows.reduce((s,r)=>s+r.feeN,0);
+  const tax=rows.reduce((s,r)=>s+r.taxN,0);
+  const total=realized+div-fee-tax;
+  const days=Object.entries(RPD).filter(([d])=>d.startsWith(yr));
+  const win=days.filter(([,v])=>v>0.004).length, loss=days.filter(([,v])=>v<-0.004).length;
+  const best=days.reduce((a,b)=> b[1]>(a?a[1]:-Infinity)?b:a, null);
+  const worst=days.reduce((a,b)=> b[1]<(a?a[1]:Infinity)?b:a, null);
+
+  document.getElementById('calYear').innerHTML=[
+    ['Ertrag '+yr, sign(total), 'realisiert + Ausschüttungen − Kosten'],
+    ['Realisiert (FIFO)', sign(realized), sells.length+' Verkäufe'],
+    ['Ausschüttungen', sign(div), divs.length+' Zahlungen'],
+    ['Gebühren / Steuern', eur(fee)+' / '+eur(tax), ''],
+    ['Gewinn- / Verlusttage', `<span class="pos">${win}</span> / <span class="neg">${loss}</span>`,
+      best&&best[1]>0.004 ? 'bester Tag '+de(best[0])+': '+eur(best[1]) : ''],
+    ['Schlechtester Tag', worst&&worst[1]<-0.004 ? sign(worst[1]) : '<span class="mut">–</span>',
+      worst&&worst[1]<-0.004 ? de(worst[0]) : '']
+  ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:19px">${v}</div><div class="hint">${h}</div></div>`).join('');
+}
+function calDay(iso){
+  const rows=all().filter(r=>r.date===iso&&statusOK(r)&&typeOK(r));
+  const pnl=RPD[iso]||0;
+  const el=document.getElementById('calDetail'); el.style.display='block';
+  el.innerHTML=`<h2>${de(iso)} · ${rows.length} Vorgänge · realisiert ${sign(pnl)}</h2>`+
+    (rows.length?`<div class="scroll">${txTableHtml(rows)}</div>`:'<p class="hint">Keine Vorgänge an diesem Tag.</p>')+
+    `<h3>Tagesnotiz</h3>${commentHtml('day:'+iso)}`;
+  bindComments('day:'+iso);
+  el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+/* ============================ Kommentare + Screenshots ============================ */
+function commentHtml(key){
+  const list=DB.cmt[key]||[];
+  return `<div class="cmts" data-k="${esc(key)}">
+    ${list.map((c,i)=>`<div class="cmt"><div class="meta">🕒 ${new Date(c.t).toLocaleString('de-DE')}
+      <button onclick="delCmt('${esc(key)}',${i})">löschen</button></div>
+      <div>${esc(c.text).replace(/\n/g,'<br>')}</div>
+      ${(c.imgs||[]).map(s=>`<img src="${s}" onclick="lb(this.src)" alt="">`).join('')}</div>`).join('')}
+    <textarea placeholder="Notiz schreiben… Screenshot mit Strg+V direkt einfügen"></textarea>
+    <div class="shots"></div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" data-a="pick">📎 Bild wählen</button>
+      <input type="file" accept="image/*" multiple hidden>
+      <button class="btn pri" data-a="add" style="margin-left:auto">Speichern</button>
+    </div>
+    <p class="hint">${TOUCH
+      ? 'Screenshots über <b>Bild wählen</b> aus Fotos oder Dateien hinzufügen. Bilder werden vor dem Speichern verkleinert.'
+      : 'Screenshot aus der Zwischenablage: Textfeld anklicken und <b>Strg+V</b> drücken.'}</p>
+  </div>`;
+}
+function bindComments(key){
+  document.querySelectorAll('.cmts').forEach(box=>{
+    if(box.dataset.k!==key || box._b) return; box._b=1;
+    const ta=box.querySelector('textarea'), shots=box.querySelector('.shots'),
+          fi=box.querySelector('input[type=file]');
+    let buf=[];
+    const draw=()=> shots.innerHTML=buf.map((s,i)=>`<div class="th"><img src="${s}" alt=""><button class="x" data-i="${i}">✕</button></div>`).join('');
+    shots.onclick=e=>{ if(e.target.dataset.i!==undefined){buf.splice(+e.target.dataset.i,1);draw();} };
+    const addFiles=fs=>[...fs].filter(f=>f&&f.type.startsWith('image/')).forEach(f=>{
+      const rd=new FileReader();
+      rd.onload=async()=>{ buf.push(await shrinkImage(rd.result)); draw(); };
+      rd.readAsDataURL(f);
+    });
+    ta.addEventListener('paste',e=>{
+      const items=[...((e.clipboardData||{}).items||[])].filter(i=>i.type.startsWith('image/'));
+      if(items.length){e.preventDefault(); addFiles(items.map(i=>i.getAsFile()));}
+    });
+    box.querySelector('[data-a=pick]').onclick=()=>fi.click();
+    fi.onchange=()=>addFiles(fi.files);
+    box.querySelector('[data-a=add]').onclick=()=>{
+      if(!ta.value.trim()&&!buf.length) return;
+      (DB.cmt[key]=DB.cmt[key]||[]).unshift({t:Date.now(),text:ta.value.trim(),imgs:buf});
+      save(); refreshComments(box,key); toast('Notiz gespeichert.');
+    };
+  });
+}
+function refreshComments(box,key){
+  const tmp=document.createElement('div'); tmp.innerHTML=commentHtml(key);
+  box.replaceWith(tmp.firstElementChild); bindComments(key);
+}
+function delCmt(k,i){
+  DB.cmt[k].splice(i,1); if(!DB.cmt[k].length) delete DB.cmt[k]; save();
+  document.querySelectorAll('.cmts').forEach(b=>{ if(b.dataset.k===k) refreshComments(b,k); });
+}
+function lb(src){const l=document.getElementById('lightbox');l.querySelector('img').src=src;l.style.display='flex';}
+document.getElementById('lightbox').onclick=e=>e.currentTarget.style.display='none';
+
+/* ============================ Import ============================ */
+const drop=document.getElementById('drop'), fileInp=document.getElementById('file');
+document.getElementById('pick').onclick=()=>fileInp.click();
+fileInp.onchange=()=>handle(fileInp.files);
+['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('hot')}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('hot')}));
+drop.addEventListener('drop',ev=>handle(ev.dataTransfer.files));
+function handle(files){
+  const rep=document.getElementById('report'); let done=0, log=[];
+  if(!files.length) return;
+  [...files].forEach(f=>{
+    const rd=new FileReader();
+    rd.onload=()=>{
+      const {rows,bad}=parseCSV(rd.result);
+      const r=importRows(rows);
+      log.push(`<div class="card" style="margin-top:12px">
+        <b>${esc(f.name)}</b><br>
+        <span class="pos">✔ ${r.neu} neu</span> · <span class="mut">${r.dup} Duplikate übersprungen</span>
+        · <span class="pos">${r.upd} aktualisiert</span>${r.skip?` · <span class="mut">${r.skip} per Statusfilter ausgelassen</span>`:''}${bad.length?` · <span class="neg">${bad.length} Zeilen unlesbar</span>`:''}</div>`);
+      if(++done===files.length){ rep.innerHTML=log.join(''); render(); toast('Import abgeschlossen.'); }
+    };
+    rd.readAsText(f,'utf-8');
+  });
+}
+document.getElementById('expJson').onclick=()=>{
+  saveFile('depot_backup_'+isoToday()+'.json', JSON.stringify(DB), 'application/json');
+};
+document.getElementById('impJson').onclick=()=>document.getElementById('jsonFile').click();
+document.getElementById('jsonFile').onchange=e=>{
+  const rd=new FileReader(); rd.onload=()=>{ try{
+    const d=JSON.parse(rd.result);
+    Object.assign(DB.tx,d.tx||{}); Object.assign(DB.cmt,d.cmt||{});
+    migrateIds(); save(); render(); toast('Backup eingespielt.');
+  }catch(err){ toast('Ungültige Backup-Datei.'); } };
+  rd.readAsText(e.target.files[0]);
+};
+function buildImportFilter(){
+  const box=document.getElementById('impStatus');
+  box.innerHTML=ST_KNOWN.map(s=>`<label class="chk" style="border:1px solid var(--line)">
+    <input type="checkbox" value="${s}" ${UI.impStatus.includes(s)?'checked':''}>
+    <span class="st ${s}">${s}</span><span class="hint">${ST_LABEL[s]}</span></label>`).join('');
+  box.querySelectorAll('input').forEach(i=> i.onchange=()=>{
+    UI.impStatus=[...box.querySelectorAll('input:checked')].map(x=>x.value); saveUI();
+    toast(UI.impStatus.length? 'Import übernimmt künftig: '+UI.impStatus.join(', ')
+                             : 'Kein Status gewählt – der Import übernimmt wieder alle Zeilen.');
+  });
+}
+/* Bestätigung ohne confirm(): Safari unterdrückt Systemdialoge, sobald der Nutzer einmal
+   „weitere Dialoge blockieren" gewählt hat oder die Seite im Home-Bildschirm-Modus läuft.
+   Der Knopf fragt deshalb selbst nach – zweiter Tipp innerhalb von 6 Sekunden löscht. */
+function armDanger(btn, ask, action){
+  const label=btn.textContent;
+  const reset=()=>{ btn.textContent=label; btn.dataset.armed=''; clearTimeout(btn._t); };
+  btn.onclick=()=>{
+    if(btn.dataset.armed){ reset(); action(); return; }
+    btn.dataset.armed='1'; btn.textContent=ask;
+    clearTimeout(btn._t); btn._t=setTimeout(reset,6000);
+  };
+  return reset;
+}
+armDanger(document.getElementById('dropCancelled'), 'Sicher? Nochmal tippen', ()=>{
+  const ids=Object.keys(DB.tx).filter(k=>DB.tx[k].status==='Cancelled');
+  if(!ids.length) return toast('Es sind keine abgebrochenen Vorgänge gespeichert.');
+  ids.forEach(k=>delete DB.tx[k]); save(); render();
+  toast(ids.length+' abgebrochene Vorgänge entfernt.');
+});
+armDanger(document.getElementById('wipe'), 'Alles löschen? Nochmal tippen', ()=>{
+  DB.tx={}; DB.cmt={};
+  save();
+  /* Schlüssel zusätzlich entfernen, damit nach dem Neuladen garantiert nichts zurückkommt */
+  try{ localStorage.removeItem('dc_tx'); localStorage.removeItem('dc_cmt'); }catch(e){}
+  render();
+  toast('Alle Daten gelöscht.');
+});
+
+/* ============================ Start ============================ */
+if(TOUCH){
+  document.getElementById('dropHint').textContent =
+    'Mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen';
+}
+if(!LS.ok){
+  const w=document.getElementById('storageWarn');
+  w.style.display='block';
+  w.innerHTML='<span class="neg">⚠ Dieser Browser speichert gerade nichts.</span> '+
+    'Safari sperrt den Speicher, wenn die Datei direkt aus „Dateien" geöffnet wird oder ein privates Fenster aktiv ist. '+
+    'Die App funktioniert, aber alles ist nach dem Neuladen weg. Bitte die Seite über eine Web-Adresse (https://…) öffnen.';
+  toast('⚠️ Kein Speicher verfügbar – Daten gehen beim Neuladen verloren. Details unter „Import / Daten".');
+}
+
+migrateIds();
+render();
+if(!Object.keys(DB.tx).length) show('imp');
+
+/* ============================ Offline-Betrieb ============================ */
+/* Der Service Worker legt die App im Gerät ab, damit sie ohne Netz startet.
+   Er läuft nur über https:// (und localhost) – bei file:// passiert nichts,
+   die App funktioniert dann wie bisher, nur ohne garantierte Offline-Fähigkeit. */
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js').then(reg=>{
+      /* Beim Start nach einer neueren Fassung sehen */
+      reg.update().catch(()=>{});
+      reg.addEventListener('updatefound',()=>{
+        const sw=reg.installing; if(!sw) return;
+        sw.addEventListener('statechange',()=>{
+          if(sw.state==='installed' && navigator.serviceWorker.controller){
+            /* Nicht mitten in der Sitzung austauschen – erst beim nächsten Start */
+            toast('Eine neue Version wurde geladen. Sie ist aktiv, sobald die App einmal vollständig geschlossen und neu geöffnet wurde.');
+          }
+        });
+      });
+    }).catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
