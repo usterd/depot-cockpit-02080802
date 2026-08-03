@@ -12,7 +12,7 @@
    sie überleben jedes Update und jedes Leeren dieses Caches.
    ============================================================ */
 
-const VERSION = 'v20.1';
+const VERSION = 'v20.2';
 const CACHE   = 'depot-' + VERSION;
 
 /* Alles, was die App zum Starten braucht. Relative Pfade, damit es

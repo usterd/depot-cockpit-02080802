@@ -110,6 +110,24 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .hint{font-size:12px;color:var(--mut)}
 #lightbox{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;z-index:200}
 #lightbox img{max-width:92vw;max-height:92vh;border-radius:10px}
+/* Begrüßung beim ersten Start */
+#intro{position:fixed;inset:0;background:#000c;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;z-index:250;padding:20px}
+#intro.on{display:flex}
+#introBox{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
+  width:min(600px,100%);max-height:88vh;overflow:auto;padding:22px 24px;box-shadow:0 24px 70px #000c}
+#introBox h2{margin:0 0 4px;font-size:19px}
+#introBox h3{margin:18px 0 6px;font-size:12px;color:var(--acc);text-transform:uppercase;letter-spacing:.8px}
+#introBox p{margin:0 0 8px;color:var(--fg)}
+#introBox ol{margin:0;padding-left:20px}
+#introBox li{margin-bottom:4px}
+#introBox .small{color:var(--mut);font-size:13px}
+#introOk{width:100%;margin-top:22px;padding:12px;font-size:15px;min-height:48px}
+@media (max-width:820px){
+  #intro{padding:0;align-items:stretch}
+  #introBox{width:100%;max-height:100%;border-radius:0;border:none;
+    padding:calc(20px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom))}
+}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--acc);padding:12px 16px;border-radius:10px;z-index:300;display:none;max-width:380px;white-space:pre-line}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -256,7 +274,10 @@ textarea{width:100%;min-height:70px;resize:vertical}
   <!-- IMPORT -->
   <section class="view" id="v-imp">
     <div class="panel">
-      <h2>CSV hochladen</h2>
+      <div class="row" style="margin-bottom:12px">
+        <h2 style="margin:0">CSV hochladen</h2>
+        <button class="btn" id="introOpen" style="margin-left:auto">ℹ Hinweise</button>
+      </div>
       <div class="drop" id="drop">
         <button class="btn pri" id="pick">Datei wählen</button><br>
         <span class="hint" id="dropHint">oder CSV hierher ziehen · mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen</span>
@@ -285,6 +306,38 @@ textarea{width:100%;min-height:70px;resize:vertical}
   </section>
 </main>
 
+<div id="intro"><div id="introBox">
+  <h2>◆ Depot <span style="background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent">Cockpit</span></h2>
+
+  <h3>Wozu</h3>
+  <p>Ein privates Cockpit für dein Wertpapierdepot: Positionen, realisierte Gewinne nach FIFO,
+    Ausschüttungen, Gebühren und Steuern – als Übersicht, Tabelle und Kalender.
+    Es werden keine Kurse aus dem Netz geholt; gerechnet wird ausschließlich mit dem, was du importierst.</p>
+
+  <h3>Was du brauchst</h3>
+  <p>Den Transaktionsexport von Scalable Capital als CSV-Datei.<br>
+    Im Broker unter <b>Konto → Transaktionen → Export</b>, Zeitraum wählen, Datei sichern.</p>
+  <p class="small">Mehrere Dateien und Teilzeiträume sind kein Problem: doppelte Zeilen erkennt die App
+    selbst und überspringt sie. Import unter <b>Import / Daten</b>.</p>
+
+  <h3>Als App aufs iPhone</h3>
+  <ol>
+    <li>Diese Seite in <b>Safari</b> öffnen (Chrome kann es nicht).</li>
+    <li>Einmal vollständig laden, solange Internet da ist.</li>
+    <li>Teilen-Symbol → <b>Zum Home-Bildschirm</b>.</li>
+    <li>Ab dann startet sie wie eine App – auch im Flugmodus.</li>
+  </ol>
+
+  <h3>Deine Daten bleiben hier</h3>
+  <p>Die App sendet keine Finanzdaten. Alles liegt im Speicher dieses Browsers, auf diesem Gerät.
+    Es gibt keinen Server, kein Konto, keine Auswertung im Hintergrund.</p>
+  <p>Nach außen geht etwas nur, wenn du es selbst auslöst – CSV-Export oder Backup über das Teilen-Menü.</p>
+  <p class="small"><b>Wichtig:</b> Der Browserspeicher ist nicht dauerhaft. Sichere regelmäßig ein Backup
+    unter <b>Import / Daten → Backup (JSON) sichern</b>.</p>
+
+  <button class="btn pri" id="introOk">Verstanden</button>
+</div></div>
+
 <div id="lightbox"><img alt=""></div>
 <div class="toast" id="toast"></div>
 
@@ -309,6 +362,7 @@ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().c
 /* Einstellungen: Zahlenformat, Status-Filter (Ansicht) und Status-Filter (Import) */
 const UI = Object.assign({
   numfmt:'apo',
+  seenIntro:0,
   status:['Executed'],
   type:[],
   impStatus:['Executed','Pending','Cancelled']
@@ -1117,9 +1171,17 @@ if(!LS.ok){
   toast('⚠️ Kein Speicher verfügbar – Daten gehen beim Neuladen verloren. Details unter „Import / Daten".');
 }
 
+/* ---------- Begrüßung: einmalig beim ersten Start, danach über „ℹ Hinweise" ---------- */
+const intro=document.getElementById('intro');
+const closeIntro=()=>{ intro.classList.remove('on'); UI.seenIntro=1; saveUI(); };
+document.getElementById('introOk').onclick=closeIntro;
+intro.onclick=e=>{ if(e.target===intro) closeIntro(); };
+document.getElementById('introOpen').onclick=()=>intro.classList.add('on');
+
 migrateIds();
 render();
 if(!Object.keys(DB.tx).length) show('imp');
+if(!UI.seenIntro) intro.classList.add('on');
 
 /* ============================ Offline-Betrieb ============================ */
 /* Der Service Worker legt die App im Gerät ab, damit sie ohne Netz startet.

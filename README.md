@@ -56,7 +56,7 @@ reliable `localStorage` persistence do not work over `file://`.
 When you change `index.html`:
 
 1. Edit the file in the repo.
-2. **Bump `VERSION` in `sw.js`** (`'v20.1'` → `'v20.2'`). This is the only step
+2. **Bump `VERSION` in `sw.js`** (`'v20.2'` → `'v20.3'`). This is the only step
    people forget — without it the phone keeps serving the cached old version.
 3. Commit. Open the app while online; it downloads the new version in the
    background and shows a notice.
