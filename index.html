@@ -216,9 +216,9 @@ textarea{width:100%;min-height:70px;resize:vertical}
   <!-- DASHBOARD -->
   <section class="view on" id="v-dash">
     <div class="cards" id="kpis"></div>
-    <div class="panel"><h2>Ertrag pro Position <span class="hint">(realisiert + Ausschüttungen − Gebühren − Steuern, gesamter Zeitraum)</span></h2>
+    <div class="panel"><h2>Ertrag pro Position <span class="hint" id="rankScope">(realisiert + Ausschüttungen − Gebühren − Steuern, gesamter Zeitraum)</span></h2>
       <div id="rank"></div></div>
-    <div class="panel" id="lossPanel" style="display:none"><h2>Verluste pro Position <span class="hint">(nur Positionen mit negativem Ertrag, gesamter Zeitraum)</span></h2>
+    <div class="panel" id="lossPanel" style="display:none"><h2>Verluste pro Position <span class="hint" id="lossScope">(nur Positionen mit negativem Ertrag, gesamter Zeitraum)</span></h2>
       <div id="rankLoss"></div></div>
     <div class="panel"><h2>Cashflow pro Monat</h2><div class="scroll"><table id="monthly"></table></div></div>
   </section>
@@ -232,7 +232,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
       </div>
       <div class="scroll"><table id="posTable"></table></div>
       <p class="hint">Bestand &amp; Einstand werden immer über die <b>gesamte</b> Historie berechnet (FIFO) und nur aus ausgeführten Vorgängen.
-        Jahr-, Monats- und Statusfilter oben wirken auf Transaktionen, Kalender und die Kennzahlen der Übersicht.</p>
+        Jahr-, Monats- und Statusfilter oben wirken auf Transaktionen, Kalender sowie Kennzahlen und Ranglisten der Übersicht.</p>
     </div>
   </section>
 
@@ -599,6 +599,28 @@ function positions(){
   return Object.values(P).sort((a,b)=> b.total-a.total);
 }
 
+/* Ertrag je Position für einen Ausschnitt der Vorgänge (Jahr-/Monatsfilter der Übersicht).
+   Gezählt werden nur die Vorgänge im Fenster; der FIFO-Einstand steckt bereits in RGR und
+   stammt weiterhin aus der gesamten Historie, sonst wären Verkäufe ohne zugehörigen Kauf
+   im Fenster falsch. Die Summanden sind dieselben wie bei p.total in positions(),
+   deshalb ergibt sich ohne Filter genau die bisherige Rangliste.
+   Nicht ausgeführte Zeilen bleiben außen vor – sie haben kein realisiertes Ergebnis. */
+function rankByPeriod(rows, P){
+  const names={}; (P||[]).forEach(p=> names[p.isin]=p.name);
+  const R={};
+  rows.forEach(r=>{
+    if(!r.isin || r.status!=='Executed') return;
+    const e = R[r.isin] || (R[r.isin]={isin:r.isin, name:names[r.isin]||r.description||'', total:0, n:0});
+    e.n++;
+    if(!e.name && r.description) e.name=r.description;
+    e.total += (RGR[r.id]||0);                       // realisiert (FIFO, brutto) bzw. Kapitalmaßnahme
+    if(isDiv(r))       e.total += r.amountN - r.taxN; // Ausschüttung abzüglich Quellensteuer
+    else if(isSell(r)) e.total -= r.feeN + r.taxN;
+    else if(isBuy(r))  e.total -= r.feeN;
+  });
+  return Object.values(R).sort((a,b)=> b.total-a.total);
+}
+
 /* ============================ Formatierung ============================ */
 /* Zahlenformate – Dezimaltrennzeichen ist überall der Punkt, Tausender wählbar */
 const NUMFMT={
@@ -760,18 +782,30 @@ function dash(){
     ['Ein-/Auszahlungen'+per, eur(dep)+' / '+eur(wit), '']
   ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="hint">${h}</div></div>`).join('');
 
-  const top=P.filter(p=>p.n).slice(0,12), max=Math.max(...top.map(p=>Math.abs(p.total)),1);
+  /* Beide Ranglisten folgen dem Jahr-/Monatsfilter wie die Kennzahlen darüber */
+  const RK=rankByPeriod(f,P);
+  const periodLabel = (F.year&&F.month) ? `${MON[+F.month-1]} ${F.year}`
+    : F.year  ? F.year
+    : F.month ? `${MON[+F.month-1]}, alle Jahre`
+    : 'gesamter Zeitraum';
+  document.getElementById('rankScope').textContent =
+    `(realisiert + Ausschüttungen − Gebühren − Steuern, ${periodLabel})`;
+  document.getElementById('lossScope').textContent =
+    `(nur Positionen mit negativem Ertrag, ${periodLabel})`;
+
+  const top=RK.filter(p=>p.n).slice(0,12), max=Math.max(...top.map(p=>Math.abs(p.total)),1);
   document.getElementById('rank').innerHTML = top.map(p=>`
     <div style="margin-bottom:9px">
       <div class="row" style="justify-content:space-between;font-size:13px">
         <span class="clickable" onclick="detail('${js(p.isin)}')">${esc(p.name||p.isin)}</span>${sign(p.total)}
       </div>
       <div class="bar"><i style="width:${Math.abs(p.total)/max*100}%;${p.total<0?'background:var(--neg)':''}"></i></div>
-    </div>`).join('') || '<p class="hint">Noch keine Daten.</p>';
+    </div>`).join('') || `<p class="hint">${(F.year||F.month)?'Keine Vorgänge im gewählten Zeitraum.':'Noch keine Daten.'}</p>`;
 
-  const losses=P.filter(p=>p.n&&p.total<-0.004).sort((a,b)=>a.total-b.total).slice(0,12);
+  const losses=RK.filter(p=>p.n&&p.total<-0.004).sort((a,b)=>a.total-b.total).slice(0,12);
   const lossPanel=document.getElementById('lossPanel');
   lossPanel.style.display = losses.length ? '' : 'none';
+  if(!losses.length) document.getElementById('rankLoss').innerHTML='';
   if(losses.length){
     const lmax=Math.max(...losses.map(p=>Math.abs(p.total)),1);
     document.getElementById('rankLoss').innerHTML = losses.map(p=>`
