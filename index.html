@@ -486,6 +486,17 @@ function migrateIds(){
   DB.cmt=nc; save();
 }
 
+/* Vor dieser Vorzeichen-Regel gespeicherte Zeilen nachziehen: negative Gebühren und
+   Steuern wurden früher vom Ergebnis abgezogen und damit als Ertrag gezählt. */
+function migrateSigns(){
+  let changed=0;
+  Object.values(DB.tx).forEach(r=>{
+    if(r.feeN<0){ r.feeN=-r.feeN; changed++; }
+    if(r.taxN<0){ r.taxN=-r.taxN; changed++; }
+  });
+  if(changed) save();
+}
+
 function parseCSV(text){
   const out=[], bad=[], recs=[];
   text.replace(/^\uFEFF/,'').split(/\r?\n/).forEach(raw=>{
@@ -499,9 +510,14 @@ function parseCSV(text){
     recs.push(r);
   });
   const dec = detectDec(recs.flatMap(r=>[r.shares,r.price,r.amount,r.fee,r.tax]));
+  /* Gebühren und Steuern sind intern immer positive Kosten. Manche Exporte schreiben den
+     Abzug jedoch als negative Buchung (-8,94). Enthält eine Spalte negative Werte, folgt
+     die Datei dieser Schreibweise und wird spaltenweise umgedreht – das Vorzeichen bleibt
+     dabei erhalten, eine Erstattung wird also zur Gutschrift statt zu weiteren Kosten. */
+  const flipFee = recs.some(r=>num(r.fee,dec)<0), flipTax = recs.some(r=>num(r.tax,dec)<0);
   recs.forEach(r=>{
     r.sharesN=num(r.shares,dec); r.priceN=num(r.price,dec); r.amountN=num(r.amount,dec);
-    r.feeN=num(r.fee,dec); r.taxN=num(r.tax,dec);
+    r.feeN=num(r.fee,dec)*(flipFee?-1:1); r.taxN=num(r.tax,dec)*(flipTax?-1:1);
     r.dt = r.date+' '+(r.time||'00:00:00');
     r.id = txId(r);
     out.push(r);
@@ -600,10 +616,36 @@ function positions(){
       const net = r.amountN - r.taxN;
       RPL[r.id]=net; RPD[r.date]=(RPD[r.date]||0)+net;
 
-    } else if(r.type==='Corporate action'){
-      p.shares=Math.max(0,p.shares+r.sharesN); p.realized+=r.amountN;
-      RGR[r.id]=r.amountN;
-      if(r.amountN){ RPL[r.id]=r.amountN; RPD[r.date]=(RPD[r.date]||0)+r.amountN; }
+    } else if(r.type==='Corporate action' || r.type==='Security transfer'){
+      /* Beide Arten buchen Stücke ein oder aus, ohne dass ein Kauf dahintersteht.
+         Ohne eigenen Bestandsposten fände ein späterer Verkauf keinen Einstand und
+         wiese den vollen Erlös als Gewinn aus. */
+      if(r.sharesN>1e-9){
+        /* Einstand ist das, was die Einbuchung wert war: bei Gratisstücken aus einer
+           Kapitalmaßnahme null, bei einem Depotübertrag der mitgelieferte Gegenwert.
+           Was beim alten Broker gezahlt wurde, steht im Export nicht. */
+        const val = Math.abs(r.amountN) || (r.type==='Security transfer' ? Math.abs(r.priceN)*r.sharesN : 0);
+        p.lots.push({sh:r.sharesN, pps: val/r.sharesN});
+        p.shares+=r.sharesN;
+        p.cost=p.lots.reduce((s,l)=>s+l.sh*l.pps,0);
+
+      } else if(r.sharesN<-1e-9){
+        /* Ausbuchung – Bestand nach FIFO abbauen, ohne ein Ergebnis zu realisieren */
+        let rest=-r.sharesN;
+        while(rest>1e-9 && p.lots.length){
+          const l=p.lots[0], take=Math.min(l.sh,rest);
+          l.sh-=take; rest-=take;
+          if(l.sh<=1e-9) p.lots.shift();
+        }
+        p.shares=Math.max(0,p.shares+r.sharesN);
+        p.cost=p.lots.reduce((s,l)=>s+l.sh*l.pps,0);
+
+      } else if(r.amountN){
+        /* Reine Geldbuchung ohne Stücke, etwa eine Abfindung */
+        p.realized+=r.amountN;
+        RGR[r.id]=r.amountN;
+        RPL[r.id]=r.amountN; RPD[r.date]=(RPD[r.date]||0)+r.amountN;
+      }
     }
   });
   Object.values(P).forEach(p=>{
@@ -679,7 +721,8 @@ const safeImg=s=> /^data:image\/(png|jpe?g|gif|webp|avif);base64,[A-Za-z0-9+/=\s
 const TYPE_MAP={Buy:['Kauf','Buy'],Sell:['Verkauf','Sell'],'Savings plan':['Sparplan','Sparplan'],
     Distribution:['Ausschüttung','Dividende'],Deposit:['Einzahlung','Cash'],Withdrawal:['Auszahlung','Cash'],
     'Cash Transfer In':['Übertrag ein','Cash'],'Cash Transfer Out':['Übertrag aus','Cash'],
-    Taxes:['Steuern','Sonst'],'Corporate action':['Kapitalmaßnahme','Sonst']};
+    Taxes:['Steuern','Sonst'],'Corporate action':['Kapitalmaßnahme','Sonst'],
+    'Security transfer':['Depotübertrag','Sonst']};
 function typeTag(r){
   const [lbl,cls]=TYPE_MAP[r.type]||[r.type,'Sonst'];
   return `<span class="tag t-${cls}">${esc(lbl)}</span>`;
@@ -835,10 +878,12 @@ function dash(){
   oNote.style.display = og.length ? '' : 'none';
   if(!og.length) oNote.textContent='';
   if(og.length){
-    const w = og.length===1 ? 'Ein Verkauf' : `${og.length} Verkäufe`;
+    const one = og.length===1;
+    const w = one ? 'Ein Verkauf' : `${og.length} Verkäufe`;
     oNote.innerHTML = UI.hideOrphan
-      ? `⚠ ${w} ohne passenden Kauf: ${eur(ocut)} Erlös sind herausgerechnet.`
-      : `⚠ ${w} ohne passenden Kauf erhöhen das Ergebnis um bis zu ${eur(ocut)}. Filter „Einstand“ oben rechnet sie heraus.`;
+      ? `⚠ ${w} ohne passenden Kauf: ${eur(ocut)} Erlös ist herausgerechnet.`
+      : `⚠ ${w} ohne passenden Kauf ${one?'erhöht':'erhöhen'} das Ergebnis um bis zu ${eur(ocut)}. `+
+        `Filter „Einstand“ oben rechnet ${one?'ihn':'sie'} heraus.`;
   }
 
   /* Beide Ranglisten folgen dem Jahr-/Monatsfilter wie die Kennzahlen darüber */
@@ -1280,6 +1325,7 @@ intro.onclick=e=>{ if(e.target===intro) closeIntro(); };
 document.getElementById('introOpen').onclick=()=>intro.classList.add('on');
 
 migrateIds();
+migrateSigns();
 render();
 if(!Object.keys(DB.tx).length) show('imp');
 if(!UI.seenIntro) intro.classList.add('on');
