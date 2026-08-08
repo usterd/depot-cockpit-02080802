@@ -207,6 +207,10 @@ textarea{width:100%;min-height:70px;resize:vertical}
         <button class="btn" id="ddTypeBtn">Typ ▾</button>
         <div class="pop" id="ddTypePop"></div>
       </div>
+      <div class="dd" id="ddOrphan">
+        <button class="btn" id="ddOrphanBtn">Einstand ▾</button>
+        <div class="pop" id="ddOrphanPop"></div>
+      </div>
       <select id="fNum" title="Zahlenformat"></select>
     </div>
   </div>
@@ -216,6 +220,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
   <!-- DASHBOARD -->
   <section class="view on" id="v-dash">
     <div class="cards" id="kpis"></div>
+    <p class="hint" id="orphNote" style="display:none"></p>
     <div class="panel"><h2>Ertrag pro Position <span class="hint" id="rankScope">(realisiert + Ausschüttungen − Gebühren − Steuern, gesamter Zeitraum)</span></h2>
       <div id="rank"></div></div>
     <div class="panel" id="lossPanel" style="display:none"><h2>Verluste pro Position <span class="hint" id="lossScope">(nur Positionen mit negativem Ertrag, gesamter Zeitraum)</span></h2>
@@ -365,6 +370,7 @@ const UI = Object.assign({
   seenIntro:0,
   status:['Executed'],
   type:[],
+  hideOrphan:0,
   impStatus:['Executed','Pending','Cancelled']
 }, readJSON('dc_ui'));
 const saveUI = () => { try{ LS.set('dc_ui', JSON.stringify(UI)); }catch(e){} };
@@ -541,11 +547,17 @@ const isCash = r => r.assetType==='Cash' && !r.isin;
 
 /* Realisiertes Ergebnis je Transaktion (RPL, netto) und je Tag (RPD) – gefüllt von positions().
    RGR hält denselben Vorgang brutto, also vor Gebühren und Steuern – das ist die Größe,
-   die auf der Übersicht als „Realisiert (FIFO)" ausgewiesen wird. */
-let RPL={}, RPD={}, RGR={};
+   die auf der Übersicht als „Realisiert (FIFO)" ausgewiesen wird.
+   ROR hält je Verkauf die Stückzahl, für die kein passender Kauf gefunden wurde. */
+let RPL={}, RPD={}, RGR={}, ROR={};
+
+/* Erlös, der auf Stücke ohne Kaufbeleg entfällt – die Größe, die UI.hideOrphan herausrechnet.
+   Nur für Hinweistexte; die Berechnung selbst steckt in positions(). */
+const orphanCut = r => (ROR[r.id] && r.sharesN>1e-9)
+  ? Math.abs(r.amountN)*Math.min(1, ROR[r.id]/r.sharesN) : 0;
 
 function positions(){
-  RPL={}; RPD={}; RGR={};
+  RPL={}; RPD={}; RGR={}; ROR={};
   const ex = all().filter(r=>r.status==='Executed').sort((a,b)=> a.dt<b.dt?-1:1);
   const P = {};
   const get = r => P[r.isin] || (P[r.isin]={isin:r.isin,name:r.description,shares:0,cost:0,lots:[],
@@ -568,13 +580,19 @@ function positions(){
         basis+=take*l.pps; l.sh-=take; rest-=take;
         if(l.sh<=1e-9) p.lots.shift();
       }
-      if(rest>1e-9) p.orphan+=rest;
-      const gain = Math.abs(r.amountN) - basis - r.taxN - r.feeN;
+      if(rest>1e-9){ p.orphan+=rest; ROR[r.id]=rest; }
+      /* Für Stücke ohne passenden Kauf ist kein Einstand bekannt – ihr Erlös wäre in voller
+         Höhe Gewinn. Ist UI.hideOrphan gesetzt, zählt nur der Erlös der belegten Stücke;
+         ein Verkauf ganz ohne Kauf fällt damit komplett heraus. Gebühren und Steuern bleiben
+         ungekürzt, sie wurden unabhängig davon tatsächlich gezahlt. */
+      const covered = (UI.hideOrphan && rest>1e-9) ? Math.max(0,(r.sharesN-rest)/r.sharesN) : 1;
+      const proceeds = Math.abs(r.amountN)*covered;
+      const gain = proceeds - basis - r.taxN - r.feeN;
       RPL[r.id]=gain; RPD[r.date]=(RPD[r.date]||0)+gain;
-      RGR[r.id]=Math.abs(r.amountN) - basis;
+      RGR[r.id]=proceeds - basis;
       p.shares=Math.max(0, p.shares-r.sharesN);
       p.cost=p.lots.reduce((s,l)=>s+l.sh*l.pps,0);
-      p.realized += Math.abs(r.amountN) - basis;
+      p.realized += proceeds - basis;
       p.fees+=r.feeN; p.taxes+=r.taxN; p.sells+=Math.abs(r.amountN);
 
     } else if(isDiv(r)){
@@ -637,6 +655,13 @@ function fmt(n,d=2){
   let [i,fr]=s.split('.');
   if(f.grp) i=i.replace(/\B(?=(\d{3})+(?!\d))/g, f.grp);
   return (neg?'-':'')+i+(fr?f.dec+fr:'');
+}
+/* Stückzahl ohne überflüssige Nullen. Bruchstücke entstehen hier aus Subtraktionen,
+   deshalb wird die nötige Stellenzahl mit Toleranz ermittelt statt aus dem Rohtext. */
+function qty(n){
+  let d=0;
+  while(d<6 && Math.abs(n*10**d - Math.round(n*10**d))>1e-6) d++;
+  return fmt(n,d);
 }
 /* Rohwert für Exporte: immer Punkt als Dezimaltrennzeichen, kein Tausendertrennzeichen */
 const raw=n=> (n===null||n===undefined||!isFinite(n)) ? '' : String(n);
@@ -736,6 +761,26 @@ function buildTypeFilter(){
     : `${n} Typen ▾`;
 }
 
+/* --- Verkäufe ohne passenden Kauf --- */
+const ddOrphan=document.getElementById('ddOrphan');
+document.getElementById('ddOrphanBtn').onclick=e=>{e.stopPropagation();ddOrphan.classList.toggle('open')};
+document.addEventListener('click',e=>{ if(!ddOrphan.contains(e.target)) ddOrphan.classList.remove('open'); });
+/* Braucht ROR und läuft deshalb erst nach positions() */
+function buildOrphanFilter(){
+  const n=Object.keys(ROR).length;
+  document.getElementById('ddOrphanPop').innerHTML=
+    `<label class="chk" style="align-items:flex-start">
+      <input type="checkbox" id="orphChk" style="margin-top:3px" ${UI.hideOrphan?'checked':''}>
+      <span style="white-space:normal;max-width:230px">Verkäufe ohne passenden Kauf anteilig herausrechnen</span>
+      <span class="cnt">${n}</span></label>
+     <hr><p class="hint" style="margin:0;white-space:normal;max-width:250px">Für verkaufte Stücke ohne Kaufbeleg ist kein
+      Einstand bekannt, ihr Erlös zählt sonst in voller Höhe als Gewinn. Aktiv zählt nur der Erlös der belegten Stücke;
+      Gebühren und Steuern bleiben ungekürzt.</p>`;
+  document.getElementById('orphChk').onchange=e=>{UI.hideOrphan=e.target.checked?1:0;saveUI();render()};
+  document.getElementById('ddOrphanBtn').textContent =
+    UI.hideOrphan ? '⚠ anteilig ▾' : (n ? `⚠ ${n} ohne Einstand ▾` : 'Einstand ▾');
+}
+
 /* --- Zahlenformat --- */
 const fNum=document.getElementById('fNum');
 fNum.innerHTML=Object.entries(NUMFMT).map(([k,v])=>
@@ -745,7 +790,8 @@ fNum.onchange=e=>{UI.numfmt=e.target.value;saveUI();render()};
 /* ============================ Render ============================ */
 function render(){
   buildFilters(); buildStatusFilter(); buildTypeFilter(); buildImportFilter();
-  positions();   // füllt RPL / RPD für alle Ansichten
+  positions();   // füllt RPL / RPD / ROR für alle Ansichten
+  buildOrphanFilter();
   document.getElementById('dbInfo').textContent =
     `${Object.keys(DB.tx).length} Transaktionen · ${Object.keys(DB.cmt).length} kommentierte Objekte · ${(JSON.stringify(DB).length/1024).toFixed(0)} KB`;
   if(view==='dash') dash();
@@ -781,6 +827,19 @@ function dash(){
     ['Gebühren / Steuern'+per, eur(fee)+' / '+eur(tax), ''],
     ['Ein-/Auszahlungen'+per, eur(dep)+' / '+eur(wit), '']
   ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="hint">${h}</div></div>`).join('');
+
+  /* Sichtbar machen, wie viel Erlös auf Stücke ohne Kaufbeleg entfällt – sonst bliebe
+     der Unterschied zwischen ein- und ausgeschalteter Option unerklärt. */
+  const og=f.filter(r=>ROR[r.id]), ocut=og.reduce((s,r)=>s+orphanCut(r),0);
+  const oNote=document.getElementById('orphNote');
+  oNote.style.display = og.length ? '' : 'none';
+  if(!og.length) oNote.textContent='';
+  if(og.length){
+    const w = og.length===1 ? 'Ein Verkauf' : `${og.length} Verkäufe`;
+    oNote.innerHTML = UI.hideOrphan
+      ? `⚠ ${w} ohne passenden Kauf: ${eur(ocut)} Erlös sind herausgerechnet.`
+      : `⚠ ${w} ohne passenden Kauf erhöhen das Ergebnis um bis zu ${eur(ocut)}. Filter „Einstand“ oben rechnet sie heraus.`;
+  }
 
   /* Beide Ranglisten folgen dem Jahr-/Monatsfilter wie die Kennzahlen darüber */
   const RK=rankByPeriod(f,P);
@@ -886,7 +945,7 @@ function detail(isin){
   document.getElementById('v-det').innerHTML=`
     <button class="back" onclick="document.querySelector('nav button[data-v=pos]').click()">‹ zurück zu den Positionen</button>
     <div class="panel"><h2>${esc(p.name||p.isin)} <span class="hint">${p.isin}</span></h2>
-      ${p.orphan?`<p class="hint neg">⚠ ${fmt(p.orphan,p.orphan%1?6:0)} Stück wurden verkauft, ohne dass ein passender Kauf im importierten Zeitraum liegt. Der realisierte Gewinn dieser Stücke ist dadurch zu hoch ausgewiesen.</p>`:''}
+      ${p.orphan?`<p class="hint neg">⚠ ${qty(p.orphan)} Stück wurden verkauft, ohne dass ein passender Kauf im importierten Zeitraum liegt. ${UI.hideOrphan?'Ihr Erlös ist über den Filter „Einstand“ herausgerechnet.':'Der realisierte Gewinn dieser Stücke ist dadurch zu hoch ausgewiesen.'}</p>`:''}
       <div class="cards">${stat.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:17px">${v}</div></div>`).join('')}</div>
     </div>
     <div class="panel"><h2>Alle Vorgänge (${rows.length})</h2><div class="scroll">${txTableHtml(rows)}</div></div>
@@ -899,6 +958,14 @@ function detail(isin){
 }
 
 /* --- Transaktionen --- */
+/* Verkauf kennzeichnen, dem für einen Teil der Stücke der Kauf fehlt */
+function orphanMark(r){
+  const o=ROR[r.id]; if(!o) return '';
+  const t=`${qty(o)} von ${qty(r.sharesN)} Stück ohne passenden Kauf – `+
+    (UI.hideOrphan ? `Erlös von ${eur(orphanCut(r))} ist herausgerechnet.`
+                   : `der Gewinn ist um bis zu ${eur(orphanCut(r))} zu hoch.`);
+  return ` <span class="neg" title="${esc(t)}">⚠</span>`;
+}
 function txTableHtml(rows){
   const cols=['Datum','Zeit','Status','Typ','Bezeichnung','Stück','Kurs','Betrag','realisiert','Geb.','Steuer','Referenz','Notiz'];
   const nums=[5,6,7,8,9,10];
@@ -913,7 +980,7 @@ function txTableHtml(rows){
       <td class="num">${r.sharesN?fmt(r.sharesN,r.sharesN%1?6:0):'<span class="mut">–</span>'}</td>
       <td class="num mut">${r.priceN?fmt(r.priceN):'–'}</td>
       <td class="num">${r.amountN?sign(r.amountN):'<span class="mut">–</span>'}</td>
-      <td class="num">${RPL[r.id]!==undefined?`<b>${sign(RPL[r.id])}</b>`:'<span class="mut">–</span>'}</td>
+      <td class="num">${RPL[r.id]!==undefined?`<b>${sign(RPL[r.id])}</b>${orphanMark(r)}`:'<span class="mut">–</span>'}</td>
       <td class="num mut">${r.feeN?fmt(r.feeN):''}</td>
       <td class="num mut">${r.taxN?fmt(r.taxN):''}</td>
       <td class="mut" style="font-size:11px">${esc(r.reference).slice(0,22)}</td>
