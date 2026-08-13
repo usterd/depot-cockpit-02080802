@@ -316,6 +316,11 @@ textarea{width:100%;min-height:70px;resize:vertical}
         <button class="btn" id="expJson" data-i18n="data.save">Save backup (JSON)</button>
         <button class="btn" id="impJson" data-i18n="data.restore">Restore backup</button>
       </div>
+      <div class="row" style="margin-bottom:10px">
+        <select id="dropTypeSel"></select>
+        <button class="btn" id="dropType" data-i18n="data.dropType">Remove type</button>
+        <span class="hint" data-i18n="data.typeHint"></span>
+      </div>
       <div class="row">
         <button class="btn" id="dropCancelled" data-i18n="data.dropCancelled">Remove cancelled</button>
         <button class="btn" id="wipe" data-i18n="data.wipe" style="border-color:#f8514955;color:var(--neg)">Delete everything</button>
@@ -461,6 +466,13 @@ en:{
   'imp.takeNone':'No status selected – the import takes all rows again.',
   'data.title':'Stored data','data.save':'Save backup (JSON)','data.restore':'Restore backup',
   'data.dropCancelled':'Remove cancelled','data.wipe':'Delete everything',
+  'data.dropType':'Remove type','data.typeSelNone':'no types stored',
+  'data.typeHint':'removes every stored transaction of that type, e.g. security transfers',
+  'data.typeNone':'No transactions of this type are stored.',
+  'data.typeGone':(n,ty)=>`${n} ${n===1?'transaction':'transactions'} of type “${ty}” removed.`,
+  'data.typeNotes':n=> n===1 ? ' One note belonging to it was removed as well.'
+    : ` ${n} notes belonging to them were removed as well.`,
+  'data.typeBack':'They come back if the same file is imported again.',
   'data.note':'The backup contains transactions, comments and screenshots. Everything is stored in this browser (localStorage) – use a backup when moving to another device.',
   'data.info':(a,b,c)=>`${a} transactions · ${b} commented objects · ${c} KB`,
   'data.askDelete':'Sure? Tap again','data.askWipe':'Delete everything? Tap again',
@@ -578,6 +590,12 @@ de:{
   'imp.takeNone':'Kein Status gewählt – der Import übernimmt wieder alle Zeilen.',
   'data.title':'Gespeicherte Daten','data.save':'Backup (JSON) sichern','data.restore':'Backup einspielen',
   'data.dropCancelled':'Abgebrochene entfernen','data.wipe':'Alles löschen',
+  'data.dropType':'Typ entfernen','data.typeSelNone':'keine Typen gespeichert',
+  'data.typeHint':'entfernt alle gespeicherten Vorgänge dieses Typs, etwa Depotüberträge',
+  'data.typeNone':'Es sind keine Vorgänge dieses Typs gespeichert.',
+  'data.typeGone':(n,ty)=>`${n} ${n===1?'Vorgang':'Vorgänge'} vom Typ „${ty}“ entfernt.`,
+  'data.typeNotes':n=>` ${n===1?'Eine zugehörige Notiz wurde':n+' zugehörige Notizen wurden'} mit entfernt.`,
+  'data.typeBack':'Beim erneuten Import derselben Datei kommen sie zurück.',
   'data.note':'Backup enthält Transaktionen, Kommentare und Screenshots. Speicherort ist der Browser (localStorage) – für einen Gerätewechsel bitte Backup nutzen.',
   'data.info':(a,b,c)=>`${a} Transaktionen · ${b} kommentierte Objekte · ${c} KB`,
   'data.askDelete':'Sicher? Nochmal tippen','data.askWipe':'Alles löschen? Nochmal tippen',
@@ -1099,7 +1117,7 @@ fNum.onchange=e=>{UI.numfmt=e.target.value;saveUI();render()};
 
 /* ============================ Render ============================ */
 function render(){
-  buildFilters(); buildStatusFilter(); buildTypeFilter(); buildImportFilter();
+  buildFilters(); buildStatusFilter(); buildTypeFilter(); buildImportFilter(); buildTypeRemover();
   positions();   // fills RPL / RPD / ROR for all views
   buildOrphanFilter();
   document.getElementById('dbInfo').textContent = t('data.info',
@@ -1545,6 +1563,27 @@ function armDanger(btn, askKey, action){
   };
   return reset;
 }
+/* Remove every stored transaction of one type – for bookings that are of no interest
+   in this depot, a securities transfer say. The notes hanging off those transactions
+   go with them; left behind they would be invisible and could never be reached again. */
+function buildTypeRemover(){
+  const sel=document.getElementById('dropTypeSel'), list=typeList(), cnt={};
+  Object.values(DB.tx).forEach(r=>cnt[r.type]=(cnt[r.type]||0)+1);
+  const keep=sel.value;
+  sel.innerHTML = list.length
+    ? list.map(ty=>`<option value="${esc(ty)}" ${ty===keep?'selected':''}>${esc(typeName(ty))} · ${cnt[ty]||0}</option>`).join('')
+    : `<option value="">${t('data.typeSelNone')}</option>`;
+  sel.disabled = document.getElementById('dropType').disabled = !list.length;
+}
+armDanger(document.getElementById('dropType'), 'data.askDelete', ()=>{
+  const ty=document.getElementById('dropTypeSel').value;
+  const ids=Object.keys(DB.tx).filter(k=>DB.tx[k].type===ty);
+  if(!ids.length) return toast(t('data.typeNone'));
+  let notes=0;
+  ids.forEach(k=>{ delete DB.tx[k]; if(DB.cmt['tx:'+k]){ delete DB.cmt['tx:'+k]; notes++; } });
+  save(); render();
+  toast(t('data.typeGone',ids.length,typeName(ty))+(notes?t('data.typeNotes',notes):'')+'\n'+t('data.typeBack'));
+});
 armDanger(document.getElementById('dropCancelled'), 'data.askDelete', ()=>{
   const ids=Object.keys(DB.tx).filter(k=>DB.tx[k].status==='Cancelled');
   if(!ids.length) return toast(t('data.noCancelled'));
@@ -1601,7 +1640,9 @@ const CHANGELOG=[
     {en:'Overview and positions show taxes and fees as costs without a minus. A minus now appears only where tax was reimbursed.',
      de:'Übersicht und Positionen zeigen Steuern und Gebühren als Kosten ohne Minus. Ein Minus steht jetzt nur noch für erstattete Steuern.'},
     {en:'The interface switches between German and English with the toggle in the top bar; the choice is remembered.',
-     de:'Die Oberfläche wechselt über den Schalter in der Kopfzeile zwischen Deutsch und Englisch; die Wahl bleibt gespeichert.'}
+     de:'Die Oberfläche wechselt über den Schalter in der Kopfzeile zwischen Deutsch und Englisch; die Wahl bleibt gespeichert.'},
+    {en:'Stored data: transactions of one type – securities transfers, say – can be removed together, along with their notes.',
+     de:'Gespeicherte Daten: Vorgänge eines Typs – etwa Depotüberträge – lassen sich gemeinsam entfernen, samt ihrer Notizen.'}
   ]},
   {v:'v25', d:'2026-08-13', items:[
     {en:'Version history: this list, reachable under Import / Data. It shows which version is running and what every earlier one changed.',
