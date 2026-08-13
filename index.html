@@ -9,11 +9,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1117">
 <meta name="format-detection" content="telephone=no">
-<!-- Riegel gegen Datenabfluss: Selbst wenn durch eine manipulierte CSV- oder
-     Backup-Datei fremder Code in die Seite geriete, kann er nichts nach außen
-     senden – connect-src, img-src und form-action lassen keine fremde Adresse zu.
-     'unsafe-inline' ist nötig, weil die App als eine einzige Datei mit
-     onclick-Attributen arbeitet; die Sperre wirkt trotzdem beim Abfluss. -->
+<!-- Barrier against data exfiltration: even if foreign code made it into the page
+     through a manipulated CSV or backup file, it cannot send anything out –
+     connect-src, img-src and form-action allow no foreign address.
+     'unsafe-inline' is required because the app works as a single file with
+     onclick attributes; the barrier still holds against exfiltration. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icon-180.png">
@@ -41,7 +41,7 @@ nav button{background:transparent;border:1px solid transparent;color:var(--mut);
 nav button:hover{color:var(--fg);background:var(--bg3)}
 nav button.on{color:#fff;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 .filters{margin-left:auto;display:flex;gap:8px;align-items:center}
-/* 16px verhindert, dass Safari auf dem iPhone beim Antippen hineinzoomt */
+/* 16px stops Safari on the iPhone from zooming in when a field is tapped */
 select,input,textarea,button.btn{background:var(--bg3);border:1px solid var(--line);color:var(--fg);padding:7px 10px;border-radius:8px;
   font:inherit;font-size:16px;outline:none;-webkit-appearance:none;appearance:none;max-width:100%}
 select{padding-right:26px;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);
@@ -110,7 +110,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .hint{font-size:12px;color:var(--mut)}
 #lightbox{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;z-index:200}
 #lightbox img{max-width:92vw;max-height:92vh;border-radius:10px}
-/* Begrüßung beim ersten Start */
+/* Welcome screen on first start */
 #intro{position:fixed;inset:0;background:#000c;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
   display:none;align-items:center;justify-content:center;z-index:250;padding:20px}
 #intro.on{display:flex}
@@ -148,7 +148,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .dd .pop .row button{font-size:12px;padding:4px 9px}
 .btn.note{padding:3px 10px;font-size:12px;min-height:30px}
 
-/* ---------- Touch- und iPhone-Anpassungen ---------- */
+/* ---------- Touch and iPhone adjustments ---------- */
 @media (hover:none){
   tbody tr:hover{background:transparent}
   nav button:hover{color:var(--mut);background:transparent}
@@ -347,24 +347,24 @@ textarea{width:100%;min-height:70px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-/* ============================ Speicher ============================ */
-/* Safari sperrt localStorage bei file://-Aufruf und im privaten Modus komplett ab.
-   Ohne diesen Wrapper würde die erste Zeile eine Ausnahme werfen und die App bliebe leer.
-   Fällt der Speicher aus, läuft alles im Arbeitsspeicher weiter – nur eben ohne Sicherung. */
+/* ============================ Storage ============================ */
+/* Safari blocks localStorage entirely for file:// calls and in private mode.
+   Without this wrapper the first line would throw and the app would stay empty.
+   If storage fails, everything keeps running in memory – just without persistence. */
 const LS = (()=>{
   const mem={}; let ok=false;
   try{ localStorage.setItem('dc_probe','1'); localStorage.removeItem('dc_probe'); ok=true; }catch(e){}
   return {
     ok,
     get(k){ if(ok){ try{ return localStorage.getItem(k); }catch(e){} } return k in mem ? mem[k] : null; },
-    set(k,v){ mem[k]=v; if(ok) localStorage.setItem(k,v); }   // Quota-Fehler bewusst weiterreichen
+    set(k,v){ mem[k]=v; if(ok) localStorage.setItem(k,v); }   // quota errors are deliberately passed on
   };
 })();
 const readJSON=(k)=>{ try{ return JSON.parse(LS.get(k) || '{}'); }catch(e){ return {}; } };
 const DB = { tx: readJSON('dc_tx'), cmt: readJSON('dc_cmt') };
-/* Safari darf gespeicherte Daten nach längerer Nichtnutzung löschen – hier bitten wir um dauerhaften Speicher */
+/* Safari may delete stored data after a long period of disuse – here we ask for persistent storage */
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
-/* Einstellungen: Zahlenformat, Status-Filter (Ansicht) und Status-Filter (Import) */
+/* Settings: number format, status filter (view) and status filter (import) */
 const UI = Object.assign({
   numfmt:'apo',
   seenIntro:0,
@@ -382,16 +382,16 @@ const save = () => {
 };
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',5000);}
 
-/* Zeigegerät ohne Maus – bestimmt Hinweistexte (kein Drag & Drop, kein Strg+V auf dem iPhone) */
+/* Pointing device without a mouse – drives the hint texts (no drag & drop, no Ctrl+V on the iPhone) */
 const TOUCH = window.matchMedia && matchMedia('(hover:none) and (pointer:coarse)').matches;
 
-/* Heutiges Datum in lokaler Zeit – toISOString() rechnet nach UTC und markiert abends den falschen Tag */
+/* Today's date in local time – toISOString() converts to UTC and marks the wrong day in the evening */
 function isoToday(d=new Date()){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-/* Fotos vom iPhone sind mehrere MB groß, der Browserspeicher fasst rund 5 MB.
-   Deshalb werden Bilder vor dem Speichern verkleinert. */
+/* Photos from the iPhone are several MB in size, browser storage holds about 5 MB.
+   Images are therefore downsized before being stored. */
 const shrinkImage = (dataURL, max=1400, q=.72) => new Promise(res=>{
   const img=new Image();
   img.onload=()=>{
@@ -410,8 +410,8 @@ const shrinkImage = (dataURL, max=1400, q=.72) => new Promise(res=>{
   img.src=dataURL;
 });
 
-/* Datei ausgeben. Auf dem iPhone öffnet das Download-Attribut oft nur eine leere Seite,
-   deshalb zuerst das Teilen-Menü von iOS anbieten. */
+/* Hand out a file. On the iPhone the download attribute often just opens a blank page,
+   so offer the iOS share sheet first. */
 async function saveFile(name, text, mime){
   const blob=new Blob([text],{type:mime});
   try{
@@ -428,10 +428,10 @@ async function saveFile(name, text, mime){
 }
 
 /* ============================ Parser ============================ */
-/* Zahlen einlesen. Die Datei bestimmt ihr eigenes Format – deutsch (1.234,56) genauso wie
-   1,234.56 · 1'234.56 · 1234.56 –, damit auch ein hier exportiertes CSV wieder eingelesen werden kann.
-   fileDec ist das für die ganze Datei erkannte Dezimaltrennzeichen; nur so bleibt ein Wert
-   wie "11.838" eindeutig (deutsch = 11838, sonst = 11,838). */
+/* Reading numbers. The file determines its own format – German (1.234,56) as well as
+   1,234.56 · 1'234.56 · 1234.56 – so that a CSV exported here can be read back in.
+   fileDec is the decimal separator detected for the whole file; only that keeps a value
+   like "11.838" unambiguous (German = 11838, otherwise = 11.838). */
 const GRP_C=/^-?[1-9]\d{0,2}(,\d{3})+$/, GRP_D=/^-?[1-9]\d{0,2}(\.\d{3})+$/;
 function detectDec(cells){
   let de=0, en=0;
@@ -466,11 +466,11 @@ function num(s, fileDec){
 }
 const COLS = ['date','time','status','reference','description','assetType','type','isin','shares','price','amount','fee','tax','currency'];
 
-/* Kennung einer Zeile – bewusst über den geparsten Betrag, damit dieselbe Buchung
-   in deutscher und in exportierter Schreibweise als Duplikat erkannt wird. */
+/* Identity of a row – deliberately built from the parsed amount, so the same booking
+   is recognised as a duplicate in both German and exported notation. */
 const txId = r => [r.reference,r.date,r.time,r.assetType,r.type,r.isin,
                    (Number(r.amountN)||0).toFixed(6)].join('|');
-/* Altbestand (Kennung enthielt den Rohtext des Betrags) einmalig umschlüsseln, Notizen mitnehmen */
+/* Re-key legacy records once (their id contained the raw text of the amount), carrying notes along */
 function migrateIds(){
   const map={}, nt={}; let changed=0;
   Object.entries(DB.tx).forEach(([k,r])=>{
@@ -486,8 +486,8 @@ function migrateIds(){
   DB.cmt=nc; save();
 }
 
-/* Vor dieser Vorzeichen-Regel gespeicherte Zeilen nachziehen: negative Gebühren und
-   Steuern wurden früher vom Ergebnis abgezogen und damit als Ertrag gezählt. */
+/* Bring rows stored before this sign rule into line: negative fees and taxes used to be
+   subtracted from the result and thereby counted as return. */
 function migrateSigns(){
   let changed=0;
   Object.values(DB.tx).forEach(r=>{
@@ -510,10 +510,10 @@ function parseCSV(text){
     recs.push(r);
   });
   const dec = detectDec(recs.flatMap(r=>[r.shares,r.price,r.amount,r.fee,r.tax]));
-  /* Gebühren und Steuern sind intern immer positive Kosten. Manche Exporte schreiben den
-     Abzug jedoch als negative Buchung (-8,94). Enthält eine Spalte negative Werte, folgt
-     die Datei dieser Schreibweise und wird spaltenweise umgedreht – das Vorzeichen bleibt
-     dabei erhalten, eine Erstattung wird also zur Gutschrift statt zu weiteren Kosten. */
+  /* Internally fees and taxes are always positive costs. Some exports, however, write the
+     deduction as a negative booking (-8.94). If a column contains negative values, the file
+     follows that notation and the column is flipped as a whole – the sign is preserved in
+     the process, so a refund becomes a credit rather than further costs. */
   const flipFee = recs.some(r=>num(r.fee,dec)<0), flipTax = recs.some(r=>num(r.tax,dec)<0);
   recs.forEach(r=>{
     r.sharesN=num(r.shares,dec); r.priceN=num(r.price,dec); r.amountN=num(r.amount,dec);
@@ -538,7 +538,7 @@ function importRows(rows){
   return {neu,dup,upd,skip};
 }
 
-/* ============================ Ableitungen ============================ */
+/* ============================ Derived data ============================ */
 const all = () => Object.values(DB.tx).sort((a,b)=> a.dt<b.dt?1:a.dt>b.dt?-1:0);
 const F = {year:'', month:''};
 const ST_KNOWN=['Executed','Pending','Cancelled'];
@@ -546,7 +546,7 @@ const ST_LABEL={Executed:'executed',Pending:'pending',Cancelled:'cancelled'};
 const stList=()=> [...new Set(ST_KNOWN.concat(Object.values(DB.tx).map(r=>r.status).filter(Boolean)))];
 const typeList=()=> [...new Set(Object.values(DB.tx).map(r=>r.type).filter(Boolean))]
   .sort((a,b)=> (TYPE_MAP[a]?TYPE_MAP[a][0]:a).localeCompare(TYPE_MAP[b]?TYPE_MAP[b][0]:b,'en'));
-/* leere Auswahl = keine Einschränkung, damit die Ansicht nie ohne Grund leer bleibt */
+/* empty selection = no restriction, so the view never stays empty without reason */
 const statusOK = r => !UI.status.length || UI.status.includes(r.status);
 const typeOK   = r => !UI.type.length || UI.type.includes(r.type);
 function filtered(){
@@ -561,14 +561,14 @@ const isSell = r => r.assetType==='Security' && r.type==='Sell';
 const isDiv  = r => r.type==='Distribution' && r.isin;
 const isCash = r => r.assetType==='Cash' && !r.isin;
 
-/* Realisiertes Ergebnis je Transaktion (RPL, netto) und je Tag (RPD) – gefüllt von positions().
-   RGR hält denselben Vorgang brutto, also vor Gebühren und Steuern – das ist die Größe,
-   die auf der Übersicht als „Realized (FIFO)" ausgewiesen wird.
-   ROR hält je Verkauf die Stückzahl, für die kein passender Kauf gefunden wurde. */
+/* Realized result per transaction (RPL, net) and per day (RPD) – filled by positions().
+   RGR holds the same transaction gross, i.e. before fees and taxes – that is the figure
+   reported on the overview as “Realized (FIFO)”.
+   ROR holds, per sale, the number of shares for which no matching purchase was found. */
 let RPL={}, RPD={}, RGR={}, ROR={};
 
-/* Erlös, der auf Stücke ohne Kaufbeleg entfällt – die Größe, die UI.hideOrphan herausrechnet.
-   Nur für Hinweistexte; die Berechnung selbst steckt in positions(). */
+/* Proceeds attributable to shares without a purchase record – the figure UI.hideOrphan excludes.
+   For hint texts only; the calculation itself lives in positions(). */
 const orphanCut = r => (ROR[r.id] && r.sharesN>1e-9)
   ? Math.abs(r.amountN)*Math.min(1, ROR[r.id]/r.sharesN) : 0;
 
@@ -597,10 +597,10 @@ function positions(){
         if(l.sh<=1e-9) p.lots.shift();
       }
       if(rest>1e-9){ p.orphan+=rest; ROR[r.id]=rest; }
-      /* Für Stücke ohne passenden Kauf ist kein Einstand bekannt – ihr Erlös wäre in voller
-         Höhe Gewinn. Ist UI.hideOrphan gesetzt, zählt nur der Erlös der belegten Stücke;
-         ein Verkauf ganz ohne Kauf fällt damit komplett heraus. Gebühren und Steuern bleiben
-         ungekürzt, sie wurden unabhängig davon tatsächlich gezahlt. */
+      /* For shares without a matching purchase no cost basis is known – their proceeds would
+         count as gain in full. If UI.hideOrphan is set, only the proceeds of covered shares
+         count; a sale with no purchase at all thus drops out entirely. Fees and taxes are not
+         reduced, they were actually paid regardless. */
       const covered = (UI.hideOrphan && rest>1e-9) ? Math.max(0,(r.sharesN-rest)/r.sharesN) : 1;
       const proceeds = Math.abs(r.amountN)*covered;
       const gain = proceeds - basis - r.taxN - r.feeN;
@@ -617,20 +617,20 @@ function positions(){
       RPL[r.id]=net; RPD[r.date]=(RPD[r.date]||0)+net;
 
     } else if(r.type==='Corporate action' || r.type==='Security transfer'){
-      /* Beide Arten buchen Stücke ein oder aus, ohne dass ein Kauf dahintersteht.
-         Ohne eigenen Bestandsposten fände ein späterer Verkauf keinen Einstand und
-         wiese den vollen Erlös als Gewinn aus. */
+      /* Both kinds book shares in or out without a purchase behind them.
+         Without their own holding lot a later sale would find no cost basis and
+         would report the full proceeds as gain. */
       if(r.sharesN>1e-9){
-        /* Einstand ist das, was die Einbuchung wert war: bei Gratisstücken aus einer
-           Kapitalmaßnahme null, bei einem Depotübertrag der mitgelieferte Gegenwert.
-           Was beim alten Broker gezahlt wurde, steht im Export nicht. */
+        /* The cost basis is what the incoming booking was worth: zero for free shares from a
+           corporate action, the supplied counter value for a securities transfer.
+           What was paid at the old broker is not in the export. */
         const val = Math.abs(r.amountN) || (r.type==='Security transfer' ? Math.abs(r.priceN)*r.sharesN : 0);
         p.lots.push({sh:r.sharesN, pps: val/r.sharesN});
         p.shares+=r.sharesN;
         p.cost=p.lots.reduce((s,l)=>s+l.sh*l.pps,0);
 
       } else if(r.sharesN<-1e-9){
-        /* Ausbuchung – Bestand nach FIFO abbauen, ohne ein Ergebnis zu realisieren */
+        /* Outgoing booking – reduce the holding by FIFO without realizing a result */
         let rest=-r.sharesN;
         while(rest>1e-9 && p.lots.length){
           const l=p.lots[0], take=Math.min(l.sh,rest);
@@ -641,7 +641,7 @@ function positions(){
         p.cost=p.lots.reduce((s,l)=>s+l.sh*l.pps,0);
 
       } else if(r.amountN){
-        /* Reine Geldbuchung ohne Stücke, etwa eine Abfindung */
+        /* Pure cash booking without shares, e.g. a settlement payment */
         p.realized+=r.amountN;
         RGR[r.id]=r.amountN;
         RPL[r.id]=r.amountN; RPD[r.date]=(RPD[r.date]||0)+r.amountN;
@@ -659,12 +659,12 @@ function positions(){
   return Object.values(P).sort((a,b)=> b.total-a.total);
 }
 
-/* Ertrag je Position für einen Ausschnitt der Vorgänge (Jahr-/Monatsfilter der Übersicht).
-   Gezählt werden nur die Vorgänge im Fenster; der FIFO-Einstand steckt bereits in RGR und
-   stammt weiterhin aus der gesamten Historie, sonst wären Verkäufe ohne zugehörigen Kauf
-   im Fenster falsch. Die Summanden sind dieselben wie bei p.total in positions(),
-   deshalb ergibt sich ohne Filter genau die bisherige Rangliste.
-   Nicht ausgeführte Zeilen bleiben außen vor – sie haben kein realisiertes Ergebnis. */
+/* Return per position for a slice of the transactions (the overview's year/month filter).
+   Only the transactions inside the window are counted; the FIFO cost basis already sits in
+   RGR and still comes from the entire history, otherwise sales without a matching purchase
+   inside the window would be wrong. The summands are the same as for p.total in positions(),
+   so without a filter this yields exactly the previous ranking.
+   Rows that were not executed stay out – they have no realized result. */
 function rankByPeriod(rows, P){
   const names={}; (P||[]).forEach(p=> names[p.isin]=p.name);
   const R={};
@@ -673,16 +673,16 @@ function rankByPeriod(rows, P){
     const e = R[r.isin] || (R[r.isin]={isin:r.isin, name:names[r.isin]||r.description||'', total:0, n:0});
     e.n++;
     if(!e.name && r.description) e.name=r.description;
-    e.total += (RGR[r.id]||0);                       // realisiert (FIFO, brutto) bzw. Kapitalmaßnahme
-    if(isDiv(r))       e.total += r.amountN - r.taxN; // Ausschüttung abzüglich Quellensteuer
+    e.total += (RGR[r.id]||0);                       // realized (FIFO, gross) or corporate action
+    if(isDiv(r))       e.total += r.amountN - r.taxN; // distribution less withholding tax
     else if(isSell(r)) e.total -= r.feeN + r.taxN;
     else if(isBuy(r))  e.total -= r.feeN;
   });
   return Object.values(R).sort((a,b)=> b.total-a.total);
 }
 
-/* ============================ Formatierung ============================ */
-/* Zahlenformate – Dezimaltrennzeichen ist überall der Punkt, Tausender wählbar */
+/* ============================ Formatting ============================ */
+/* Number formats – the decimal separator is the dot throughout, thousands separator selectable */
 const NUMFMT={
   apo  :{grp:"'", dec:'.', label:"1'234.56"},
   comma:{grp:',', dec:'.', label:"1,234.56"},
@@ -698,29 +698,29 @@ function fmt(n,d=2){
   if(f.grp) i=i.replace(/\B(?=(\d{3})+(?!\d))/g, f.grp);
   return (neg?'-':'')+i+(fr?f.dec+fr:'');
 }
-/* Stückzahl ohne überflüssige Nullen. Bruchstücke entstehen hier aus Subtraktionen,
-   deshalb wird die nötige Stellenzahl mit Toleranz ermittelt statt aus dem Rohtext. */
+/* Share count without superfluous zeros. Fractions arise here from subtractions,
+   so the required number of digits is determined with a tolerance rather than from the raw text. */
 function qty(n){
   let d=0;
   while(d<6 && Math.abs(n*10**d - Math.round(n*10**d))>1e-6) d++;
   return fmt(n,d);
 }
-/* Rohwert für Exporte: immer Punkt als Dezimaltrennzeichen, kein Tausendertrennzeichen */
+/* Raw value for exports: always a dot as the decimal separator, no thousands separator */
 const raw=n=> (n===null||n===undefined||!isFinite(n)) ? '' : String(n);
 const eur=n=> fmt(n)+' €';
 const sign=n=> `<span class="${n>0.004?'pos':n<-0.004?'neg':'mut'}">${n>0.004?'+':''}${eur(n)}</span>`;
-/* Datumsanzeige: die Rohwerte liegen bereits als yyyy-mm-dd vor */
+/* Date display: the raw values are already in yyyy-mm-dd form */
 const dt=d=> d || '';
 const esc=s=> String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-/* Wert, der in einem onclick-Attribut als JS-Zeichenkette landet: erst für
-   JavaScript entschärfen, dann für HTML. Ein Feld aus einer fremden CSV
-   (etwa eine ISIN mit Anführungszeichen) kann so nicht mehr ausbrechen. */
+/* A value that ends up as a JS string inside an onclick attribute: neutralise it for
+   JavaScript first, then for HTML. A field from a foreign CSV (an ISIN containing
+   quotes, say) can no longer break out this way. */
 const js=s=> esc(String(s??'').replace(/[\\'"]/g,'\\$&').replace(/\r?\n/g,'\\n'));
-/* Nur eingebettete Bilder zulassen. Eine Adresse auf einen fremden Server
-   würde beim Anzeigen einer Notiz einen Aufruf nach außen auslösen. */
+/* Allow embedded images only. An address pointing at a foreign server would
+   trigger an outbound request when a note is displayed. */
 const safeImg=s=> /^data:image\/(png|jpe?g|gif|webp|avif);base64,[A-Za-z0-9+/=\s]+$/i.test(String(s||'')) ? String(s) : '';
-/* Anzeigename und CSS-Klassenkürzel je Vorgangsart. Die Schlüssel stammen aus der CSV
-   und dürfen nicht übersetzt werden; die Kürzel hängen an den .t-… Regeln im Stylesheet. */
+/* Display name and CSS class suffix per transaction type. The keys come from the CSV
+   and must not be translated; the suffixes are tied to the .t-… rules in the stylesheet. */
 const TYPE_MAP={Buy:['Buy','Buy'],Sell:['Sell','Sell'],'Savings plan':['Savings plan','Sparplan'],
     Distribution:['Distribution','Dividende'],Deposit:['Deposit','Cash'],Withdrawal:['Withdrawal','Cash'],
     'Cash Transfer In':['Transfer in','Cash'],'Cash Transfer Out':['Transfer out','Cash'],
@@ -758,7 +758,7 @@ function buildFilters(){
 document.getElementById('fYear').onchange=e=>{F.year=e.target.value;render()};
 document.getElementById('fMonth').onchange=e=>{F.month=e.target.value;render()};
 
-/* --- Status-Filter (Mehrfachauswahl) --- */
+/* --- Status filter (multi-select) --- */
 const ddStatus=document.getElementById('ddStatus');
 document.getElementById('ddStatusBtn').onclick=e=>{e.stopPropagation();ddStatus.classList.toggle('open')};
 document.addEventListener('click',e=>{ if(!ddStatus.contains(e.target)) ddStatus.classList.remove('open'); });
@@ -784,7 +784,7 @@ function buildStatusFilter(){
     : `${n} statuses ▾`;
 }
 
-/* --- Typ-Filter (Mehrfachauswahl) --- */
+/* --- Type filter (multi-select) --- */
 const ddType=document.getElementById('ddType');
 document.getElementById('ddTypeBtn').onclick=e=>{e.stopPropagation();ddType.classList.toggle('open')};
 document.addEventListener('click',e=>{ if(!ddType.contains(e.target)) ddType.classList.remove('open'); });
@@ -807,11 +807,11 @@ function buildTypeFilter(){
     : `${n} types ▾`;
 }
 
-/* --- Verkäufe ohne passenden Kauf --- */
+/* --- Sales without a matching purchase --- */
 const ddOrphan=document.getElementById('ddOrphan');
 document.getElementById('ddOrphanBtn').onclick=e=>{e.stopPropagation();ddOrphan.classList.toggle('open')};
 document.addEventListener('click',e=>{ if(!ddOrphan.contains(e.target)) ddOrphan.classList.remove('open'); });
-/* Braucht ROR und läuft deshalb erst nach positions() */
+/* Needs ROR and therefore runs only after positions() */
 function buildOrphanFilter(){
   const n=Object.keys(ROR).length;
   document.getElementById('ddOrphanPop').innerHTML=
@@ -827,7 +827,7 @@ function buildOrphanFilter(){
     UI.hideOrphan ? '⚠ pro rata ▾' : (n ? `⚠ ${n} without cost basis ▾` : 'Cost basis ▾');
 }
 
-/* --- Zahlenformat --- */
+/* --- Number format --- */
 const fNum=document.getElementById('fNum');
 fNum.innerHTML=Object.entries(NUMFMT).map(([k,v])=>
   `<option value="${k}" ${UI.numfmt===k?'selected':''}>${v.label}</option>`).join('');
@@ -836,7 +836,7 @@ fNum.onchange=e=>{UI.numfmt=e.target.value;saveUI();render()};
 /* ============================ Render ============================ */
 function render(){
   buildFilters(); buildStatusFilter(); buildTypeFilter(); buildImportFilter();
-  positions();   // füllt RPL / RPD / ROR für alle Ansichten
+  positions();   // fills RPL / RPD / ROR for all views
   buildOrphanFilter();
   document.getElementById('dbInfo').textContent =
     `${Object.keys(DB.tx).length} transactions · ${Object.keys(DB.cmt).length} commented objects · ${(JSON.stringify(DB).length/1024).toFixed(0)} KB`;
@@ -846,7 +846,7 @@ function render(){
   if(view==='cal')  calView();
 }
 
-/* --- Übersicht --- */
+/* --- Overview --- */
 function dash(){
   const f=filtered(), P=positions();
   const inv=f.filter(isBuy).reduce((s,r)=>s+Math.abs(r.amountN),0);
@@ -855,9 +855,9 @@ function dash(){
   const tax=f.reduce((s,r)=>s+r.taxN,0);
   const dep=f.filter(r=>isCash(r)&&['Deposit','Cash Transfer In'].includes(r.type)).reduce((s,r)=>s+r.amountN,0);
   const wit=f.filter(r=>isCash(r)&&['Withdrawal','Cash Transfer Out'].includes(r.type)).reduce((s,r)=>s+Math.abs(r.amountN),0);
-  /* Realisiert und Ausschüttungen folgen jetzt dem Zeitraumfilter. Grundlage sind die
-     Einzelvorgänge im gewählten Zeitraum; der FIFO-Einstand stammt weiterhin aus der
-     gesamten Historie, sonst wären Verkäufe ohne zugehörigen Kauf im Fenster falsch. */
+  /* Realized and distributions now follow the period filter. The basis is the individual
+     transactions in the selected period; the FIFO cost basis still comes from the entire
+     history, otherwise sales without a matching purchase inside the window would be wrong. */
   const realTotal=f.reduce((s,r)=>s+(RGR[r.id]||0),0);
   const divTotal=f.filter(isDiv).reduce((s,r)=>s+r.amountN,0);
   const per=(F.year||F.month)? ' (Filter)':'';
@@ -874,8 +874,8 @@ function dash(){
     ['Deposits / withdrawals'+per, eur(dep)+' / '+eur(wit), '']
   ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="hint">${h}</div></div>`).join('');
 
-  /* Sichtbar machen, wie viel Erlös auf Stücke ohne Kaufbeleg entfällt – sonst bliebe
-     der Unterschied zwischen ein- und ausgeschalteter Option unerklärt. */
+  /* Make visible how much of the proceeds falls on shares without a purchase record –
+     otherwise the difference between the option being on and off would stay unexplained. */
   const og=f.filter(r=>ROR[r.id]), ocut=og.reduce((s,r)=>s+orphanCut(r),0);
   const oNote=document.getElementById('orphNote');
   oNote.style.display = og.length ? '' : 'none';
@@ -889,7 +889,7 @@ function dash(){
         `The “Cost basis” filter above excludes them.`;
   }
 
-  /* Beide Ranglisten folgen dem Jahr-/Monatsfilter wie die Kennzahlen darüber */
+  /* Both rankings follow the year/month filter just like the key figures above */
   const RK=rankByPeriod(f,P);
   const periodLabel = (F.year&&F.month) ? `${MON[+F.month-1]} ${F.year}`
     : F.year  ? F.year
@@ -941,7 +941,7 @@ function dash(){
 }
 function jumpMonth(y,m){F.year=y;F.month=m;document.querySelector('nav button[data-v="tx"]').click();}
 
-/* --- Positionen --- */
+/* --- Positions --- */
 let posSort={c:'total',d:-1};
 function posView(){
   const q=document.getElementById('posSearch').value.toLowerCase();
@@ -1005,8 +1005,8 @@ function detail(isin){
   window.scrollTo({top:0});
 }
 
-/* --- Transaktionen --- */
-/* Verkauf kennzeichnen, dem für einen Teil der Stücke der Kauf fehlt */
+/* --- Transactions --- */
+/* Flag a sale that is missing the purchase for some of its shares */
 function orphanMark(r){
   const o=ROR[r.id]; if(!o) return '';
   const t=`${qty(o)} of ${qty(r.sharesN)} shares without a matching purchase – `+
@@ -1063,7 +1063,7 @@ function txNote(id){
   document.body.appendChild(box); bindComments('tx:'+id);
 }
 
-/* --- Kalender --- */
+/* --- Calendar --- */
 let calM = new Date();
 document.getElementById('calPrev').onclick=()=>{calM.setDate(1);calM.setMonth(calM.getMonth()-1);calView(true)};
 document.getElementById('calNext').onclick=()=>{calM.setDate(1);calM.setMonth(calM.getMonth()+1);calView(true)};
@@ -1098,8 +1098,8 @@ function calView(manual){
   document.getElementById('calDetail').style.display='none';
 }
 function calYearBox(y){
-  /* Jahreswerte des angezeigten Kalenderjahres – unabhängig vom Monatsfilter oben,
-     damit der Kasten immer zum sichtbaren Jahr passt. */
+  /* Yearly figures for the displayed calendar year – independent of the month filter above,
+     so the box always matches the visible year. */
   const yr=String(y);
   const rows=all().filter(r=>r.date.slice(0,4)===yr && r.status==='Executed' && typeOK(r));
   const sells=rows.filter(isSell), divs=rows.filter(isDiv);
@@ -1135,7 +1135,7 @@ function calDay(iso){
   el.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-/* ============================ Kommentare + Screenshots ============================ */
+/* ============================ Comments + screenshots ============================ */
 function commentHtml(key){
   const list=DB.cmt[key]||[];
   return `<div class="cmts" data-k="${esc(key)}">
@@ -1220,10 +1220,9 @@ document.getElementById('expJson').onclick=()=>{
   saveFile('depot_backup_'+isoToday()+'.json', JSON.stringify(DB), 'application/json');
 };
 document.getElementById('impJson').onclick=()=>document.getElementById('jsonFile').click();
-/* Ein Backup ist eine Datei von außen. Übernommen wird deshalb nur, was hier
-   ausdrücklich erwartet wird – alle übrigen Felder werden verworfen, Zahlen
-   werden zu Zahlen und Bilder müssen eingebettete Daten sein. So kann eine
-   manipulierte Datei keine fremden Inhalte in die Anzeige einschleusen. */
+/* A backup is a file from outside. Only what is explicitly expected here is taken over –
+   all other fields are discarded, numbers become numbers and images must be embedded
+   data. That way a manipulated file cannot smuggle foreign content into the UI. */
 const str=v=> typeof v==='string' ? v : (v===undefined||v===null ? '' : String(v));
 const fin=v=> { const x=Number(v); return isFinite(x) ? x : 0; };
 function cleanBackup(d){
@@ -1233,11 +1232,11 @@ function cleanBackup(d){
     if(!o || typeof o!=='object') return;
     const r={};
     COLS.forEach(c=> r[c]=str(o[c]));
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) return;      // ohne gültiges Datum unbrauchbar
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) return;      // unusable without a valid date
     r.sharesN=fin(o.sharesN); r.priceN=fin(o.priceN); r.amountN=fin(o.amountN);
     r.feeN=fin(o.feeN); r.taxN=fin(o.taxN);
     r.dt = r.date+' '+(r.time||'00:00:00');
-    r.id = txId(r);                                       // Kennung immer neu bilden
+    r.id = txId(r);                                       // always rebuild the identity
     tx[r.id]=r;
   });
   const cs=(d && typeof d==='object' && d.cmt && typeof d.cmt==='object') ? d.cmt : {};
@@ -1278,9 +1277,9 @@ function buildImportFilter(){
                              : 'No status selected – the import takes all rows again.');
   });
 }
-/* Bestätigung ohne confirm(): Safari unterdrückt Systemdialoge, sobald der Nutzer einmal
-   „weitere Dialoge blockieren" gewählt hat oder die Seite im Home-Bildschirm-Modus läuft.
-   Der Knopf fragt deshalb selbst nach – zweiter Tipp innerhalb von 6 Sekunden löscht. */
+/* Confirmation without confirm(): Safari suppresses system dialogs once the user has chosen
+   “block further dialogs” or the page is running in home-screen mode.
+   The button therefore asks by itself – a second tap within 6 seconds deletes. */
 function armDanger(btn, ask, action){
   const label=btn.textContent;
   const reset=()=>{ btn.textContent=label; btn.dataset.armed=''; clearTimeout(btn._t); };
@@ -1300,13 +1299,13 @@ armDanger(document.getElementById('dropCancelled'), 'Sure? Tap again', ()=>{
 armDanger(document.getElementById('wipe'), 'Delete everything? Tap again', ()=>{
   DB.tx={}; DB.cmt={};
   save();
-  /* Schlüssel zusätzlich entfernen, damit nach dem Neuladen garantiert nichts zurückkommt */
+  /* Remove the keys as well, so that nothing can possibly come back after a reload */
   try{ localStorage.removeItem('dc_tx'); localStorage.removeItem('dc_cmt'); }catch(e){}
   render();
   toast('All data deleted.');
 });
 
-/* ============================ Start ============================ */
+/* ============================ Startup ============================ */
 if(TOUCH){
   document.getElementById('dropHint').textContent =
     'Multiple files and partial exports are fine · duplicates are detected and skipped automatically';
@@ -1320,7 +1319,7 @@ if(!LS.ok){
   toast('⚠️ No storage available – data will be lost on reload. Details under “Import / Data”.');
 }
 
-/* ---------- Begrüßung: einmalig beim ersten Start, danach über „ℹ Notes" ---------- */
+/* ---------- Welcome screen: once on first start, afterwards via “ℹ Notes” ---------- */
 const intro=document.getElementById('intro');
 const closeIntro=()=>{ intro.classList.remove('on'); UI.seenIntro=1; saveUI(); };
 document.getElementById('introOk').onclick=closeIntro;
@@ -1333,20 +1332,20 @@ render();
 if(!Object.keys(DB.tx).length) show('imp');
 if(!UI.seenIntro) intro.classList.add('on');
 
-/* ============================ Offline-Betrieb ============================ */
-/* Der Service Worker legt die App im Gerät ab, damit sie ohne Netz startet.
-   Er läuft nur über https:// (und localhost) – bei file:// passiert nichts,
-   die App funktioniert dann wie bisher, nur ohne garantierte Offline-Fähigkeit. */
+/* ============================ Offline operation ============================ */
+/* The service worker stores the app on the device so it starts without a network.
+   It only runs over https:// (and localhost) – with file:// nothing happens and
+   the app works as before, just without guaranteed offline capability. */
 if('serviceWorker' in navigator && location.protocol==='https:'){
   window.addEventListener('load',()=>{
     navigator.serviceWorker.register('./sw.js').then(reg=>{
-      /* Beim Start nach einer neueren Fassung sehen */
+      /* Look for a newer version on startup */
       reg.update().catch(()=>{});
       reg.addEventListener('updatefound',()=>{
         const sw=reg.installing; if(!sw) return;
         sw.addEventListener('statechange',()=>{
           if(sw.state==='installed' && navigator.serviceWorker.controller){
-            /* Nicht mitten in der Sitzung austauschen – erst beim nächsten Start */
+            /* Do not swap mid-session – only on the next start */
             toast('A new version has been loaded. It becomes active once the app has been fully closed and reopened.');
           }
         });
