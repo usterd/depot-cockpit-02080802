@@ -124,15 +124,25 @@ textarea{width:100%;min-height:70px;resize:vertical}
 #intro,#chg{position:fixed;inset:0;background:#000c;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
   display:none;align-items:center;justify-content:center;z-index:250;padding:20px}
 #intro.on,#chg.on{display:flex}
-#introBox,#chgBox{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
-  width:min(600px,100%);max-height:88vh;overflow:auto;padding:22px 24px;box-shadow:0 24px 70px #000c}
+#introBox,#chgBox{--mpy:22px;--mpx:24px;
+  background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
+  width:min(600px,100%);max-height:88vh;overflow:auto;padding:var(--mpy) var(--mpx);box-shadow:0 24px 70px #000c}
 #introBox h2,#chgBox h2{margin:0 0 4px;font-size:19px}
 #introBox h3{margin:18px 0 6px;font-size:12px;color:var(--acc);text-transform:uppercase;letter-spacing:.8px}
 #introBox p,#chgBox p{margin:0 0 8px;color:var(--fg)}
 #introBox ol,#chgBox ul{margin:0;padding-left:20px}
 #introBox li,#chgBox li{margin-bottom:4px}
 #introBox .small,#chgBox .small{color:var(--mut);font-size:13px}
-#introOk,#chgOk{width:100%;margin-top:22px;padding:12px;font-size:15px;min-height:48px}
+#introOk{width:100%;margin-top:22px;padding:12px;font-size:15px;min-height:48px}
+/* Title row of a modal: the close button sits at the top right, within reach
+   without scrolling to the end of a long list, and stays there while it scrolls.
+   The negative margins pull the row across the box padding, which is why that
+   padding is a variable – it differs on a phone. */
+.modal-hd{display:flex;align-items:center;gap:12px;position:sticky;z-index:2;
+  top:calc(var(--mpy) * -1);background:var(--bg2);
+  margin:calc(var(--mpy) * -1) calc(var(--mpx) * -1) 4px;padding:var(--mpy) var(--mpx) 8px}
+.modal-hd h2{flex:1;margin:0}
+.modal-hd .btn.ico{font-size:13px}
 /* One block per version: heading line with number, date and marker */
 .chg-v{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:18px 0 6px;
   padding-top:12px;border-top:1px solid var(--line)}
@@ -140,8 +150,9 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .chg-v b{font-size:14px;color:var(--acc)}
 @media (max-width:820px){
   #intro,#chg{padding:0;align-items:stretch}
-  #introBox,#chgBox{width:100%;max-height:100%;border-radius:0;border:none;
-    padding:calc(20px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom))}
+  #introBox,#chgBox{--mpy:calc(20px + env(safe-area-inset-top));--mpx:18px;
+    width:100%;max-height:100%;border-radius:0;border:none;
+    padding:var(--mpy) var(--mpx) calc(20px + env(safe-area-inset-bottom))}
 }
 .toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--acc);padding:12px 16px;border-radius:10px;z-index:300;display:none;max-width:380px;white-space:pre-line}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -409,10 +420,12 @@ table.rsp td.mhead{display:none}
 </div></div>
 
 <div id="chg"><div id="chgBox">
-  <h2 data-i18n="ver.history">Version history</h2>
+  <div class="modal-hd">
+    <h2 data-i18n="ver.history">Version history</h2>
+    <button class="btn ico" id="chgOk" data-i18n-title="ver.close" data-i18n-aria="ver.close">✕</button>
+  </div>
   <p class="small" data-i18n="ver.intro"></p>
   <div id="chgList"></div>
-  <button class="btn pri" id="chgOk" data-i18n="ver.close">Close</button>
 </div></div>
 
 <div id="lightbox"><img alt=""></div>
