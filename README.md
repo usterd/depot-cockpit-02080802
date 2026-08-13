@@ -56,8 +56,12 @@ reliable `localStorage` persistence do not work over `file://`.
 When you change `index.html`:
 
 1. Edit the file in the repo.
-2. **Bump `VERSION` in `sw.js`** (`'v22'` → `'v23'`). This is the only step
+2. **Bump `VERSION` in `sw.js`** (`'v24'` → `'v25'`). This is the only step
    people forget — without it the phone keeps serving the cached old version.
+   Add a matching entry at the top of the `CHANGELOG` array in `index.html`
+   (same version number, one short line per feature) — it is what
+   **Import / Data → Version history** shows, and the topmost entry is
+   displayed as the version currently running.
 3. Commit. Open the app while online; it downloads the new version in the
    background and shows a notice.
 4. Fully close the app (swipe it away from the app switcher) and reopen it. The
@@ -98,6 +102,6 @@ subdomains cannot. Use a dedicated account or a separate domain if that matters.
 
 `localStorage` is not permanent storage. iOS may clear it if the app is unused
 for a long stretch, and it is wiped if you delete the home-screen icon and
-Safari data. Use **Import / Daten → Backup (JSON) sichern** regularly and save
+Safari data. Use **Import / Data → Save backup (JSON)** regularly and save
 the file to iCloud Drive or Files. That backup is also how you move to a new
 device.

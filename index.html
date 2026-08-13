@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -9,11 +9,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1117">
 <meta name="format-detection" content="telephone=no">
-<!-- Riegel gegen Datenabfluss: Selbst wenn durch eine manipulierte CSV- oder
-     Backup-Datei fremder Code in die Seite geriete, kann er nichts nach außen
-     senden – connect-src, img-src und form-action lassen keine fremde Adresse zu.
-     'unsafe-inline' ist nötig, weil die App als eine einzige Datei mit
-     onclick-Attributen arbeitet; die Sperre wirkt trotzdem beim Abfluss. -->
+<!-- Barrier against data exfiltration: even if foreign code made it into the page
+     through a manipulated CSV or backup file, it cannot send anything out –
+     connect-src, img-src and form-action allow no foreign address.
+     'unsafe-inline' is required because the app works as a single file with
+     onclick attributes; the barrier still holds against exfiltration. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icon-180.png">
@@ -36,12 +36,23 @@ header{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.92);-webkit-ba
   padding:12px max(20px,env(safe-area-inset-right)) 12px max(20px,env(safe-area-inset-left))}
 .logo{font-weight:700;font-size:17px;letter-spacing:.3px}
 .logo span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+/* Round icon button in the top bar – the notes sit next to the app name.
+   Declared after the .btn defaults further down would be cleaner, but the
+   double class keeps it winning over them regardless of order. */
+button.btn.ico{width:34px;height:34px;min-height:34px;padding:0;border-radius:50%;flex:0 0 auto;
+  display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
+button.btn.ico svg{width:19px;height:19px;display:block}
+/* Language switch – two states side by side, the active one is highlighted */
+.seg{display:inline-flex;flex:0 0 auto;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--bg3)}
+.seg button{background:transparent;border:none;color:var(--mut);font:inherit;font-size:12px;font-weight:600;
+  padding:0 11px;min-height:34px;cursor:pointer;letter-spacing:.4px}
+.seg button.on{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#fff}
 nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:transparent;border:1px solid transparent;color:var(--mut);padding:7px 14px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:500;min-height:36px}
 nav button:hover{color:var(--fg);background:var(--bg3)}
 nav button.on{color:#fff;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 .filters{margin-left:auto;display:flex;gap:8px;align-items:center}
-/* 16px verhindert, dass Safari auf dem iPhone beim Antippen hineinzoomt */
+/* 16px stops Safari on the iPhone from zooming in when a field is tapped */
 select,input,textarea,button.btn{background:var(--bg3);border:1px solid var(--line);color:var(--fg);padding:7px 10px;border-radius:8px;
   font:inherit;font-size:16px;outline:none;-webkit-appearance:none;appearance:none;max-width:100%}
 select{padding-right:26px;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);
@@ -110,23 +121,39 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .hint{font-size:12px;color:var(--mut)}
 #lightbox{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;z-index:200}
 #lightbox img{max-width:92vw;max-height:92vh;border-radius:10px}
-/* Begrüßung beim ersten Start */
-#intro{position:fixed;inset:0;background:#000c;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+/* Welcome screen on first start, version history */
+#intro,#chg{position:fixed;inset:0;background:#000c;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
   display:none;align-items:center;justify-content:center;z-index:250;padding:20px}
-#intro.on{display:flex}
-#introBox{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
-  width:min(600px,100%);max-height:88vh;overflow:auto;padding:22px 24px;box-shadow:0 24px 70px #000c}
-#introBox h2{margin:0 0 4px;font-size:19px}
+#intro.on,#chg.on{display:flex}
+#introBox,#chgBox{--mpy:22px;--mpx:24px;
+  background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
+  width:min(600px,100%);max-height:88vh;overflow:auto;padding:var(--mpy) var(--mpx);box-shadow:0 24px 70px #000c}
+#introBox h2,#chgBox h2{margin:0 0 4px;font-size:19px}
 #introBox h3{margin:18px 0 6px;font-size:12px;color:var(--acc);text-transform:uppercase;letter-spacing:.8px}
-#introBox p{margin:0 0 8px;color:var(--fg)}
-#introBox ol{margin:0;padding-left:20px}
-#introBox li{margin-bottom:4px}
-#introBox .small{color:var(--mut);font-size:13px}
+#introBox p,#chgBox p{margin:0 0 8px;color:var(--fg)}
+#introBox ol,#chgBox ul{margin:0;padding-left:20px}
+#introBox li,#chgBox li{margin-bottom:4px}
+#introBox .small,#chgBox .small{color:var(--mut);font-size:13px}
 #introOk{width:100%;margin-top:22px;padding:12px;font-size:15px;min-height:48px}
+/* Title row of a modal: the close button sits at the top right, within reach
+   without scrolling to the end of a long list, and stays there while it scrolls.
+   The negative margins pull the row across the box padding, which is why that
+   padding is a variable – it differs on a phone. */
+.modal-hd{display:flex;align-items:center;gap:12px;position:sticky;z-index:2;
+  top:calc(var(--mpy) * -1);background:var(--bg2);
+  margin:calc(var(--mpy) * -1) calc(var(--mpx) * -1) 4px;padding:var(--mpy) var(--mpx) 8px}
+.modal-hd h2{flex:1;margin:0}
+.modal-hd .btn.ico{font-size:13px}
+/* One block per version: heading line with number, date and marker */
+.chg-v{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:18px 0 6px;
+  padding-top:12px;border-top:1px solid var(--line)}
+.chg-v:first-child{margin-top:10px;padding-top:0;border-top:none}
+.chg-v b{font-size:14px;color:var(--acc)}
 @media (max-width:820px){
-  #intro{padding:0;align-items:stretch}
-  #introBox{width:100%;max-height:100%;border-radius:0;border:none;
-    padding:calc(20px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom))}
+  #intro,#chg{padding:0;align-items:stretch}
+  #introBox,#chgBox{--mpy:calc(20px + env(safe-area-inset-top));--mpx:18px;
+    width:100%;max-height:100%;border-radius:0;border:none;
+    padding:var(--mpy) var(--mpx) calc(20px + env(safe-area-inset-bottom))}
 }
 .toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--acc);padding:12px 16px;border-radius:10px;z-index:300;display:none;max-width:380px;white-space:pre-line}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -147,8 +174,19 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .dd .pop hr{border:none;border-top:1px solid var(--line);margin:6px 0}
 .dd .pop .row button{font-size:12px;padding:4px 9px}
 .btn.note{padding:3px 10px;font-size:12px;min-height:30px}
+/* Same shape as the language switch next to it: pill, one line high, small
+   capitals – the two sit side by side and would otherwise not look related. */
+button.btn#filtToggle{display:none;position:relative;white-space:nowrap;
+  height:36px;min-height:36px;padding:0 12px;border-radius:999px;background:var(--bg3);
+  font-size:12px;font-weight:600;letter-spacing:.4px;color:var(--mut);
+  align-items:center;justify-content:center}
+button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2));border-color:transparent;color:#fff}
+/* A dot on the button when a filter is narrowing what is shown – otherwise a
+   folded-away filter would silently change every figure on the screen. */
+#filtToggle.act::after{content:'';position:absolute;top:5px;right:6px;width:7px;height:7px;
+  border-radius:50%;background:var(--acc);border:2px solid var(--bg)}
 
-/* ---------- Touch- und iPhone-Anpassungen ---------- */
+/* ---------- Touch and iPhone adjustments ---------- */
 @media (hover:none){
   tbody tr:hover{background:transparent}
   nav button:hover{color:var(--mut);background:transparent}
@@ -160,7 +198,11 @@ textarea{width:100%;min-height:70px;resize:vertical}
   nav{order:3;width:100%;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
   nav::-webkit-scrollbar{display:none}
   nav button{flex:0 0 auto;min-height:40px}
-  .filters{order:4;margin-left:0;width:100%;flex-wrap:wrap}
+  /* The six filters filled half the screen on a phone. They now sit behind the
+     button in the first row and only unfold when they are actually wanted. */
+  button.btn#filtToggle{display:inline-flex}
+  .filters{order:4;margin-left:0;width:100%;flex-wrap:wrap;display:none}
+  .filters.open{display:flex}
   .filters>*{flex:1 1 130px;min-height:40px}
   .dd{position:static}
   .dd .pop{left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));top:auto}
@@ -175,10 +217,58 @@ textarea{width:100%;min-height:70px;resize:vertical}
   .day{min-height:58px;padding:4px}
   .day .ev,.day .hint{display:none}
   .day .d{font-size:12px}
+  /* A day box is barely 50 px wide here – the currency sign would wrap the figure */
+  .day .pnl .cur{display:none}
+  /* Events are hidden at this width – a dot keeps days with bookings visible */
+  .day.has::after{content:'';display:block;width:5px;height:5px;border-radius:50%;
+    background:var(--acc);margin:3px auto 0}
   .drop{padding:22px 14px}
   .modal{inset:0;width:100%;max-height:100%;border-radius:0;
     padding:calc(14px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))}
   .toast{left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));max-width:none}
+}
+/* On a phone the first header row has to hold name, notes, language and the
+   filter button. Trimmed like this they stay on one line down to about 380 px –
+   below that the button drops to a line of its own, which is still fine. */
+@media (max-width:480px){
+  .hd{gap:8px;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
+  .logo{font-size:16px}
+  .seg button{padding:0 9px}
+  button.btn#filtToggle{padding:0 10px}
+  main{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
+}
+/* Filters do nothing on these two views, so they do not take up room there either */
+body[data-view="imp"] .filters,body[data-view="det"] .filters,
+body[data-view="imp"] #filtToggle,body[data-view="det"] #filtToggle{display:none}
+
+/* ---------- Tables on a narrow screen ----------
+   Thirteen columns cannot be read through a 390 px window; scrolling sideways
+   hid exactly the columns that matter (amount, result, the note button). Below
+   640 px every row therefore becomes its own card: one line per field, the
+   column header in front of the value, nothing cut off. Each card is headed by
+   a name – either the row's own first cell (.mfirst) or a cell added just for
+   this layout (.mhead), which stays out of the way on a wide screen. */
+table.rsp td.mhead{display:none}
+@media (max-width:640px){
+  table.rsp,table.rsp tbody,table.rsp tr,table.rsp td{display:block;width:100%}
+  table.rsp thead{display:none}
+  table.rsp{border-spacing:0}
+  table.rsp tr{background:var(--bg3);border:1px solid var(--line);border-radius:10px;
+    padding:8px 11px;margin-bottom:9px}
+  table.rsp tr:hover{background:var(--bg3)}
+  table.rsp td{border:none;padding:4px 0;white-space:normal;text-align:right;
+    display:flex;gap:12px;align-items:baseline;justify-content:space-between;font-size:13px}
+  table.rsp td::before{content:attr(data-l);text-align:left;color:var(--mut);font-size:11px;
+    text-transform:uppercase;letter-spacing:.6px;flex:0 0 auto}
+  table.rsp td:empty{display:none}
+  /* Card headline: the name, no label in front of it */
+  table.rsp td.mhead,table.rsp td.mfirst{display:block;text-align:left;padding:0 0 6px;
+    margin-bottom:5px;border-bottom:1px solid var(--line);font-size:14px}
+  table.rsp td.mhead::before,table.rsp td.mfirst::before{content:none}
+  table.rsp td.mhead .hint,table.rsp td.mfirst .hint{display:block;font-size:11px}
+  /* Whatever the headline already says, and every field the row does not have,
+     needs no line of its own */
+  table.rsp td.mhide,table.rsp td.mdash{display:none}
 }
 @media (prefers-reduced-motion:reduce){
   *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
@@ -189,12 +279,25 @@ textarea{width:100%;min-height:70px;resize:vertical}
 <header>
   <div class="hd">
     <div class="logo">◆ Depot <span>Cockpit</span></div>
+    <!-- Drawn rather than typed: the ℹ glyph is a serif italic in most fonts and
+         looked nothing like the rest of the bar. -->
+    <button class="btn ico" id="introOpen" data-i18n-title="hdr.notes" data-i18n-aria="hdr.notes">
+      <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="10" cy="5.9" r="1.15" fill="currentColor"/>
+        <path d="M10 8.9v5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <div class="seg" id="langSeg" data-i18n-title="hdr.lang">
+      <button data-l="en">EN</button><button data-l="de">DE</button>
+    </div>
+    <button class="btn" id="filtToggle" data-i18n="hdr.filtersBtn" aria-expanded="false">Filters ▾</button>
     <nav>
-      <button data-v="dash" class="on">Übersicht</button>
-      <button data-v="pos">Positionen</button>
-      <button data-v="tx">Transaktionen</button>
-      <button data-v="cal">Kalender</button>
-      <button data-v="imp">Import / Daten</button>
+      <button data-v="dash" class="on" data-i18n="nav.dash">Overview</button>
+      <button data-v="pos" data-i18n="nav.pos">Positions</button>
+      <button data-v="tx" data-i18n="nav.tx">Transactions</button>
+      <button data-v="cal" data-i18n="nav.cal">Calendar</button>
+      <button data-v="imp" data-i18n="nav.imp">Import / Data</button>
     </nav>
     <div class="filters">
       <select id="fYear"></select>
@@ -204,14 +307,14 @@ textarea{width:100%;min-height:70px;resize:vertical}
         <div class="pop" id="ddStatusPop"></div>
       </div>
       <div class="dd" id="ddType">
-        <button class="btn" id="ddTypeBtn">Typ ▾</button>
+        <button class="btn" id="ddTypeBtn">Type ▾</button>
         <div class="pop" id="ddTypePop"></div>
       </div>
       <div class="dd" id="ddOrphan">
-        <button class="btn" id="ddOrphanBtn">Einstand ▾</button>
+        <button class="btn" id="ddOrphanBtn">Cost basis ▾</button>
         <div class="pop" id="ddOrphanPop"></div>
       </div>
-      <select id="fNum" title="Zahlenformat"></select>
+      <select id="fNum" data-i18n-title="hdr.numfmt"></select>
     </div>
   </div>
 </header>
@@ -221,23 +324,23 @@ textarea{width:100%;min-height:70px;resize:vertical}
   <section class="view on" id="v-dash">
     <div class="cards" id="kpis"></div>
     <p class="hint" id="orphNote" style="display:none"></p>
-    <div class="panel"><h2>Ertrag pro Position <span class="hint" id="rankScope">(realisiert + Ausschüttungen − Gebühren − Steuern, gesamter Zeitraum)</span></h2>
+    <div class="panel"><h2><span data-i18n="dash.rank">Return per position</span> <span class="hint" id="rankScope"></span></h2>
       <div id="rank"></div></div>
-    <div class="panel" id="lossPanel" style="display:none"><h2>Verluste pro Position <span class="hint" id="lossScope">(nur Positionen mit negativem Ertrag, gesamter Zeitraum)</span></h2>
+    <div class="panel" id="lossPanel" style="display:none"><h2><span data-i18n="dash.loss">Losses per position</span> <span class="hint" id="lossScope"></span></h2>
       <div id="rankLoss"></div></div>
-    <div class="panel"><h2>Cashflow pro Monat</h2><div class="scroll"><table id="monthly"></table></div></div>
+    <div class="panel"><h2 data-i18n="dash.cash">Cash flow per month</h2><div class="scroll"><table id="monthly" class="rsp"></table></div></div>
   </section>
 
   <!-- POSITIONEN -->
   <section class="view" id="v-pos">
     <div class="panel">
       <div class="row" style="margin-bottom:10px">
-        <input id="posSearch" placeholder="Suche Name / ISIN…" style="flex:1;min-width:220px">
-        <label class="hint"><input type="checkbox" id="showClosed" checked> geschlossene Positionen zeigen</label>
+        <input id="posSearch" data-i18n-ph="pos.search" style="flex:1;min-width:220px">
+        <label class="hint"><input type="checkbox" id="showClosed" checked> <span data-i18n="pos.closed">show closed positions</span></label>
       </div>
-      <div class="scroll"><table id="posTable"></table></div>
-      <p class="hint">Bestand &amp; Einstand werden immer über die <b>gesamte</b> Historie berechnet (FIFO) und nur aus ausgeführten Vorgängen.
-        Jahr-, Monats- und Statusfilter oben wirken auf Transaktionen, Kalender sowie Kennzahlen und Ranglisten der Übersicht.</p>
+      <div class="scroll"><table id="posTable" class="rsp"></table></div>
+      <p class="hint" data-i18n="pos.note"></p>
+      <p class="hint" data-i18n="pos.taxNote"></p>
     </div>
   </section>
 
@@ -248,8 +351,8 @@ textarea{width:100%;min-height:70px;resize:vertical}
   <section class="view" id="v-tx">
     <div class="panel">
       <div class="row" style="margin-bottom:10px">
-        <input id="txSearch" placeholder="Suche…" style="flex:1;min-width:220px">
-        <button class="btn" id="expCsv">CSV exportieren</button>
+        <input id="txSearch" data-i18n-ph="tx.search" style="flex:1;min-width:220px">
+        <button class="btn" id="expCsv" data-i18n="tx.export">Export CSV</button>
       </div>
       <div class="scroll" id="txWrap"></div>
     </div>
@@ -263,14 +366,14 @@ textarea{width:100%;min-height:70px;resize:vertical}
         <button class="btn" id="calPrev">‹</button>
         <b id="calTitle"></b>
         <button class="btn" id="calNext">›</button>
-        <span class="hint">Tag anklicken für Details</span>
+        <span class="hint" data-i18n="cal.click">Click a day for details</span>
       </div>
       <div class="cal" id="calGrid"></div>
       <div class="legend">
-        <span><i style="background:#3fb95055"></i>Gewinntag</span>
-        <span><i style="background:#f8514955"></i>Verlusttag</span>
-        <span><i style="background:var(--line)"></i>ohne Realisierung</span>
-        <span>Der Tageswert enthält FIFO-Verkaufsgewinne abzüglich Steuern sowie Netto-Ausschüttungen.</span>
+        <span><i style="background:#3fb95055"></i><span data-i18n="cal.win">Gain day</span></span>
+        <span><i style="background:#f8514955"></i><span data-i18n="cal.loss">Loss day</span></span>
+        <span><i style="background:var(--line)"></i><span data-i18n="cal.flat">nothing realized</span></span>
+        <span data-i18n="cal.legend">The daily figure includes FIFO sale gains less taxes as well as net distributions.</span>
       </div>
     </div>
     <div class="panel" id="calDetail" style="display:none"></div>
@@ -279,34 +382,46 @@ textarea{width:100%;min-height:70px;resize:vertical}
   <!-- IMPORT -->
   <section class="view" id="v-imp">
     <div class="panel">
-      <div class="row" style="margin-bottom:12px">
-        <h2 style="margin:0">CSV hochladen</h2>
-        <button class="btn" id="introOpen" style="margin-left:auto">ℹ Hinweise</button>
-      </div>
+      <h2 data-i18n="imp.upload">Upload CSV</h2>
       <div class="drop" id="drop">
-        <button class="btn pri" id="pick">Datei wählen</button><br>
-        <span class="hint" id="dropHint">oder CSV hierher ziehen · mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen</span>
+        <button class="btn pri" id="pick" data-i18n="imp.pick">Choose file</button><br>
+        <span class="hint" id="dropHint"></span>
       </div>
       <input type="file" id="file" accept=".csv,.txt,text/csv,text/comma-separated-values,application/csv,text/plain" multiple hidden>
-      <h3>Welche Status übernehmen?</h3>
+      <h3 data-i18n="imp.which">Which statuses to import?</h3>
       <div class="row" id="impStatus"></div>
-      <p class="hint">Nicht gewählte Zeilen werden gar nicht erst gespeichert. Abgebrochene und offene Orders enthalten
-        bei Scalable keine Beträge – sie dokumentieren nur den Versuch. Bereits importierte Zeilen bleiben erhalten;
-        zum Aufräumen unten „Abgebrochene entfernen“ nutzen.</p>
+      <p class="hint" data-i18n="imp.whichNote"></p>
+      <h3 data-i18n="imp.whichType">Which types to import?</h3>
+      <div class="row" id="impType"></div>
+      <p class="hint" data-i18n="imp.whichTypeNote"></p>
       <div id="report"></div>
     </div>
     <div class="panel">
-      <h2>Gespeicherte Daten</h2>
+      <h2 data-i18n="data.title">Stored data</h2>
+      <p id="dbInfo" class="hint" style="margin:0 0 12px"></p>
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn" id="expJson" data-i18n="data.save">Save backup (JSON)</button>
+        <button class="btn" id="impJson" data-i18n="data.restore">Restore backup</button>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <select id="dropTypeSel"></select>
+        <button class="btn" id="dropType" data-i18n="data.dropType">Remove type</button>
+        <span class="hint" data-i18n="data.typeHint"></span>
+      </div>
       <div class="row">
-        <span id="dbInfo" class="hint"></span>
-        <button class="btn" id="expJson" style="margin-left:auto">Backup (JSON) sichern</button>
-        <button class="btn" id="impJson">Backup einspielen</button>
-        <button class="btn" id="dropCancelled">Abgebrochene entfernen</button>
-        <button class="btn" id="wipe" style="border-color:#f8514955;color:var(--neg)">Alles löschen</button>
+        <button class="btn" id="dropCancelled" data-i18n="data.dropCancelled">Remove cancelled</button>
+        <button class="btn" id="wipe" data-i18n="data.wipe" style="border-color:#f8514955;color:var(--neg)">Delete everything</button>
       </div>
       <input type="file" id="jsonFile" accept=".json,application/json,text/plain" hidden>
-      <p class="hint">Backup enthält Transaktionen, Kommentare und Screenshots. Speicherort ist der Browser (localStorage) – für einen Gerätewechsel bitte Backup nutzen.</p>
+      <p class="hint" data-i18n="data.note"></p>
       <p class="hint" id="storageWarn" style="display:none"></p>
+    </div>
+    <div class="panel">
+      <div class="row">
+        <h2 style="margin:0" data-i18n="ver.title">Version</h2>
+        <span class="hint" id="verNow"></span>
+        <button class="btn" id="chgOpen" data-i18n="ver.history" style="margin-left:auto">Version history</button>
+      </div>
     </div>
   </section>
 </main>
@@ -314,6 +429,289 @@ textarea{width:100%;min-height:70px;resize:vertical}
 <div id="intro"><div id="introBox">
   <h2>◆ Depot <span style="background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent">Cockpit</span></h2>
 
+  <div id="introBody"></div>
+
+  <button class="btn pri" id="introOk" data-i18n="intro.ok">Got it</button>
+</div></div>
+
+<div id="chg"><div id="chgBox">
+  <div class="modal-hd">
+    <h2 data-i18n="ver.history">Version history</h2>
+    <button class="btn ico" id="chgOk" data-i18n-title="ver.close" data-i18n-aria="ver.close">✕</button>
+  </div>
+  <p class="small" data-i18n="ver.intro"></p>
+  <div id="chgList"></div>
+</div></div>
+
+<div id="lightbox"><img alt=""></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================ Storage ============================ */
+/* Safari blocks localStorage entirely for file:// calls and in private mode.
+   Without this wrapper the first line would throw and the app would stay empty.
+   If storage fails, everything keeps running in memory – just without persistence. */
+const LS = (()=>{
+  const mem={}; let ok=false;
+  try{ localStorage.setItem('dc_probe','1'); localStorage.removeItem('dc_probe'); ok=true; }catch(e){}
+  return {
+    ok,
+    get(k){ if(ok){ try{ return localStorage.getItem(k); }catch(e){} } return k in mem ? mem[k] : null; },
+    set(k,v){ mem[k]=v; if(ok) localStorage.setItem(k,v); }   // quota errors are deliberately passed on
+  };
+})();
+const readJSON=(k)=>{ try{ return JSON.parse(LS.get(k) || '{}'); }catch(e){ return {}; } };
+const DB = { tx: readJSON('dc_tx'), cmt: readJSON('dc_cmt') };
+/* Safari may delete stored data after a long period of disuse – here we ask for persistent storage */
+if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+/* Settings: number format, status filter (view) and status filter (import) */
+const UI = Object.assign({
+  numfmt:'apo',
+  lang: /^de/i.test(navigator.language||'') ? 'de' : 'en',
+  seenIntro:0,
+  status:['Executed'],
+  type:[],
+  hideOrphan:0,
+  impStatus:['Executed','Pending','Cancelled'],
+  impSkipType:[]                           // types left out on import, empty = take everything
+}, readJSON('dc_ui'));
+const saveUI = () => { try{ LS.set('dc_ui', JSON.stringify(UI)); }catch(e){} };
+
+/* ============================ Language ============================ */
+/* Every visible text lives here. Static markup carries data-i18n attributes and is
+   filled by applyStatic(); everything the views assemble asks t() for its text.
+   A value is a string, or a function when numbers or names have to be filled in.
+   The keys of the CSV (status, type, ISIN) are data and stay untranslated. */
+const L={
+en:{
+  'hdr.notes':'Notes','hdr.lang':'Language','hdr.numfmt':'Number format','hdr.filtersBtn':'Filters ▾',
+  'nav.dash':'Overview','nav.pos':'Positions','nav.tx':'Transactions','nav.cal':'Calendar','nav.imp':'Import / Data',
+  mon:['January','February','March','April','May','June','July','August','September','October','November','December'],
+  dow:['Mo','Tu','We','Th','Fr','Sa','Su'],
+  locale:'sv-SE',
+  type:{Buy:'Buy',Sell:'Sell','Savings plan':'Savings plan',Distribution:'Distribution',
+    Deposit:'Deposit',Withdrawal:'Withdrawal','Cash Transfer In':'Transfer in','Cash Transfer Out':'Transfer out',
+    Taxes:'Taxes','Corporate action':'Corporate action','Security transfer':'Security transfer'},
+  'st.Executed':'executed','st.Pending':'pending','st.Cancelled':'cancelled',
+  'f.allYears':'All years','f.allMonths':'All months','f.all':'all','f.execOnly':'executed only',
+  'f.allStatus':'all statuses ▾','f.nStatus':n=>`${n} statuses ▾`,
+  'f.allTypes':'all types ▾','f.nTypes':n=>`${n} types ▾`,
+  'f.cost':'Cost basis ▾','f.costPro':'⚠ pro rata ▾','f.costN':n=>`⚠ ${n} without cost basis ▾`,
+  'f.costOpt':'Exclude sales without a matching purchase, pro rata',
+  'f.costHint':'For shares sold without a purchase record there is no known cost basis, so their proceeds would otherwise count as gain in full. When active, only the proceeds of covered shares count; fees and taxes are not reduced.',
+  'dash.rank':'Return per position','dash.loss':'Losses per position','dash.cash':'Cash flow per month',
+  'dash.rankScope':p=>`(realized + distributions − fees − taxes, ${p})`,
+  'dash.lossScope':p=>`(only positions with a negative return, ${p})`,
+  'per.filter':' (Filter)','per.all':'entire period','per.monthAll':m=>`${m}, all years`,
+  'scope.sel':'selected period','scope.hist':'entire history',
+  'kpi.value':'Portfolio value (estimated)','kpi.valueHint':'last known price',
+  'kpi.total':'Total return','kpi.totalHint':'realized + distributions − costs',
+  'kpi.real':'Realized (FIFO)','kpi.div':'Distributions','kpi.buys':'Purchases','kpi.sells':'Sales',
+  'kpi.tx':n=>`${n} transactions`,'kpi.feetax':'Fees / taxes',
+  'kpi.feetaxHint':'costs · a minus is a reimbursement','kpi.cash':'Deposits / withdrawals',
+  'orph.one':'1 sale','orph.many':n=>`${n} sales`,
+  'orph.on':(w,e)=>`⚠ ${w} without a matching purchase: ${e} of proceeds is excluded.`,
+  'orph.off':(w,e,one)=>`⚠ ${w} without a matching purchase ${one?'inflates':'inflate'} the result by up to ${e}. `+
+    'The “Cost basis” filter above excludes them.',
+  'dash.noneFiltered':'No transactions in the selected period.','dash.noneYet':'No data yet.',
+  'm.head':['Month','Transactions','Purchases','Sales','Distributions','Fees','Taxes','realized'],
+  'pos.search':'Search name / ISIN…','pos.closed':'show closed positions',
+  'pos.note':"Holdings &amp; cost basis are always calculated over the <b>entire</b> history (FIFO) and only from executed transactions. The year, month and status filters above apply to transactions, the calendar and the overview's key figures and rankings.",
+  'pos.taxNote':'Fees and taxes are costs and are shown without a minus. A minus appears only where tax was <b>reimbursed</b>.',
+  'pos.cols':['Position','Shares','Cost basis','Last price','Value (est.)','Unrealized','Realized',
+    'Distributions','Fees','Taxes','Total return','Transactions'],
+  'pos.closedTag':' · closed','pos.orphanTag':'⚠ incomplete cost basis',
+  'det.back':'‹ back to positions','det.holding':'Holding','det.shares':n=>`${n} shares`,
+  'det.costOpen':'Cost basis (open)','det.avg':'Avg. cost per share','det.last':'Last price',
+  'det.value':'Value (estimated)','det.unreal':'Unrealized','det.real':'Realized (FIFO)',
+  'det.div':'Distributions','det.fees':'Fees','det.taxes':'Taxes','det.total':'Total return',
+  'det.first':'First transaction','det.all':n=>`All transactions (${n})`,'det.notes':'Notes &amp; screenshots',
+  'det.orphan':q=>`⚠ ${q} shares were sold without a matching purchase within the imported period. `,
+  'det.orphanOn':'Their proceeds are excluded via the “Cost basis” filter.',
+  'det.orphanOff':'The realized gain of these shares is therefore overstated.',
+  'tx.cols':['Date','Time','Status','Type','Description','Shares','Price','Amount','realized','Fee','Tax','Reference','Note'],
+  'tx.search':'Search…','tx.export':'Export CSV','tx.realized':'realized',
+  'tx.count':(n,s)=>`${n} transactions · realized result in this selection: ${s}`,
+  'tx.mark':(a,b)=>`${a} of ${b} shares without a matching purchase – `,
+  'tx.markOn':e=>`proceeds of ${e} are excluded.`,'tx.markOff':e=>`the gain is overstated by up to ${e}.`,
+  'cal.click':'Click a day for details','cal.win':'Gain day','cal.loss':'Loss day','cal.flat':'nothing realized',
+  'cal.legend':'The daily figure includes FIFO sale gains less taxes as well as net distributions.',
+  'cal.realized':'realized: ','cal.more':n=>`+${n} more`,'cal.year':y=>`Return ${y}`,
+  'cal.sales':n=>`${n} sales`,'cal.payments':n=>`${n} payments`,'cal.winloss':'Gain / loss days',
+  'cal.best':(d,e)=>`best day ${d}: ${e}`,'cal.worst':'Worst day',
+  'cal.day':(d,n,s)=>`${d} · ${n} transactions · realized ${s}`,
+  'cal.none':'No transactions on this day.','cal.dayNote':'Day note',
+  'cmt.delete':'delete','cmt.ph':'Write a note… paste a screenshot directly with Ctrl+V',
+  'cmt.pick':'📎 Choose image','cmt.save':'Save','cmt.saved':'Note saved.',
+  'cmt.touch':'Add screenshots from Photos or Files via <b>Choose image</b>. Images are downsized before being stored.',
+  'cmt.desktop':'Screenshot from the clipboard: click the text field and press <b>Ctrl+V</b>.',
+  'imp.upload':'Upload CSV','imp.pick':'Choose file',
+  'imp.drop':'or drag a CSV here · multiple files and partial exports are fine · duplicates are detected and skipped automatically',
+  'imp.dropTouch':'Multiple files and partial exports are fine · duplicates are detected and skipped automatically',
+  'imp.which':'Which statuses to import?',
+  'imp.whichNote':'Rows that are not selected are never stored in the first place. At Scalable, cancelled and pending orders carry no amounts – they only document the attempt. Rows already imported are kept; use “Remove cancelled” below to clean up.',
+  'imp.new':n=>`✔ ${n} new`,'imp.dup':n=>`${n} duplicates skipped`,'imp.upd':n=>`${n} updated`,
+  'imp.skip':n=>`${n} left out by the import filters`,'imp.bad':n=>`${n} unreadable rows`,
+  'imp.done':'Import complete.','imp.take':s=>'The import will now take: '+s,
+  'imp.takeNone':'No status selected – the import takes all rows again.',
+  'imp.whichType':'Which types to import?',
+  'imp.whichTypeNote':'Unticked types are never stored – useful for bookings that are of no interest in this depot, securities transfers say. A type that is not listed here yet is always imported, so nothing is dropped without a word. Already stored rows stay; “Remove type” below clears them out.',
+  'imp.skipTypes':s=>'The import will now leave out: '+s,
+  'imp.skipNone':'Every type is imported again.',
+  'data.title':'Stored data','data.save':'Save backup (JSON)','data.restore':'Restore backup',
+  'data.dropCancelled':'Remove cancelled','data.wipe':'Delete everything',
+  'data.dropType':'Remove type','data.typeSelNone':'no types stored',
+  'data.typeHint':'removes every stored transaction of that type, e.g. security transfers',
+  'data.typeNone':'No transactions of this type are stored.',
+  'data.typeGone':(n,ty)=>`${n} ${n===1?'transaction':'transactions'} of type “${ty}” removed.`,
+  'data.typeNotes':n=> n===1 ? ' One note belonging to it was removed as well.'
+    : ` ${n} notes belonging to them were removed as well.`,
+  'data.typeBack':'They come back if the same file is imported again.',
+  'data.note':'The backup contains transactions, comments and screenshots. Everything is stored in this browser (localStorage) – use a backup when moving to another device.',
+  'data.info':(a,b,c)=>`${a} transactions · ${b} commented objects · ${c} KB`,
+  'data.askDelete':'Sure? Tap again','data.askWipe':'Delete everything? Tap again',
+  'data.noCancelled':'No cancelled transactions are stored.',
+  'data.cancelledGone':n=>`${n} cancelled transactions removed.`,'data.wiped':'All data deleted.',
+  'data.emptyBackup':'This file contains no usable data.','data.restored':'Backup restored.',
+  'data.dropped':(a,b)=>`\n${a} transactions and ${b} note fields were discarded as unusable.`,
+  'data.badBackup':'Invalid backup file.',
+  'data.full':'⚠️ Browser storage is full. Please save a backup and remove screenshots – otherwise new entries will be lost on reload.',
+  'data.noStore':'<span class="neg">⚠ This browser is not storing anything right now.</span> Safari blocks storage when the file is opened directly from “Files” or a private window is active. The app works, but everything is gone after a reload. Please open the page via a web address (https://…).',
+  'data.noStoreToast':'⚠️ No storage available – data will be lost on reload. Details under “Import / Data”.',
+  'ver.title':'Version','ver.history':'Version history','ver.close':'Close','ver.current':'current',
+  'ver.now':(v,d)=>`Running version ${v} · ${d}`,
+  'ver.intro':'What each version of Depot Cockpit brought. Your stored data is never touched by an update.',
+  'tax.back':'Reimbursement – this amount was paid back.',
+  'sw.update':'A new version has been loaded. It becomes active once the app has been fully closed and reopened.',
+  'intro.ok':'Got it',
+  'intro.body':`
+  <h3>What it is for</h3>
+  <p>A private cockpit for your securities portfolio: positions, realized gains by FIFO,
+    distributions, fees and taxes – as an overview, a table and a calendar.
+    No prices are fetched from the internet; everything is calculated purely from what you import.</p>
+
+  <h3>What you need</h3>
+  <p>The transaction export from Scalable Capital as a CSV file.<br>
+    In the broker under <b>Account → Transactions → Export</b>, pick a period and save the file.</p>
+  <p class="small">Multiple files and partial periods are no problem: the app detects duplicate rows
+    itself and skips them. Import under <b>Import / Data</b>.</p>
+
+  <h3>As an app on your iPhone</h3>
+  <ol>
+    <li>Open this page in <b>Safari</b> (Chrome cannot do it).</li>
+    <li>Let it load completely once, while you have internet.</li>
+    <li>Share icon → <b>Add to Home Screen</b>.</li>
+    <li>From then on it starts like an app – even in airplane mode.</li>
+  </ol>
+
+  <h3>Your data stays here</h3>
+  <p>The app sends no financial data. Everything lives in this browser's storage, on this device.
+    There is no server, no account, no background analysis.</p>
+  <p>Nothing leaves unless you trigger it yourself – a CSV export or a backup via the share menu.</p>
+  <p class="small"><b>Important:</b> browser storage is not permanent. Save a backup regularly
+    under <b>Import / Data → Save backup (JSON)</b>.</p>`
+},
+de:{
+  'hdr.notes':'Hinweise','hdr.lang':'Sprache','hdr.numfmt':'Zahlenformat','hdr.filtersBtn':'Filter ▾',
+  'nav.dash':'Übersicht','nav.pos':'Positionen','nav.tx':'Transaktionen','nav.cal':'Kalender','nav.imp':'Import / Daten',
+  mon:['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'],
+  dow:['Mo','Di','Mi','Do','Fr','Sa','So'],
+  locale:'de-DE',
+  type:{Buy:'Kauf',Sell:'Verkauf','Savings plan':'Sparplan',Distribution:'Ausschüttung',
+    Deposit:'Einzahlung',Withdrawal:'Auszahlung','Cash Transfer In':'Übertrag ein','Cash Transfer Out':'Übertrag aus',
+    Taxes:'Steuern','Corporate action':'Kapitalmaßnahme','Security transfer':'Depotübertrag'},
+  'st.Executed':'ausgeführt','st.Pending':'offen','st.Cancelled':'abgebrochen',
+  'f.allYears':'Alle Jahre','f.allMonths':'Alle Monate','f.all':'alle','f.execOnly':'nur ausgeführt',
+  'f.allStatus':'alle Status ▾','f.nStatus':n=>`${n} Status ▾`,
+  'f.allTypes':'alle Typen ▾','f.nTypes':n=>`${n} Typen ▾`,
+  'f.cost':'Einstand ▾','f.costPro':'⚠ anteilig ▾','f.costN':n=>`⚠ ${n} ohne Einstand ▾`,
+  'f.costOpt':'Verkäufe ohne passenden Kauf anteilig herausrechnen',
+  'f.costHint':'Für verkaufte Stücke ohne Kaufbeleg ist kein Einstand bekannt, ihr Erlös zählt sonst in voller Höhe als Gewinn. Aktiv zählt nur der Erlös der belegten Stücke; Gebühren und Steuern bleiben ungekürzt.',
+  'dash.rank':'Ertrag pro Position','dash.loss':'Verluste pro Position','dash.cash':'Cashflow pro Monat',
+  'dash.rankScope':p=>`(realisiert + Ausschüttungen − Gebühren − Steuern, ${p})`,
+  'dash.lossScope':p=>`(nur Positionen mit negativem Ertrag, ${p})`,
+  'per.filter':' (Filter)','per.all':'gesamter Zeitraum','per.monthAll':m=>`${m}, alle Jahre`,
+  'scope.sel':'gewählter Zeitraum','scope.hist':'gesamte Historie',
+  'kpi.value':'Depotwert (geschätzt)','kpi.valueHint':'letzter bekannter Kurs',
+  'kpi.total':'Ertrag gesamt','kpi.totalHint':'realisiert + Ausschüttungen − Kosten',
+  'kpi.real':'Realisiert (FIFO)','kpi.div':'Ausschüttungen','kpi.buys':'Käufe','kpi.sells':'Verkäufe',
+  'kpi.tx':n=>`${n} Vorgänge`,'kpi.feetax':'Gebühren / Steuern',
+  'kpi.feetaxHint':'Kosten · ein Minus ist eine Erstattung','kpi.cash':'Ein-/Auszahlungen',
+  'orph.one':'Ein Verkauf','orph.many':n=>`${n} Verkäufe`,
+  'orph.on':(w,e)=>`⚠ ${w} ohne passenden Kauf: ${e} Erlös ist herausgerechnet.`,
+  'orph.off':(w,e,one)=>`⚠ ${w} ohne passenden Kauf ${one?'erhöht':'erhöhen'} das Ergebnis um bis zu ${e}. `+
+    `Filter „Einstand“ oben rechnet ${one?'ihn':'sie'} heraus.`,
+  'dash.noneFiltered':'Keine Vorgänge im gewählten Zeitraum.','dash.noneYet':'Noch keine Daten.',
+  'm.head':['Monat','Vorgänge','Käufe','Verkäufe','Ausschüttungen','Gebühren','Steuern','realisiert'],
+  'pos.search':'Suche Name / ISIN…','pos.closed':'geschlossene Positionen zeigen',
+  'pos.note':'Bestand &amp; Einstand werden immer über die <b>gesamte</b> Historie berechnet (FIFO) und nur aus ausgeführten Vorgängen. Jahr-, Monats- und Statusfilter oben wirken auf Transaktionen, Kalender sowie Kennzahlen und Ranglisten der Übersicht.',
+  'pos.taxNote':'Gebühren und Steuern sind Kosten und werden ohne Minus angezeigt. Ein Minus erscheint nur dort, wo Steuern <b>erstattet</b> wurden.',
+  'pos.cols':['Position','Stück','Einstand','letzter Kurs','Wert (gesch.)','unrealisiert','realisiert',
+    'Ausschüttung','Gebühren','Steuern','Ertrag gesamt','Vorgänge'],
+  'pos.closedTag':' · geschlossen','pos.orphanTag':'⚠ Einstand unvollständig',
+  'det.back':'‹ zurück zu den Positionen','det.holding':'Bestand','det.shares':n=>`${n} Stück`,
+  'det.costOpen':'Einstand (offen)','det.avg':'Ø Einstandskurs','det.last':'Letzter Kurs',
+  'det.value':'Wert (geschätzt)','det.unreal':'Unrealisiert','det.real':'Realisiert (FIFO)',
+  'det.div':'Ausschüttungen','det.fees':'Gebühren','det.taxes':'Steuern','det.total':'Ertrag gesamt',
+  'det.first':'Erster Vorgang','det.all':n=>`Alle Vorgänge (${n})`,'det.notes':'Notizen &amp; Screenshots',
+  'det.orphan':q=>`⚠ ${q} Stück wurden verkauft, ohne dass ein passender Kauf im importierten Zeitraum liegt. `,
+  'det.orphanOn':'Ihr Erlös ist über den Filter „Einstand“ herausgerechnet.',
+  'det.orphanOff':'Der realisierte Gewinn dieser Stücke ist dadurch zu hoch ausgewiesen.',
+  'tx.cols':['Datum','Zeit','Status','Typ','Bezeichnung','Stück','Kurs','Betrag','realisiert','Geb.','Steuer','Referenz','Notiz'],
+  'tx.search':'Suche…','tx.export':'CSV exportieren','tx.realized':'realisiert',
+  'tx.count':(n,s)=>`${n} Vorgänge · realisiertes Ergebnis in der Auswahl: ${s}`,
+  'tx.mark':(a,b)=>`${a} von ${b} Stück ohne passenden Kauf – `,
+  'tx.markOn':e=>`Erlös von ${e} ist herausgerechnet.`,'tx.markOff':e=>`der Gewinn ist um bis zu ${e} zu hoch.`,
+  'cal.click':'Tag anklicken für Details','cal.win':'Gewinntag','cal.loss':'Verlusttag','cal.flat':'ohne Realisierung',
+  'cal.legend':'Der Tageswert enthält FIFO-Verkaufsgewinne abzüglich Steuern sowie Netto-Ausschüttungen.',
+  'cal.realized':'realisiert: ','cal.more':n=>`+${n} weitere`,'cal.year':y=>`Ertrag ${y}`,
+  'cal.sales':n=>`${n} Verkäufe`,'cal.payments':n=>`${n} Zahlungen`,'cal.winloss':'Gewinn- / Verlusttage',
+  'cal.best':(d,e)=>`bester Tag ${d}: ${e}`,'cal.worst':'Schlechtester Tag',
+  'cal.day':(d,n,s)=>`${d} · ${n} Vorgänge · realisiert ${s}`,
+  'cal.none':'Keine Vorgänge an diesem Tag.','cal.dayNote':'Tagesnotiz',
+  'cmt.delete':'löschen','cmt.ph':'Notiz schreiben… Screenshot mit Strg+V direkt einfügen',
+  'cmt.pick':'📎 Bild wählen','cmt.save':'Speichern','cmt.saved':'Notiz gespeichert.',
+  'cmt.touch':'Screenshots über <b>Bild wählen</b> aus Fotos oder Dateien hinzufügen. Bilder werden vor dem Speichern verkleinert.',
+  'cmt.desktop':'Screenshot aus der Zwischenablage: Textfeld anklicken und <b>Strg+V</b> drücken.',
+  'imp.upload':'CSV hochladen','imp.pick':'Datei wählen',
+  'imp.drop':'oder CSV hierher ziehen · mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen',
+  'imp.dropTouch':'Mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen',
+  'imp.which':'Welche Status übernehmen?',
+  'imp.whichNote':'Nicht gewählte Zeilen werden gar nicht erst gespeichert. Abgebrochene und offene Orders enthalten bei Scalable keine Beträge – sie dokumentieren nur den Versuch. Bereits importierte Zeilen bleiben erhalten; zum Aufräumen unten „Abgebrochene entfernen“ nutzen.',
+  'imp.new':n=>`✔ ${n} neu`,'imp.dup':n=>`${n} Duplikate übersprungen`,'imp.upd':n=>`${n} aktualisiert`,
+  'imp.skip':n=>`${n} per Importfilter ausgelassen`,'imp.bad':n=>`${n} Zeilen unlesbar`,
+  'imp.done':'Import abgeschlossen.','imp.take':s=>'Import übernimmt künftig: '+s,
+  'imp.takeNone':'Kein Status gewählt – der Import übernimmt wieder alle Zeilen.',
+  'imp.whichType':'Welche Typen übernehmen?',
+  'imp.whichTypeNote':'Nicht angehakte Typen werden gar nicht erst gespeichert – praktisch für Buchungen, die in diesem Depot nicht interessieren, etwa Depotüberträge. Ein hier noch nicht aufgeführter Typ wird immer übernommen, damit nichts stillschweigend verloren geht. Bereits gespeicherte Zeilen bleiben; „Typ entfernen“ unten räumt sie weg.',
+  'imp.skipTypes':s=>'Der Import lässt künftig aus: '+s,
+  'imp.skipNone':'Alle Typen werden wieder übernommen.',
+  'data.title':'Gespeicherte Daten','data.save':'Backup (JSON) sichern','data.restore':'Backup einspielen',
+  'data.dropCancelled':'Abgebrochene entfernen','data.wipe':'Alles löschen',
+  'data.dropType':'Typ entfernen','data.typeSelNone':'keine Typen gespeichert',
+  'data.typeHint':'entfernt alle gespeicherten Vorgänge dieses Typs, etwa Depotüberträge',
+  'data.typeNone':'Es sind keine Vorgänge dieses Typs gespeichert.',
+  'data.typeGone':(n,ty)=>`${n} ${n===1?'Vorgang':'Vorgänge'} vom Typ „${ty}“ entfernt.`,
+  'data.typeNotes':n=>` ${n===1?'Eine zugehörige Notiz wurde':n+' zugehörige Notizen wurden'} mit entfernt.`,
+  'data.typeBack':'Beim erneuten Import derselben Datei kommen sie zurück.',
+  'data.note':'Backup enthält Transaktionen, Kommentare und Screenshots. Speicherort ist der Browser (localStorage) – für einen Gerätewechsel bitte Backup nutzen.',
+  'data.info':(a,b,c)=>`${a} Transaktionen · ${b} kommentierte Objekte · ${c} KB`,
+  'data.askDelete':'Sicher? Nochmal tippen','data.askWipe':'Alles löschen? Nochmal tippen',
+  'data.noCancelled':'Es sind keine abgebrochenen Vorgänge gespeichert.',
+  'data.cancelledGone':n=>`${n} abgebrochene Vorgänge entfernt.`,'data.wiped':'Alle Daten gelöscht.',
+  'data.emptyBackup':'In dieser Datei stehen keine verwertbaren Daten.','data.restored':'Backup eingespielt.',
+  'data.dropped':(a,b)=>`\n${a} Vorgänge und ${b} Notizfelder wurden dabei als unbrauchbar verworfen.`,
+  'data.badBackup':'Ungültige Backup-Datei.',
+  'data.full':'⚠️ Der Browserspeicher ist voll. Bitte ein Backup sichern und Screenshots entfernen – neue Eingaben gehen sonst beim Neuladen verloren.',
+  'data.noStore':'<span class="neg">⚠ Dieser Browser speichert gerade nichts.</span> Safari sperrt den Speicher, wenn die Datei direkt aus „Dateien“ geöffnet wird oder ein privates Fenster aktiv ist. Die App funktioniert, aber alles ist nach dem Neuladen weg. Bitte die Seite über eine Web-Adresse (https://…) öffnen.',
+  'data.noStoreToast':'⚠️ Kein Speicher verfügbar – Daten gehen beim Neuladen verloren. Details unter „Import / Daten“.',
+  'ver.title':'Version','ver.history':'Versionsverlauf','ver.close':'Schließen','ver.current':'aktuell',
+  'ver.now':(v,d)=>`Laufende Version ${v} · ${d}`,
+  'ver.intro':'Was jede Version von Depot Cockpit gebracht hat. Deine gespeicherten Daten bleiben von einer Aktualisierung unberührt.',
+  'tax.back':'Erstattung – dieser Betrag wurde zurückgezahlt.',
+  'sw.update':'Eine neue Version wurde geladen. Sie wird aktiv, sobald die App einmal vollständig geschlossen und wieder geöffnet wurde.',
+  'intro.ok':'Verstanden',
+  'intro.body':`
   <h3>Wozu</h3>
   <p>Ein privates Cockpit für dein Wertpapierdepot: Positionen, realisierte Gewinne nach FIFO,
     Ausschüttungen, Gebühren und Steuern – als Übersicht, Tabelle und Kalender.
@@ -338,60 +736,30 @@ textarea{width:100%;min-height:70px;resize:vertical}
     Es gibt keinen Server, kein Konto, keine Auswertung im Hintergrund.</p>
   <p>Nach außen geht etwas nur, wenn du es selbst auslöst – CSV-Export oder Backup über das Teilen-Menü.</p>
   <p class="small"><b>Wichtig:</b> Der Browserspeicher ist nicht dauerhaft. Sichere regelmäßig ein Backup
-    unter <b>Import / Daten → Backup (JSON) sichern</b>.</p>
-
-  <button class="btn pri" id="introOk">Verstanden</button>
-</div></div>
-
-<div id="lightbox"><img alt=""></div>
-<div class="toast" id="toast"></div>
-
-<script>
-/* ============================ Speicher ============================ */
-/* Safari sperrt localStorage bei file://-Aufruf und im privaten Modus komplett ab.
-   Ohne diesen Wrapper würde die erste Zeile eine Ausnahme werfen und die App bliebe leer.
-   Fällt der Speicher aus, läuft alles im Arbeitsspeicher weiter – nur eben ohne Sicherung. */
-const LS = (()=>{
-  const mem={}; let ok=false;
-  try{ localStorage.setItem('dc_probe','1'); localStorage.removeItem('dc_probe'); ok=true; }catch(e){}
-  return {
-    ok,
-    get(k){ if(ok){ try{ return localStorage.getItem(k); }catch(e){} } return k in mem ? mem[k] : null; },
-    set(k,v){ mem[k]=v; if(ok) localStorage.setItem(k,v); }   // Quota-Fehler bewusst weiterreichen
-  };
-})();
-const readJSON=(k)=>{ try{ return JSON.parse(LS.get(k) || '{}'); }catch(e){ return {}; } };
-const DB = { tx: readJSON('dc_tx'), cmt: readJSON('dc_cmt') };
-/* Safari darf gespeicherte Daten nach längerer Nichtnutzung löschen – hier bitten wir um dauerhaften Speicher */
-if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
-/* Einstellungen: Zahlenformat, Status-Filter (Ansicht) und Status-Filter (Import) */
-const UI = Object.assign({
-  numfmt:'apo',
-  seenIntro:0,
-  status:['Executed'],
-  type:[],
-  hideOrphan:0,
-  impStatus:['Executed','Pending','Cancelled']
-}, readJSON('dc_ui'));
-const saveUI = () => { try{ LS.set('dc_ui', JSON.stringify(UI)); }catch(e){} };
+    unter <b>Import / Daten → Backup (JSON) sichern</b>.</p>`
+}};
+/* Fall back to English for anything a translation is missing */
+const tv = k => { const v=(L[UI.lang]||L.en)[k]; return v===undefined ? L.en[k] : v; };
+const t  = (k,...a) => { const v=tv(k); return typeof v==='function' ? v(...a) : (v===undefined ? k : v); };
+const MON = () => tv('mon');
 const save = () => {
   try{
     LS.set('dc_tx',  JSON.stringify(DB.tx));
     LS.set('dc_cmt', JSON.stringify(DB.cmt));
-  }catch(e){ toast('⚠️ Der Browserspeicher ist voll. Bitte ein Backup sichern und Screenshots entfernen – neue Eingaben gehen sonst beim Neuladen verloren.'); }
+  }catch(e){ toast(t('data.full')); }
 };
-function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',5000);}
+function toast(m){const el=document.getElementById('toast');el.textContent=m;el.style.display='block';clearTimeout(el._t);el._t=setTimeout(()=>el.style.display='none',5000);}
 
-/* Zeigegerät ohne Maus – bestimmt Hinweistexte (kein Drag & Drop, kein Strg+V auf dem iPhone) */
+/* Pointing device without a mouse – drives the hint texts (no drag & drop, no Ctrl+V on the iPhone) */
 const TOUCH = window.matchMedia && matchMedia('(hover:none) and (pointer:coarse)').matches;
 
-/* Heutiges Datum in lokaler Zeit – toISOString() rechnet nach UTC und markiert abends den falschen Tag */
+/* Today's date in local time – toISOString() converts to UTC and marks the wrong day in the evening */
 function isoToday(d=new Date()){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-/* Fotos vom iPhone sind mehrere MB groß, der Browserspeicher fasst rund 5 MB.
-   Deshalb werden Bilder vor dem Speichern verkleinert. */
+/* Photos from the iPhone are several MB in size, browser storage holds about 5 MB.
+   Images are therefore downsized before being stored. */
 const shrinkImage = (dataURL, max=1400, q=.72) => new Promise(res=>{
   const img=new Image();
   img.onload=()=>{
@@ -410,8 +778,8 @@ const shrinkImage = (dataURL, max=1400, q=.72) => new Promise(res=>{
   img.src=dataURL;
 });
 
-/* Datei ausgeben. Auf dem iPhone öffnet das Download-Attribut oft nur eine leere Seite,
-   deshalb zuerst das Teilen-Menü von iOS anbieten. */
+/* Hand out a file. On the iPhone the download attribute often just opens a blank page,
+   so offer the iOS share sheet first. */
 async function saveFile(name, text, mime){
   const blob=new Blob([text],{type:mime});
   try{
@@ -428,10 +796,10 @@ async function saveFile(name, text, mime){
 }
 
 /* ============================ Parser ============================ */
-/* Zahlen einlesen. Die Datei bestimmt ihr eigenes Format – deutsch (1.234,56) genauso wie
-   1,234.56 · 1'234.56 · 1234.56 –, damit auch ein hier exportiertes CSV wieder eingelesen werden kann.
-   fileDec ist das für die ganze Datei erkannte Dezimaltrennzeichen; nur so bleibt ein Wert
-   wie "11.838" eindeutig (deutsch = 11838, sonst = 11,838). */
+/* Reading numbers. The file determines its own format – German (1.234,56) as well as
+   1,234.56 · 1'234.56 · 1234.56 – so that a CSV exported here can be read back in.
+   fileDec is the decimal separator detected for the whole file; only that keeps a value
+   like "11.838" unambiguous (German = 11838, otherwise = 11.838). */
 const GRP_C=/^-?[1-9]\d{0,2}(,\d{3})+$/, GRP_D=/^-?[1-9]\d{0,2}(\.\d{3})+$/;
 function detectDec(cells){
   let de=0, en=0;
@@ -466,11 +834,11 @@ function num(s, fileDec){
 }
 const COLS = ['date','time','status','reference','description','assetType','type','isin','shares','price','amount','fee','tax','currency'];
 
-/* Kennung einer Zeile – bewusst über den geparsten Betrag, damit dieselbe Buchung
-   in deutscher und in exportierter Schreibweise als Duplikat erkannt wird. */
+/* Identity of a row – deliberately built from the parsed amount, so the same booking
+   is recognised as a duplicate in both German and exported notation. */
 const txId = r => [r.reference,r.date,r.time,r.assetType,r.type,r.isin,
                    (Number(r.amountN)||0).toFixed(6)].join('|');
-/* Altbestand (Kennung enthielt den Rohtext des Betrags) einmalig umschlüsseln, Notizen mitnehmen */
+/* Re-key legacy records once (their id contained the raw text of the amount), carrying notes along */
 function migrateIds(){
   const map={}, nt={}; let changed=0;
   Object.entries(DB.tx).forEach(([k,r])=>{
@@ -486,13 +854,22 @@ function migrateIds(){
   DB.cmt=nc; save();
 }
 
-/* Vor dieser Vorzeichen-Regel gespeicherte Zeilen nachziehen: negative Gebühren und
-   Steuern wurden früher vom Ergebnis abgezogen und damit als Ertrag gezählt. */
+/* Bring rows stored before this sign rule into line: negative fees and taxes used to be
+   subtracted from the result and thereby counted as return.
+   Decided per column and by majority, not per row: a column written as a deduction
+   throughout is flipped as a whole, while a single negative value among positive ones is
+   a reimbursement and keeps its sign. Flipping those too would turn money paid back into
+   another cost. Once a column is positive the pass is a no-op, so it may run on every start. */
+function majorityNegative(values){
+  let neg=0, pos=0;
+  values.forEach(v=>{ if(v<-1e-9) neg++; else if(v>1e-9) pos++; });
+  return neg>pos;
+}
 function migrateSigns(){
-  let changed=0;
-  Object.values(DB.tx).forEach(r=>{
-    if(r.feeN<0){ r.feeN=-r.feeN; changed++; }
-    if(r.taxN<0){ r.taxN=-r.taxN; changed++; }
+  const rows=Object.values(DB.tx); let changed=0;
+  ['feeN','taxN'].forEach(k=>{
+    if(!majorityNegative(rows.map(r=>+r[k]||0))) return;
+    rows.forEach(r=>{ if(+r[k]){ r[k]=-r[k]; changed++; } });
   });
   if(changed) save();
 }
@@ -510,14 +887,17 @@ function parseCSV(text){
     recs.push(r);
   });
   const dec = detectDec(recs.flatMap(r=>[r.shares,r.price,r.amount,r.fee,r.tax]));
-  /* Gebühren und Steuern sind intern immer positive Kosten. Manche Exporte schreiben den
-     Abzug jedoch als negative Buchung (-8,94). Enthält eine Spalte negative Werte, folgt
-     die Datei dieser Schreibweise und wird spaltenweise umgedreht – das Vorzeichen bleibt
-     dabei erhalten, eine Erstattung wird also zur Gutschrift statt zu weiteren Kosten. */
-  const flipFee = recs.some(r=>num(r.fee,dec)<0), flipTax = recs.some(r=>num(r.tax,dec)<0);
-  recs.forEach(r=>{
+  /* Internally fees and taxes are always positive costs. Some exports, however, write the
+     deduction as a negative booking (-8.94). Which notation a file uses is decided by the
+     majority of the column: only when most of its values are negative is the column flipped
+     as a whole. A lone negative value among positive ones is a reimbursement instead and
+     keeps its sign – otherwise a single refunded tax would flip every ordinary tax of the
+     file into a minus. */
+  const feeV=recs.map(r=>num(r.fee,dec)), taxV=recs.map(r=>num(r.tax,dec));
+  const flipFee = majorityNegative(feeV), flipTax = majorityNegative(taxV);
+  recs.forEach((r,i)=>{
     r.sharesN=num(r.shares,dec); r.priceN=num(r.price,dec); r.amountN=num(r.amount,dec);
-    r.feeN=num(r.fee,dec)*(flipFee?-1:1); r.taxN=num(r.tax,dec)*(flipTax?-1:1);
+    r.feeN=feeV[i]*(flipFee?-1:1); r.taxN=taxV[i]*(flipTax?-1:1);
     r.dt = r.date+' '+(r.time||'00:00:00');
     r.id = txId(r);
     out.push(r);
@@ -529,6 +909,10 @@ function importRows(rows){
   let neu=0,dup=0,upd=0,skip=0;
   rows.forEach(r=>{
     if(UI.impStatus.length && !UI.impStatus.includes(r.status)){ skip++; return; }
+    /* Kept as a list of what to leave out, not of what to take: a type that
+       turns up in a later export without being known here is imported rather
+       than dropped without a word. */
+    if(UI.impSkipType.includes(r.type)){ skip++; return; }
     const ex = DB.tx[r.id];
     if(!ex) { DB.tx[r.id]=r; neu++; }
     else if(JSON.stringify(ex)!==JSON.stringify(r)) { DB.tx[r.id]={...ex,...r}; upd++; }
@@ -538,15 +922,15 @@ function importRows(rows){
   return {neu,dup,upd,skip};
 }
 
-/* ============================ Ableitungen ============================ */
+/* ============================ Derived data ============================ */
 const all = () => Object.values(DB.tx).sort((a,b)=> a.dt<b.dt?1:a.dt>b.dt?-1:0);
 const F = {year:'', month:''};
 const ST_KNOWN=['Executed','Pending','Cancelled'];
-const ST_LABEL={Executed:'ausgeführt',Pending:'offen',Cancelled:'abgebrochen'};
+const stLabel=s=> tv('st.'+s)!==undefined ? t('st.'+s) : '';
 const stList=()=> [...new Set(ST_KNOWN.concat(Object.values(DB.tx).map(r=>r.status).filter(Boolean)))];
 const typeList=()=> [...new Set(Object.values(DB.tx).map(r=>r.type).filter(Boolean))]
-  .sort((a,b)=> (TYPE_MAP[a]?TYPE_MAP[a][0]:a).localeCompare(TYPE_MAP[b]?TYPE_MAP[b][0]:b,'de'));
-/* leere Auswahl = keine Einschränkung, damit die Ansicht nie ohne Grund leer bleibt */
+  .sort((a,b)=> typeName(a).localeCompare(typeName(b), UI.lang));
+/* empty selection = no restriction, so the view never stays empty without reason */
 const statusOK = r => !UI.status.length || UI.status.includes(r.status);
 const typeOK   = r => !UI.type.length || UI.type.includes(r.type);
 function filtered(){
@@ -561,14 +945,14 @@ const isSell = r => r.assetType==='Security' && r.type==='Sell';
 const isDiv  = r => r.type==='Distribution' && r.isin;
 const isCash = r => r.assetType==='Cash' && !r.isin;
 
-/* Realisiertes Ergebnis je Transaktion (RPL, netto) und je Tag (RPD) – gefüllt von positions().
-   RGR hält denselben Vorgang brutto, also vor Gebühren und Steuern – das ist die Größe,
-   die auf der Übersicht als „Realisiert (FIFO)" ausgewiesen wird.
-   ROR hält je Verkauf die Stückzahl, für die kein passender Kauf gefunden wurde. */
+/* Realized result per transaction (RPL, net) and per day (RPD) – filled by positions().
+   RGR holds the same transaction gross, i.e. before fees and taxes – that is the figure
+   reported on the overview as “Realized (FIFO)”.
+   ROR holds, per sale, the number of shares for which no matching purchase was found. */
 let RPL={}, RPD={}, RGR={}, ROR={};
 
-/* Erlös, der auf Stücke ohne Kaufbeleg entfällt – die Größe, die UI.hideOrphan herausrechnet.
-   Nur für Hinweistexte; die Berechnung selbst steckt in positions(). */
+/* Proceeds attributable to shares without a purchase record – the figure UI.hideOrphan excludes.
+   For hint texts only; the calculation itself lives in positions(). */
 const orphanCut = r => (ROR[r.id] && r.sharesN>1e-9)
   ? Math.abs(r.amountN)*Math.min(1, ROR[r.id]/r.sharesN) : 0;
 
@@ -597,10 +981,10 @@ function positions(){
         if(l.sh<=1e-9) p.lots.shift();
       }
       if(rest>1e-9){ p.orphan+=rest; ROR[r.id]=rest; }
-      /* Für Stücke ohne passenden Kauf ist kein Einstand bekannt – ihr Erlös wäre in voller
-         Höhe Gewinn. Ist UI.hideOrphan gesetzt, zählt nur der Erlös der belegten Stücke;
-         ein Verkauf ganz ohne Kauf fällt damit komplett heraus. Gebühren und Steuern bleiben
-         ungekürzt, sie wurden unabhängig davon tatsächlich gezahlt. */
+      /* For shares without a matching purchase no cost basis is known – their proceeds would
+         count as gain in full. If UI.hideOrphan is set, only the proceeds of covered shares
+         count; a sale with no purchase at all thus drops out entirely. Fees and taxes are not
+         reduced, they were actually paid regardless. */
       const covered = (UI.hideOrphan && rest>1e-9) ? Math.max(0,(r.sharesN-rest)/r.sharesN) : 1;
       const proceeds = Math.abs(r.amountN)*covered;
       const gain = proceeds - basis - r.taxN - r.feeN;
@@ -617,20 +1001,20 @@ function positions(){
       RPL[r.id]=net; RPD[r.date]=(RPD[r.date]||0)+net;
 
     } else if(r.type==='Corporate action' || r.type==='Security transfer'){
-      /* Beide Arten buchen Stücke ein oder aus, ohne dass ein Kauf dahintersteht.
-         Ohne eigenen Bestandsposten fände ein späterer Verkauf keinen Einstand und
-         wiese den vollen Erlös als Gewinn aus. */
+      /* Both kinds book shares in or out without a purchase behind them.
+         Without their own holding lot a later sale would find no cost basis and
+         would report the full proceeds as gain. */
       if(r.sharesN>1e-9){
-        /* Einstand ist das, was die Einbuchung wert war: bei Gratisstücken aus einer
-           Kapitalmaßnahme null, bei einem Depotübertrag der mitgelieferte Gegenwert.
-           Was beim alten Broker gezahlt wurde, steht im Export nicht. */
+        /* The cost basis is what the incoming booking was worth: zero for free shares from a
+           corporate action, the supplied counter value for a securities transfer.
+           What was paid at the old broker is not in the export. */
         const val = Math.abs(r.amountN) || (r.type==='Security transfer' ? Math.abs(r.priceN)*r.sharesN : 0);
         p.lots.push({sh:r.sharesN, pps: val/r.sharesN});
         p.shares+=r.sharesN;
         p.cost=p.lots.reduce((s,l)=>s+l.sh*l.pps,0);
 
       } else if(r.sharesN<-1e-9){
-        /* Ausbuchung – Bestand nach FIFO abbauen, ohne ein Ergebnis zu realisieren */
+        /* Outgoing booking – reduce the holding by FIFO without realizing a result */
         let rest=-r.sharesN;
         while(rest>1e-9 && p.lots.length){
           const l=p.lots[0], take=Math.min(l.sh,rest);
@@ -641,7 +1025,7 @@ function positions(){
         p.cost=p.lots.reduce((s,l)=>s+l.sh*l.pps,0);
 
       } else if(r.amountN){
-        /* Reine Geldbuchung ohne Stücke, etwa eine Abfindung */
+        /* Pure cash booking without shares, e.g. a settlement payment */
         p.realized+=r.amountN;
         RGR[r.id]=r.amountN;
         RPL[r.id]=r.amountN; RPD[r.date]=(RPD[r.date]||0)+r.amountN;
@@ -659,12 +1043,12 @@ function positions(){
   return Object.values(P).sort((a,b)=> b.total-a.total);
 }
 
-/* Ertrag je Position für einen Ausschnitt der Vorgänge (Jahr-/Monatsfilter der Übersicht).
-   Gezählt werden nur die Vorgänge im Fenster; der FIFO-Einstand steckt bereits in RGR und
-   stammt weiterhin aus der gesamten Historie, sonst wären Verkäufe ohne zugehörigen Kauf
-   im Fenster falsch. Die Summanden sind dieselben wie bei p.total in positions(),
-   deshalb ergibt sich ohne Filter genau die bisherige Rangliste.
-   Nicht ausgeführte Zeilen bleiben außen vor – sie haben kein realisiertes Ergebnis. */
+/* Return per position for a slice of the transactions (the overview's year/month filter).
+   Only the transactions inside the window are counted; the FIFO cost basis already sits in
+   RGR and still comes from the entire history, otherwise sales without a matching purchase
+   inside the window would be wrong. The summands are the same as for p.total in positions(),
+   so without a filter this yields exactly the previous ranking.
+   Rows that were not executed stay out – they have no realized result. */
 function rankByPeriod(rows, P){
   const names={}; (P||[]).forEach(p=> names[p.isin]=p.name);
   const R={};
@@ -673,16 +1057,16 @@ function rankByPeriod(rows, P){
     const e = R[r.isin] || (R[r.isin]={isin:r.isin, name:names[r.isin]||r.description||'', total:0, n:0});
     e.n++;
     if(!e.name && r.description) e.name=r.description;
-    e.total += (RGR[r.id]||0);                       // realisiert (FIFO, brutto) bzw. Kapitalmaßnahme
-    if(isDiv(r))       e.total += r.amountN - r.taxN; // Ausschüttung abzüglich Quellensteuer
+    e.total += (RGR[r.id]||0);                       // realized (FIFO, gross) or corporate action
+    if(isDiv(r))       e.total += r.amountN - r.taxN; // distribution less withholding tax
     else if(isSell(r)) e.total -= r.feeN + r.taxN;
     else if(isBuy(r))  e.total -= r.feeN;
   });
   return Object.values(R).sort((a,b)=> b.total-a.total);
 }
 
-/* ============================ Formatierung ============================ */
-/* Zahlenformate – Dezimaltrennzeichen ist überall der Punkt, Tausender wählbar */
+/* ============================ Formatting ============================ */
+/* Number formats – the decimal separator is the dot throughout, thousands separator selectable */
 const NUMFMT={
   apo  :{grp:"'", dec:'.', label:"1'234.56"},
   comma:{grp:',', dec:'.', label:"1,234.56"},
@@ -698,64 +1082,98 @@ function fmt(n,d=2){
   if(f.grp) i=i.replace(/\B(?=(\d{3})+(?!\d))/g, f.grp);
   return (neg?'-':'')+i+(fr?f.dec+fr:'');
 }
-/* Stückzahl ohne überflüssige Nullen. Bruchstücke entstehen hier aus Subtraktionen,
-   deshalb wird die nötige Stellenzahl mit Toleranz ermittelt statt aus dem Rohtext. */
+/* Share count without superfluous zeros. Fractions arise here from subtractions,
+   so the required number of digits is determined with a tolerance rather than from the raw text. */
 function qty(n){
   let d=0;
   while(d<6 && Math.abs(n*10**d - Math.round(n*10**d))>1e-6) d++;
   return fmt(n,d);
 }
-/* Rohwert für Exporte: immer Punkt als Dezimaltrennzeichen, kein Tausendertrennzeichen */
+/* Raw value for exports: always a dot as the decimal separator, no thousands separator */
 const raw=n=> (n===null||n===undefined||!isFinite(n)) ? '' : String(n);
 const eur=n=> fmt(n)+' €';
 const sign=n=> `<span class="${n>0.004?'pos':n<-0.004?'neg':'mut'}">${n>0.004?'+':''}${eur(n)}</span>`;
-const de=d=> d? d.split('-').reverse().join('.') : '';
+/* Taxes and fees are costs, so they are shown without a minus: the label already says
+   what the figure is. A minus is therefore left over for the one case where it carries
+   information – tax paid back – and that case is marked as a credit. */
+const cost=n=> n<-0.004 ? `<span class="pos" title="${esc(t('tax.back'))}">${eur(n)}</span>` : eur(Math.abs(n));
+/* Date display: the raw values are already in yyyy-mm-dd form, German writes dd.mm.yyyy */
+const dt=d=> !d ? '' : (UI.lang==='de' ? d.split('-').reverse().join('.') : d);
 const esc=s=> String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-/* Wert, der in einem onclick-Attribut als JS-Zeichenkette landet: erst für
-   JavaScript entschärfen, dann für HTML. Ein Feld aus einer fremden CSV
-   (etwa eine ISIN mit Anführungszeichen) kann so nicht mehr ausbrechen. */
+/* A value that ends up as a JS string inside an onclick attribute: neutralise it for
+   JavaScript first, then for HTML. A field from a foreign CSV (an ISIN containing
+   quotes, say) can no longer break out this way. */
 const js=s=> esc(String(s??'').replace(/[\\'"]/g,'\\$&').replace(/\r?\n/g,'\\n'));
-/* Nur eingebettete Bilder zulassen. Eine Adresse auf einen fremden Server
-   würde beim Anzeigen einer Notiz einen Aufruf nach außen auslösen. */
+/* Allow embedded images only. An address pointing at a foreign server would
+   trigger an outbound request when a note is displayed. */
 const safeImg=s=> /^data:image\/(png|jpe?g|gif|webp|avif);base64,[A-Za-z0-9+/=\s]+$/i.test(String(s||'')) ? String(s) : '';
-const TYPE_MAP={Buy:['Kauf','Buy'],Sell:['Verkauf','Sell'],'Savings plan':['Sparplan','Sparplan'],
-    Distribution:['Ausschüttung','Dividende'],Deposit:['Einzahlung','Cash'],Withdrawal:['Auszahlung','Cash'],
-    'Cash Transfer In':['Übertrag ein','Cash'],'Cash Transfer Out':['Übertrag aus','Cash'],
-    Taxes:['Steuern','Sonst'],'Corporate action':['Kapitalmaßnahme','Sonst'],
-    'Security transfer':['Depotübertrag','Sonst']};
+/* CSS class suffix per transaction type. The keys come from the CSV and must not be
+   translated; the suffixes are tied to the .t-… rules in the stylesheet. The display
+   names sit in the language table, an unknown type keeps its raw value. */
+const TYPE_CLASS={Buy:'Buy',Sell:'Sell','Savings plan':'Sparplan',Distribution:'Dividende',
+    Deposit:'Cash',Withdrawal:'Cash','Cash Transfer In':'Cash','Cash Transfer Out':'Cash',
+    Taxes:'Sonst','Corporate action':'Sonst','Security transfer':'Sonst'};
+const typeName=k=> tv('type')[k] || L.en.type[k] || k;
 function typeTag(r){
-  const [lbl,cls]=TYPE_MAP[r.type]||[r.type,'Sonst'];
-  return `<span class="tag t-${cls}">${esc(lbl)}</span>`;
+  return `<span class="tag t-${TYPE_CLASS[r.type]||'Sonst'}">${esc(typeName(r.type))}</span>`;
 }
 
 /* ============================ Navigation ============================ */
 let view='dash';
-document.querySelectorAll('nav button').forEach(b=> b.onclick=()=>{
-  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
-  show(b.dataset.v);
-});
+document.querySelectorAll('nav button').forEach(b=> b.onclick=()=> show(b.dataset.v));
+/* Which tab is highlighted belongs to show(), not to the click handler: the view
+   is also switched from code – at startup straight to the import when nothing is
+   stored yet – and the highlight used to stay behind on the tab last clicked. */
+function markTab(v){
+  document.querySelectorAll('nav button').forEach(x=> x.classList.toggle('on', x.dataset.v===v));
+}
+/* The tab strip scrolls sideways on a phone – keep the open tab in view rather
+   than leaving it half cut off at the edge. Only the strip moves, not the page. */
+function scrollNavIntoView(){
+  const nav=document.querySelector('nav'), b=nav.querySelector('button.on');
+  if(!b || nav.scrollWidth<=nav.clientWidth) return;
+  nav.scrollTo({left: Math.max(0, b.offsetLeft - (nav.clientWidth-b.offsetWidth)/2), behavior:'smooth'});
+}
 function show(v){
   view=v;
+  document.body.dataset.view=v;          // drives which chrome a view shows
+  markTab(v);
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
   document.getElementById('v-'+v).classList.add('on');
   render();
+  scrollNavIntoView();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
+/* --- Filters folded away on a phone --- */
+const filters=document.querySelector('.filters');
+const filtToggle=document.getElementById('filtToggle');
+filtToggle.onclick=()=>{
+  const open=filters.classList.toggle('open');
+  filtToggle.classList.toggle('on', open);        // lit while the panel is out, like the language switch
+  filtToggle.setAttribute('aria-expanded', open?'true':'false');
+};
+/* Mark the button while something is narrowing the figures, so a filter that is
+   folded away cannot be forgotten */
+function markFilters(){
+  filtToggle.classList.toggle('act',
+    !!(F.year || F.month || UI.type.length || UI.hideOrphan ||
+       (UI.status.length && !(UI.status.length===1 && UI.status[0]==='Executed'))));
+}
+
 /* ============================ Filter ============================ */
-const MON=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 function buildFilters(){
   const ys=[...new Set(all().map(r=>r.date.slice(0,4)))].sort().reverse();
   const y=document.getElementById('fYear');
-  y.innerHTML='<option value="">Alle Jahre</option>'+ys.map(v=>`<option ${F.year===v?'selected':''}>${v}</option>`).join('');
+  y.innerHTML=`<option value="">${t('f.allYears')}</option>`+ys.map(v=>`<option ${F.year===v?'selected':''}>${v}</option>`).join('');
   const m=document.getElementById('fMonth');
-  m.innerHTML='<option value="">Alle Monate</option>'+MON.map((n,i)=>{const v=String(i+1).padStart(2,'0');
+  m.innerHTML=`<option value="">${t('f.allMonths')}</option>`+MON().map((n,i)=>{const v=String(i+1).padStart(2,'0');
     return `<option value="${v}" ${F.month===v?'selected':''}>${n}</option>`}).join('');
 }
 document.getElementById('fYear').onchange=e=>{F.year=e.target.value;render()};
 document.getElementById('fMonth').onchange=e=>{F.month=e.target.value;render()};
 
-/* --- Status-Filter (Mehrfachauswahl) --- */
+/* --- Status filter (multi-select) --- */
 const ddStatus=document.getElementById('ddStatus');
 document.getElementById('ddStatusBtn').onclick=e=>{e.stopPropagation();ddStatus.classList.toggle('open')};
 document.addEventListener('click',e=>{ if(!ddStatus.contains(e.target)) ddStatus.classList.remove('open'); });
@@ -764,10 +1182,10 @@ function buildStatusFilter(){
   Object.values(DB.tx).forEach(r=>cnt[r.status]=(cnt[r.status]||0)+1);
   document.getElementById('ddStatusPop').innerHTML=
     list.map(s=>`<label class="chk"><input type="checkbox" value="${esc(s)}" ${UI.status.includes(s)?'checked':''}>
-      <span class="st ${esc(s)}">${esc(s)}</span> <span>${ST_LABEL[s]||''}</span>
+      <span class="st ${esc(s)}">${esc(s)}</span> <span>${esc(stLabel(s))}</span>
       <span class="cnt">${cnt[s]||0}</span></label>`).join('')+
-    `<hr><div class="row"><button class="btn" data-p="all">alle</button>
-      <button class="btn" data-p="exec">nur ausgeführt</button></div>`;
+    `<hr><div class="row"><button class="btn" data-p="all">${t('f.all')}</button>
+      <button class="btn" data-p="exec">${t('f.execOnly')}</button></div>`;
   const pop=document.getElementById('ddStatusPop');
   pop.querySelectorAll('input').forEach(i=> i.onchange=()=>{
     UI.status=[...pop.querySelectorAll('input:checked')].map(x=>x.value); saveUI(); render();
@@ -776,12 +1194,12 @@ function buildStatusFilter(){
   pop.querySelector('[data-p=exec]').onclick=()=>{UI.status=['Executed'];saveUI();render()};
   const n=UI.status.length;
   document.getElementById('ddStatusBtn').textContent =
-    (!n||n===list.length) ? 'alle Status ▾'
-    : n===1 ? (ST_LABEL[UI.status[0]]||UI.status[0])+' ▾'
-    : `${n} Status ▾`;
+    (!n||n===list.length) ? t('f.allStatus')
+    : n===1 ? (stLabel(UI.status[0])||UI.status[0])+' ▾'
+    : t('f.nStatus',n);
 }
 
-/* --- Typ-Filter (Mehrfachauswahl) --- */
+/* --- Type filter (multi-select) --- */
 const ddType=document.getElementById('ddType');
 document.getElementById('ddTypeBtn').onclick=e=>{e.stopPropagation();ddType.classList.toggle('open')};
 document.addEventListener('click',e=>{ if(!ddType.contains(e.target)) ddType.classList.remove('open'); });
@@ -789,9 +1207,9 @@ function buildTypeFilter(){
   const list=typeList(), cnt={};
   Object.values(DB.tx).forEach(r=>cnt[r.type]=(cnt[r.type]||0)+1);
   document.getElementById('ddTypePop').innerHTML=
-    list.map(t=>`<label class="chk"><input type="checkbox" value="${esc(t)}" ${UI.type.includes(t)?'checked':''}>
-      ${typeTag({type:t})} <span class="cnt">${cnt[t]||0}</span></label>`).join('')+
-    `<hr><div class="row"><button class="btn" data-p="all">alle</button></div>`;
+    list.map(ty=>`<label class="chk"><input type="checkbox" value="${esc(ty)}" ${UI.type.includes(ty)?'checked':''}>
+      ${typeTag({type:ty})} <span class="cnt">${cnt[ty]||0}</span></label>`).join('')+
+    `<hr><div class="row"><button class="btn" data-p="all">${t('f.all')}</button></div>`;
   const pop=document.getElementById('ddTypePop');
   pop.querySelectorAll('input').forEach(i=> i.onchange=()=>{
     UI.type=[...pop.querySelectorAll('input:checked')].map(x=>x.value); saveUI(); render();
@@ -799,32 +1217,30 @@ function buildTypeFilter(){
   pop.querySelector('[data-p=all]').onclick =()=>{UI.type=[];saveUI();render()};
   const n=UI.type.length;
   document.getElementById('ddTypeBtn').textContent =
-    (!n) ? 'alle Typen ▾'
-    : n===1 ? (TYPE_MAP[UI.type[0]]?TYPE_MAP[UI.type[0]][0]:UI.type[0])+' ▾'
-    : `${n} Typen ▾`;
+    (!n) ? t('f.allTypes')
+    : n===1 ? typeName(UI.type[0])+' ▾'
+    : t('f.nTypes',n);
 }
 
-/* --- Verkäufe ohne passenden Kauf --- */
+/* --- Sales without a matching purchase --- */
 const ddOrphan=document.getElementById('ddOrphan');
 document.getElementById('ddOrphanBtn').onclick=e=>{e.stopPropagation();ddOrphan.classList.toggle('open')};
 document.addEventListener('click',e=>{ if(!ddOrphan.contains(e.target)) ddOrphan.classList.remove('open'); });
-/* Braucht ROR und läuft deshalb erst nach positions() */
+/* Needs ROR and therefore runs only after positions() */
 function buildOrphanFilter(){
   const n=Object.keys(ROR).length;
   document.getElementById('ddOrphanPop').innerHTML=
     `<label class="chk" style="align-items:flex-start">
       <input type="checkbox" id="orphChk" style="margin-top:3px" ${UI.hideOrphan?'checked':''}>
-      <span style="white-space:normal;max-width:230px">Verkäufe ohne passenden Kauf anteilig herausrechnen</span>
+      <span style="white-space:normal;max-width:230px">${t('f.costOpt')}</span>
       <span class="cnt">${n}</span></label>
-     <hr><p class="hint" style="margin:0;white-space:normal;max-width:250px">Für verkaufte Stücke ohne Kaufbeleg ist kein
-      Einstand bekannt, ihr Erlös zählt sonst in voller Höhe als Gewinn. Aktiv zählt nur der Erlös der belegten Stücke;
-      Gebühren und Steuern bleiben ungekürzt.</p>`;
+     <hr><p class="hint" style="margin:0;white-space:normal;max-width:250px">${t('f.costHint')}</p>`;
   document.getElementById('orphChk').onchange=e=>{UI.hideOrphan=e.target.checked?1:0;saveUI();render()};
   document.getElementById('ddOrphanBtn').textContent =
-    UI.hideOrphan ? '⚠ anteilig ▾' : (n ? `⚠ ${n} ohne Einstand ▾` : 'Einstand ▾');
+    UI.hideOrphan ? t('f.costPro') : (n ? t('f.costN',n) : t('f.cost'));
 }
 
-/* --- Zahlenformat --- */
+/* --- Number format --- */
 const fNum=document.getElementById('fNum');
 fNum.innerHTML=Object.entries(NUMFMT).map(([k,v])=>
   `<option value="${k}" ${UI.numfmt===k?'selected':''}>${v.label}</option>`).join('');
@@ -832,18 +1248,19 @@ fNum.onchange=e=>{UI.numfmt=e.target.value;saveUI();render()};
 
 /* ============================ Render ============================ */
 function render(){
-  buildFilters(); buildStatusFilter(); buildTypeFilter(); buildImportFilter();
-  positions();   // füllt RPL / RPD / ROR für alle Ansichten
+  buildFilters(); buildStatusFilter(); buildTypeFilter();
+  buildImportFilter(); buildImportTypeFilter(); buildTypeRemover(); markFilters();
+  positions();   // fills RPL / RPD / ROR for all views
   buildOrphanFilter();
-  document.getElementById('dbInfo').textContent =
-    `${Object.keys(DB.tx).length} Transaktionen · ${Object.keys(DB.cmt).length} kommentierte Objekte · ${(JSON.stringify(DB).length/1024).toFixed(0)} KB`;
+  document.getElementById('dbInfo').textContent = t('data.info',
+    Object.keys(DB.tx).length, Object.keys(DB.cmt).length, (JSON.stringify(DB).length/1024).toFixed(0));
   if(view==='dash') dash();
   if(view==='pos')  posView();
   if(view==='tx')   txView();
   if(view==='cal')  calView();
 }
 
-/* --- Übersicht --- */
+/* --- Overview --- */
 function dash(){
   const f=filtered(), P=positions();
   const inv=f.filter(isBuy).reduce((s,r)=>s+Math.abs(r.amountN),0);
@@ -852,50 +1269,45 @@ function dash(){
   const tax=f.reduce((s,r)=>s+r.taxN,0);
   const dep=f.filter(r=>isCash(r)&&['Deposit','Cash Transfer In'].includes(r.type)).reduce((s,r)=>s+r.amountN,0);
   const wit=f.filter(r=>isCash(r)&&['Withdrawal','Cash Transfer Out'].includes(r.type)).reduce((s,r)=>s+Math.abs(r.amountN),0);
-  /* Realisiert und Ausschüttungen folgen jetzt dem Zeitraumfilter. Grundlage sind die
-     Einzelvorgänge im gewählten Zeitraum; der FIFO-Einstand stammt weiterhin aus der
-     gesamten Historie, sonst wären Verkäufe ohne zugehörigen Kauf im Fenster falsch. */
+  /* Realized and distributions now follow the period filter. The basis is the individual
+     transactions in the selected period; the FIFO cost basis still comes from the entire
+     history, otherwise sales without a matching purchase inside the window would be wrong. */
   const realTotal=f.reduce((s,r)=>s+(RGR[r.id]||0),0);
   const divTotal=f.filter(isDiv).reduce((s,r)=>s+r.amountN,0);
-  const per=(F.year||F.month)? ' (Filter)':'';
-  const scope=(F.year||F.month)? 'gewählter Zeitraum':'gesamte Historie';
+  const per=(F.year||F.month)? t('per.filter'):'';
+  const scope=(F.year||F.month)? t('scope.sel'):t('scope.hist');
 
   document.getElementById('kpis').innerHTML=[
-    ['Depotwert (geschätzt)', eur(P.reduce((s,p)=>s+p.value,0)), 'letzter bekannter Kurs'],
-    ['Ertrag gesamt'+per, sign(realTotal+divTotal-fee-tax), 'realisiert + Ausschüttungen − Kosten'],
-    ['Realisiert (FIFO)'+per, sign(realTotal), scope],
-    ['Ausschüttungen'+per, sign(divTotal), scope],
-    ['Käufe'+per, eur(inv), f.filter(isBuy).length+' Vorgänge'],
-    ['Verkäufe'+per, eur(sel), f.filter(isSell).length+' Vorgänge'],
-    ['Gebühren / Steuern'+per, eur(fee)+' / '+eur(tax), ''],
-    ['Ein-/Auszahlungen'+per, eur(dep)+' / '+eur(wit), '']
+    [t('kpi.value'), eur(P.reduce((s,p)=>s+p.value,0)), t('kpi.valueHint')],
+    [t('kpi.total')+per, sign(realTotal+divTotal-fee-tax), t('kpi.totalHint')],
+    [t('kpi.real')+per, sign(realTotal), scope],
+    [t('kpi.div')+per, sign(divTotal), scope],
+    [t('kpi.buys')+per, eur(inv), t('kpi.tx',f.filter(isBuy).length)],
+    [t('kpi.sells')+per, eur(sel), t('kpi.tx',f.filter(isSell).length)],
+    [t('kpi.feetax')+per, cost(fee)+' / '+cost(tax), t('kpi.feetaxHint')],
+    [t('kpi.cash')+per, eur(dep)+' / '+eur(wit), '']
   ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="hint">${h}</div></div>`).join('');
 
-  /* Sichtbar machen, wie viel Erlös auf Stücke ohne Kaufbeleg entfällt – sonst bliebe
-     der Unterschied zwischen ein- und ausgeschalteter Option unerklärt. */
+  /* Make visible how much of the proceeds falls on shares without a purchase record –
+     otherwise the difference between the option being on and off would stay unexplained. */
   const og=f.filter(r=>ROR[r.id]), ocut=og.reduce((s,r)=>s+orphanCut(r),0);
   const oNote=document.getElementById('orphNote');
   oNote.style.display = og.length ? '' : 'none';
   if(!og.length) oNote.textContent='';
   if(og.length){
     const one = og.length===1;
-    const w = one ? 'Ein Verkauf' : `${og.length} Verkäufe`;
-    oNote.innerHTML = UI.hideOrphan
-      ? `⚠ ${w} ohne passenden Kauf: ${eur(ocut)} Erlös ist herausgerechnet.`
-      : `⚠ ${w} ohne passenden Kauf ${one?'erhöht':'erhöhen'} das Ergebnis um bis zu ${eur(ocut)}. `+
-        `Filter „Einstand“ oben rechnet ${one?'ihn':'sie'} heraus.`;
+    const w = one ? t('orph.one') : t('orph.many',og.length);
+    oNote.innerHTML = UI.hideOrphan ? t('orph.on',w,eur(ocut)) : t('orph.off',w,eur(ocut),one);
   }
 
-  /* Beide Ranglisten folgen dem Jahr-/Monatsfilter wie die Kennzahlen darüber */
+  /* Both rankings follow the year/month filter just like the key figures above */
   const RK=rankByPeriod(f,P);
-  const periodLabel = (F.year&&F.month) ? `${MON[+F.month-1]} ${F.year}`
+  const periodLabel = (F.year&&F.month) ? `${MON()[+F.month-1]} ${F.year}`
     : F.year  ? F.year
-    : F.month ? `${MON[+F.month-1]}, alle Jahre`
-    : 'gesamter Zeitraum';
-  document.getElementById('rankScope').textContent =
-    `(realisiert + Ausschüttungen − Gebühren − Steuern, ${periodLabel})`;
-  document.getElementById('lossScope').textContent =
-    `(nur Positionen mit negativem Ertrag, ${periodLabel})`;
+    : F.month ? t('per.monthAll',MON()[+F.month-1])
+    : t('per.all');
+  document.getElementById('rankScope').textContent = t('dash.rankScope',periodLabel);
+  document.getElementById('lossScope').textContent = t('dash.lossScope',periodLabel);
 
   const top=RK.filter(p=>p.n).slice(0,12), max=Math.max(...top.map(p=>Math.abs(p.total)),1);
   document.getElementById('rank').innerHTML = top.map(p=>`
@@ -904,7 +1316,7 @@ function dash(){
         <span class="clickable" onclick="detail('${js(p.isin)}')">${esc(p.name||p.isin)}</span>${sign(p.total)}
       </div>
       <div class="bar"><i style="width:${Math.abs(p.total)/max*100}%;${p.total<0?'background:var(--neg)':''}"></i></div>
-    </div>`).join('') || `<p class="hint">${(F.year||F.month)?'Keine Vorgänge im gewählten Zeitraum.':'Noch keine Daten.'}</p>`;
+    </div>`).join('') || `<p class="hint">${(F.year||F.month)?t('dash.noneFiltered'):t('dash.noneYet')}</p>`;
 
   const losses=RK.filter(p=>p.n&&p.total<-0.004).sort((a,b)=>a.total-b.total).slice(0,12);
   const lossPanel=document.getElementById('lossPanel');
@@ -929,16 +1341,20 @@ function dash(){
     if(RPL[r.id]!==undefined) M[k].pnl+=RPL[r.id];
   });
   const ms=Object.values(M).sort((a,b)=>b.k.localeCompare(a.k));
+  const mh=tv('m.head');
   document.getElementById('monthly').innerHTML=
-    `<thead><tr><th>Monat</th><th class="num">Vorgänge</th><th class="num">Käufe</th><th class="num">Verkäufe</th><th class="num">Ausschüttungen</th><th class="num">Gebühren</th><th class="num">Steuern</th><th class="num">realisiert</th></tr></thead><tbody>`+
+    '<thead><tr>'+mh.map((h,i)=>`<th class="${i?'num':''}">${h}</th>`).join('')+'</tr></thead><tbody>'+
     ms.map(m=>{const [y,mo]=m.k.split('-');return `<tr class="clickable" onclick="jumpMonth('${y}','${mo}')">
-      <td>${MON[+mo-1]} ${y}</td><td class="num mut">${m.n}</td><td class="num">${eur(m.buy)}</td>
-      <td class="num">${eur(m.sell)}</td><td class="num pos">${eur(m.div)}</td><td class="num mut">${eur(m.fee)}</td>
-      <td class="num mut">${eur(m.tax)}</td><td class="num"><b>${sign(m.pnl)}</b></td></tr>`}).join('')+'</tbody>';
+      <td class="mfirst"><b>${MON()[+mo-1]} ${y}</b></td>
+      <td class="num mut" data-l="${esc(mh[1])}">${m.n}</td><td class="num" data-l="${esc(mh[2])}">${eur(m.buy)}</td>
+      <td class="num" data-l="${esc(mh[3])}">${eur(m.sell)}</td><td class="num pos" data-l="${esc(mh[4])}">${eur(m.div)}</td>
+      <td class="num mut" data-l="${esc(mh[5])}">${cost(m.fee)}</td>
+      <td class="num mut" data-l="${esc(mh[6])}">${cost(m.tax)}</td>
+      <td class="num" data-l="${esc(mh[7])}"><b>${sign(m.pnl)}</b></td></tr>`}).join('')+'</tbody>';
 }
 function jumpMonth(y,m){F.year=y;F.month=m;document.querySelector('nav button[data-v="tx"]').click();}
 
-/* --- Positionen --- */
+/* --- Positions --- */
 let posSort={c:'total',d:-1};
 function posView(){
   const q=document.getElementById('posSearch').value.toLowerCase();
@@ -947,28 +1363,27 @@ function posView(){
   P.sort((a,b)=>{const x=a[posSort.c],y=b[posSort.c];
     return (typeof x==='string'? String(x).localeCompare(String(y)): (x||0)-(y||0))*posSort.d});
 
-  const cols=[['name','Position',''],['shares','Stück','num'],['cost','Einstand','num'],['last','letzter Kurs','num'],
-    ['value','Wert (gesch.)','num'],['unreal','unrealisiert','num'],['realized','realisiert','num'],
-    ['div','Ausschüttung','num'],['fees','Gebühren','num'],['taxes','Steuern','num'],
-    ['total','Ertrag gesamt','num'],['n','Vorgänge','num']];
+  const keys=['name','shares','cost','last','value','unreal','realized','div','fees','taxes','total','n'];
+  const labels=tv('pos.cols');
 
-  const head='<thead><tr>'+cols.map(c=>
-      `<th class="${c[2]}" onclick="sortPos('${c[0]}')">${c[1]}${posSort.c===c[0]?(posSort.d>0?' ▲':' ▼'):''}</th>`
+  const head='<thead><tr>'+keys.map((k,i)=>
+      `<th class="${i?'num':''}" onclick="sortPos('${k}')">${labels[i]}${posSort.c===k?(posSort.d>0?' ▲':' ▼'):''}</th>`
     ).join('')+'</tr></thead>';
 
+  const l=i=>`data-l="${esc(labels[i])}"`;
   const body='<tbody>'+P.map(p=>`<tr class="clickable" onclick="detail('${js(p.isin)}')">
-      <td><b>${esc(p.name||p.isin)}</b><br><span class="hint">${p.isin}${p.open?'':' · geschlossen'}${p.orphan?' · <span class="neg">⚠ Einstand unvollständig</span>':''}</span></td>
-      <td class="num">${fmt(p.shares,p.shares%1?6:0)}</td>
-      <td class="num">${eur(p.cost)}</td>
-      <td class="num mut">${p.last?fmt(p.last):'–'}</td>
-      <td class="num">${eur(p.value)}</td>
-      <td class="num">${p.open?sign(p.unreal):'<span class="mut">–</span>'}</td>
-      <td class="num">${sign(p.realized)}</td>
-      <td class="num pos">${eur(p.div)}</td>
-      <td class="num mut">${eur(p.fees)}</td>
-      <td class="num mut">${eur(p.taxes)}</td>
-      <td class="num"><b>${sign(p.total)}</b></td>
-      <td class="num mut">${p.n}</td>
+      <td class="mfirst"><b>${esc(p.name||p.isin)}</b><br><span class="hint">${p.isin}${p.open?'':t('pos.closedTag')}${p.orphan?' · <span class="neg">'+t('pos.orphanTag')+'</span>':''}</span></td>
+      <td class="num" ${l(1)}>${fmt(p.shares,p.shares%1?6:0)}</td>
+      <td class="num" ${l(2)}>${eur(p.cost)}</td>
+      <td class="num mut" ${l(3)}>${p.last?fmt(p.last):'–'}</td>
+      <td class="num" ${l(4)}>${eur(p.value)}</td>
+      <td class="num" ${l(5)}>${p.open?sign(p.unreal):'<span class="mut">–</span>'}</td>
+      <td class="num" ${l(6)}>${sign(p.realized)}</td>
+      <td class="num pos" ${l(7)}>${eur(p.div)}</td>
+      <td class="num mut" ${l(8)}>${cost(p.fees)}</td>
+      <td class="num mut" ${l(9)}>${cost(p.taxes)}</td>
+      <td class="num" ${l(10)}><b>${sign(p.total)}</b></td>
+      <td class="num mut" ${l(11)}>${p.n}</td>
     </tr>`).join('')+'</tbody>';
 
   document.getElementById('posTable').innerHTML = head+body;
@@ -981,71 +1396,79 @@ document.getElementById('showClosed').onchange=posView;
 function detail(isin){
   const p=positions().find(x=>x.isin===isin); if(!p) return;
   const rows=all().filter(r=>r.isin===isin);
-  const stat=[['Bestand',fmt(p.shares,p.shares%1?6:0)+' Stück'],['Einstand (offen)',eur(p.cost)],
-    ['Ø Einstandskurs',eur(p.shares?p.cost/p.shares:0)],['Letzter Kurs',eur(p.last)],
-    ['Wert (geschätzt)',eur(p.value)],['Unrealisiert',p.open?sign(p.unreal):'–'],
-    ['Realisiert (FIFO)',sign(p.realized)],['Ausschüttungen',sign(p.div)],
-    ['Gebühren',eur(p.fees)],['Steuern',eur(p.taxes)],['Ertrag gesamt',`<b>${sign(p.total)}</b>`],
-    ['Erster Vorgang',rows.length?de(rows[rows.length-1].date):'–']];
+  const stat=[[t('det.holding'),t('det.shares',fmt(p.shares,p.shares%1?6:0))],[t('det.costOpen'),eur(p.cost)],
+    [t('det.avg'),eur(p.shares?p.cost/p.shares:0)],[t('det.last'),eur(p.last)],
+    [t('det.value'),eur(p.value)],[t('det.unreal'),p.open?sign(p.unreal):'–'],
+    [t('det.real'),sign(p.realized)],[t('det.div'),sign(p.div)],
+    [t('det.fees'),cost(p.fees)],[t('det.taxes'),cost(p.taxes)],[t('det.total'),`<b>${sign(p.total)}</b>`],
+    [t('det.first'),rows.length?dt(rows[rows.length-1].date):'–']];
   document.getElementById('v-det').innerHTML=`
-    <button class="back" onclick="document.querySelector('nav button[data-v=pos]').click()">‹ zurück zu den Positionen</button>
+    <button class="back" onclick="document.querySelector('nav button[data-v=pos]').click()">${t('det.back')}</button>
     <div class="panel"><h2>${esc(p.name||p.isin)} <span class="hint">${p.isin}</span></h2>
-      ${p.orphan?`<p class="hint neg">⚠ ${qty(p.orphan)} Stück wurden verkauft, ohne dass ein passender Kauf im importierten Zeitraum liegt. ${UI.hideOrphan?'Ihr Erlös ist über den Filter „Einstand“ herausgerechnet.':'Der realisierte Gewinn dieser Stücke ist dadurch zu hoch ausgewiesen.'}</p>`:''}
+      ${p.orphan?`<p class="hint neg">${t('det.orphan',qty(p.orphan))}${UI.hideOrphan?t('det.orphanOn'):t('det.orphanOff')}</p>`:''}
       <div class="cards">${stat.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:17px">${v}</div></div>`).join('')}</div>
     </div>
-    <div class="panel"><h2>Alle Vorgänge (${rows.length})</h2><div class="scroll">${txTableHtml(rows)}</div></div>
-    <div class="panel"><h2>Notizen &amp; Screenshots</h2>${commentHtml('isin:'+isin)}</div>`;
-  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
+    <div class="panel"><h2>${t('det.all',rows.length)}</h2><div class="scroll">${txTableHtml(rows)}</div></div>
+    <div class="panel"><h2>${t('det.notes')}</h2>${commentHtml('isin:'+isin)}</div>`;
+  /* The detail is reached from the positions and its back button returns there,
+     so that tab stays highlighted instead of leaving the bar without a mark. */
+  markTab('pos');
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
-  document.getElementById('v-det').classList.add('on'); view='det';
+  document.getElementById('v-det').classList.add('on'); view='det'; document.body.dataset.view='det';
   bindComments('isin:'+isin);
   window.scrollTo({top:0});
 }
 
-/* --- Transaktionen --- */
-/* Verkauf kennzeichnen, dem für einen Teil der Stücke der Kauf fehlt */
+/* --- Transactions --- */
+/* Flag a sale that is missing the purchase for some of its shares */
 function orphanMark(r){
   const o=ROR[r.id]; if(!o) return '';
-  const t=`${qty(o)} von ${qty(r.sharesN)} Stück ohne passenden Kauf – `+
-    (UI.hideOrphan ? `Erlös von ${eur(orphanCut(r))} ist herausgerechnet.`
-                   : `der Gewinn ist um bis zu ${eur(orphanCut(r))} zu hoch.`);
-  return ` <span class="neg" title="${esc(t)}">⚠</span>`;
+  const msg=t('tx.mark',qty(o),qty(r.sharesN))+
+    (UI.hideOrphan ? t('tx.markOn',eur(orphanCut(r))) : t('tx.markOff',eur(orphanCut(r))));
+  return ` <span class="neg" title="${esc(msg)}">⚠</span>`;
 }
 function txTableHtml(rows){
-  const cols=['Datum','Zeit','Status','Typ','Bezeichnung','Stück','Kurs','Betrag','realisiert','Geb.','Steuer','Referenz','Notiz'];
+  const cols=tv('tx.cols');
   const nums=[5,6,7,8,9,10];
   const head='<thead><tr>'+cols.map((c,i)=>`<th class="${nums.includes(i)?'num':''}" style="cursor:default">${c}</th>`).join('')+'</tr></thead>';
+  /* data-l feeds the column name into the card layout on a narrow screen.
+     A field the row does not have shows a dash in the table; as a card line of
+     its own it would only be noise, so it is marked and left out there. */
+  const l=i=>`data-l="${esc(cols[i])}"`;
+  const md=v=> v ? '' : ' mdash';
   const body='<tbody>'+rows.map(r=>{const c=(DB.cmt['tx:'+r.id]||[]).length;
     return `<tr>
-      <td>${de(r.date)}</td>
-      <td class="mut">${(r.time||'').slice(0,5)}</td>
-      <td><span class="st ${esc(r.status)}">${esc(r.status)}</span></td>
-      <td>${typeTag(r)}</td>
-      <td>${r.isin?`<span class="clickable" onclick="detail('${js(r.isin)}')">${esc(r.description||r.isin)}</span>`:esc(r.description||'–')}</td>
-      <td class="num">${r.sharesN?fmt(r.sharesN,r.sharesN%1?6:0):'<span class="mut">–</span>'}</td>
-      <td class="num mut">${r.priceN?fmt(r.priceN):'–'}</td>
-      <td class="num">${r.amountN?sign(r.amountN):'<span class="mut">–</span>'}</td>
-      <td class="num">${RPL[r.id]!==undefined?`<b>${sign(RPL[r.id])}</b>${orphanMark(r)}`:'<span class="mut">–</span>'}</td>
-      <td class="num mut">${r.feeN?fmt(r.feeN):''}</td>
-      <td class="num mut">${r.taxN?fmt(r.taxN):''}</td>
-      <td class="mut" style="font-size:11px">${esc(r.reference).slice(0,22)}</td>
-      <td><button class="btn note" onclick="txNote(this.dataset.id)" data-id="${esc(r.id)}">💬${c?' '+c:''}</button></td>
+      <td class="mhead">${r.isin?`<span class="clickable" onclick="detail('${js(r.isin)}')">${esc(r.description||r.isin)}</span>`:esc(r.description||'–')}
+        <span class="hint">${dt(r.date)}${r.time?' · '+r.time.slice(0,5):''}</span></td>
+      <td class="mhide" ${l(0)}>${dt(r.date)}</td>
+      <td class="mut mhide" ${l(1)}>${(r.time||'').slice(0,5)}</td>
+      <td ${l(2)}><span class="st ${esc(r.status)}">${esc(r.status)}</span></td>
+      <td ${l(3)}>${typeTag(r)}</td>
+      <td class="mhide" ${l(4)}>${r.isin?`<span class="clickable" onclick="detail('${js(r.isin)}')">${esc(r.description||r.isin)}</span>`:esc(r.description||'–')}</td>
+      <td class="num${md(r.sharesN)}" ${l(5)}>${r.sharesN?fmt(r.sharesN,r.sharesN%1?6:0):'<span class="mut">–</span>'}</td>
+      <td class="num mut${md(r.priceN)}" ${l(6)}>${r.priceN?fmt(r.priceN):'–'}</td>
+      <td class="num${md(r.amountN)}" ${l(7)}>${r.amountN?sign(r.amountN):'<span class="mut">–</span>'}</td>
+      <td class="num${md(RPL[r.id]!==undefined)}" ${l(8)}>${RPL[r.id]!==undefined?`<b>${sign(RPL[r.id])}</b>${orphanMark(r)}`:'<span class="mut">–</span>'}</td>
+      <td class="num mut" ${l(9)}>${r.feeN?fmt(r.feeN):''}</td>
+      <td class="num mut" ${l(10)}>${r.taxN?fmt(r.taxN):''}</td>
+      <td class="mut" style="font-size:11px" ${l(11)}>${esc(r.reference).slice(0,22)}</td>
+      <td ${l(12)}><button class="btn note" onclick="txNote(this.dataset.id)" data-id="${esc(r.id)}">💬${c?' '+c:''}</button></td>
     </tr>`}).join('')+'</tbody>';
-  return '<table>'+head+body+'</table>';
+  return '<table class="rsp">'+head+body+'</table>';
 }
 function txView(){
   const q=document.getElementById('txSearch').value.toLowerCase();
   const rows=filtered().filter(r=>((r.description||'')+r.isin+r.reference+r.type).toLowerCase().includes(q));
   const sum=rows.reduce((s,r)=>s+(RPL[r.id]||0),0);
   document.getElementById('txWrap').innerHTML=
-    `<p class="hint">${rows.length} Vorgänge · realisiertes Ergebnis in der Auswahl: ${sign(sum)}</p>`+txTableHtml(rows);
+    `<p class="hint">${t('tx.count',rows.length,sign(sum))}</p>`+txTableHtml(rows);
 }
 document.getElementById('txSearch').oninput=txView;
 document.getElementById('expCsv').onclick=()=>{
   const rows=filtered();
   const NUMC={shares:'sharesN',price:'priceN',amount:'amountN',fee:'feeN',tax:'taxN'};
   const cell=(r,c)=> NUMC[c] ? (r[c]===''||r[c]===undefined ? '' : raw(r[NUMC[c]])) : String(r[c]??'');
-  const csv=[COLS.concat(['realisiert']).join(';')]
+  const csv=[COLS.concat([t('tx.realized')]).join(';')]
     .concat(rows.map(r=>COLS.map(c=>cell(r,c))
       .concat([RPL[r.id]!==undefined?RPL[r.id].toFixed(2):'']).join(';'))).join('\n');
   saveFile('depot_export_'+isoToday()+'.csv', csv, 'text/csv');
@@ -1054,13 +1477,13 @@ function txNote(id){
   const r=DB.tx[id]; if(!r) return;
   const box=document.createElement('div');
   box.className='panel modal';
-  box.innerHTML=`<div class="row"><b>${esc(r.description||r.type)} · ${de(r.date)}</b>
+  box.innerHTML=`<div class="row"><b>${esc(r.description||r.type)} · ${dt(r.date)}</b>
     <button class="btn" style="margin-left:auto" onclick="this.closest('.panel').remove()">✕</button></div>
-    <p class="hint">${esc(r.reference)}${RPL[id]!==undefined?' · realisiert: '+eur(RPL[id]):''}</p>${commentHtml('tx:'+id)}`;
+    <p class="hint">${esc(r.reference)}${RPL[id]!==undefined?' · '+t('cal.realized')+eur(RPL[id]):''}</p>${commentHtml('tx:'+id)}`;
   document.body.appendChild(box); bindComments('tx:'+id);
 }
 
-/* --- Kalender --- */
+/* --- Calendar --- */
 let calM = new Date();
 document.getElementById('calPrev').onclick=()=>{calM.setDate(1);calM.setMonth(calM.getMonth()-1);calView(true)};
 document.getElementById('calNext').onclick=()=>{calM.setDate(1);calM.setMonth(calM.getMonth()+1);calView(true)};
@@ -1073,30 +1496,30 @@ function calView(manual){
   const mk=`${y}-${String(m+1).padStart(2,'0')}`;
   const monthPnl=Object.entries(RPD).filter(([d])=>d.startsWith(mk)).reduce((s,[,v])=>s+v,0);
   document.getElementById('calTitle').innerHTML=
-    `${MON[m]} ${y}<br><span class="hint">realisiert: ${sign(monthPnl)}</span>`;
+    `${MON()[m]} ${y}<br><span class="hint">${t('cal.realized')}${sign(monthPnl)}</span>`;
   calYearBox(y);
 
   const byDay={};
   all().filter(r=>statusOK(r)&&typeOK(r)&&r.date.startsWith(mk))
        .forEach(r=>{const d=+r.date.slice(8,10); (byDay[d]=byDay[d]||[]).push(r)});
   const first=(new Date(y,m,1).getDay()+6)%7, days=new Date(y,m+1,0).getDate(), today=isoToday();
-  let h=['Mo','Di','Mi','Do','Fr','Sa','So'].map(d=>`<div class="dow">${d}</div>`).join('');
+  let h=tv('dow').map(d=>`<div class="dow">${d}</div>`).join('');
   for(let i=0;i<first;i++) h+='<div class="day empty"></div>';
   for(let d=1;d<=days;d++){
     const ev=byDay[d]||[], iso=`${mk}-${String(d).padStart(2,'0')}`, pnl=RPD[iso]||0;
     const cls = pnl>0.004?'win' : pnl<-0.004?'loss' : '';
-    h+=`<div class="day ${iso===today?'today':''} ${cls}" onclick="calDay('${iso}')">
-        <div class="d"><span>${d}</span>${Math.abs(pnl)>0.004?`<span class="pnl ${pnl>0?'pos':'neg'}">${pnl>0?'+':''}${fmt(pnl,0)} €</span>`:''}</div>`+
+    h+=`<div class="day ${iso===today?'today':''} ${cls} ${ev.length?'has':''}" onclick="calDay('${iso}')">
+        <div class="d"><span>${d}</span>${Math.abs(pnl)>0.004?`<span class="pnl ${pnl>0?'pos':'neg'}">${pnl>0?'+':''}${fmt(pnl,0)}<span class="cur"> €</span></span>`:''}</div>`+
       ev.slice(0,3).map(r=>{const c=isBuy(r)?'t-Buy':isSell(r)?'t-Sell':isDiv(r)?'t-Dividende':isCash(r)?'t-Cash':'t-Sonst';
         return `<span class="ev tag ${c}">${esc((r.description||r.type).slice(0,18))}</span>`}).join('')+
-      (ev.length>3?`<span class="hint">+${ev.length-3} weitere</span>`:'')+'</div>';
+      (ev.length>3?`<span class="hint">${t('cal.more',ev.length-3)}</span>`:'')+'</div>';
   }
   document.getElementById('calGrid').innerHTML=h;
   document.getElementById('calDetail').style.display='none';
 }
 function calYearBox(y){
-  /* Jahreswerte des angezeigten Kalenderjahres – unabhängig vom Monatsfilter oben,
-     damit der Kasten immer zum sichtbaren Jahr passt. */
+  /* Yearly figures for the displayed calendar year – independent of the month filter above,
+     so the box always matches the visible year. */
   const yr=String(y);
   const rows=all().filter(r=>r.date.slice(0,4)===yr && r.status==='Executed' && typeOK(r));
   const sells=rows.filter(isSell), divs=rows.filter(isDiv);
@@ -1111,45 +1534,43 @@ function calYearBox(y){
   const worst=days.reduce((a,b)=> b[1]<(a?a[1]:Infinity)?b:a, null);
 
   document.getElementById('calYear').innerHTML=[
-    ['Ertrag '+yr, sign(total), 'realisiert + Ausschüttungen − Kosten'],
-    ['Realisiert (FIFO)', sign(realized), sells.length+' Verkäufe'],
-    ['Ausschüttungen', sign(div), divs.length+' Zahlungen'],
-    ['Gebühren / Steuern', eur(fee)+' / '+eur(tax), ''],
-    ['Gewinn- / Verlusttage', `<span class="pos">${win}</span> / <span class="neg">${loss}</span>`,
-      best&&best[1]>0.004 ? 'bester Tag '+de(best[0])+': '+eur(best[1]) : ''],
-    ['Schlechtester Tag', worst&&worst[1]<-0.004 ? sign(worst[1]) : '<span class="mut">–</span>',
-      worst&&worst[1]<-0.004 ? de(worst[0]) : '']
+    [t('cal.year',yr), sign(total), t('kpi.totalHint')],
+    [t('kpi.real'), sign(realized), t('cal.sales',sells.length)],
+    [t('kpi.div'), sign(div), t('cal.payments',divs.length)],
+    [t('kpi.feetax'), cost(fee)+' / '+cost(tax), ''],
+    [t('cal.winloss'), `<span class="pos">${win}</span> / <span class="neg">${loss}</span>`,
+      best&&best[1]>0.004 ? t('cal.best',dt(best[0]),eur(best[1])) : ''],
+    [t('cal.worst'), worst&&worst[1]<-0.004 ? sign(worst[1]) : '<span class="mut">–</span>',
+      worst&&worst[1]<-0.004 ? dt(worst[0]) : '']
   ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:19px">${v}</div><div class="hint">${h}</div></div>`).join('');
 }
 function calDay(iso){
   const rows=all().filter(r=>r.date===iso&&statusOK(r)&&typeOK(r));
   const pnl=RPD[iso]||0;
   const el=document.getElementById('calDetail'); el.style.display='block';
-  el.innerHTML=`<h2>${de(iso)} · ${rows.length} Vorgänge · realisiert ${sign(pnl)}</h2>`+
-    (rows.length?`<div class="scroll">${txTableHtml(rows)}</div>`:'<p class="hint">Keine Vorgänge an diesem Tag.</p>')+
-    `<h3>Tagesnotiz</h3>${commentHtml('day:'+iso)}`;
+  el.innerHTML=`<h2>${t('cal.day',dt(iso),rows.length,sign(pnl))}</h2>`+
+    (rows.length?`<div class="scroll">${txTableHtml(rows)}</div>`:`<p class="hint">${t('cal.none')}</p>`)+
+    `<h3>${t('cal.dayNote')}</h3>${commentHtml('day:'+iso)}`;
   bindComments('day:'+iso);
   el.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-/* ============================ Kommentare + Screenshots ============================ */
+/* ============================ Comments + screenshots ============================ */
 function commentHtml(key){
   const list=DB.cmt[key]||[];
   return `<div class="cmts" data-k="${esc(key)}">
-    ${list.map((c,i)=>`<div class="cmt"><div class="meta">🕒 ${new Date(c.t).toLocaleString('de-DE')}
-      <button onclick="delCmt('${js(key)}',${i})">löschen</button></div>
+    ${list.map((c,i)=>`<div class="cmt"><div class="meta">🕒 ${new Date(c.t).toLocaleString(tv('locale'))}
+      <button onclick="delCmt('${js(key)}',${i})">${t('cmt.delete')}</button></div>
       <div>${esc(c.text).replace(/\n/g,'<br>')}</div>
       ${(c.imgs||[]).map(safeImg).filter(Boolean).map(s=>`<img src="${s}" onclick="lb(this.src)" alt="">`).join('')}</div>`).join('')}
-    <textarea placeholder="Notiz schreiben… Screenshot mit Strg+V direkt einfügen"></textarea>
+    <textarea placeholder="${esc(t('cmt.ph'))}"></textarea>
     <div class="shots"></div>
     <div class="row" style="margin-top:8px">
-      <button class="btn" data-a="pick">📎 Bild wählen</button>
+      <button class="btn" data-a="pick">${t('cmt.pick')}</button>
       <input type="file" accept="image/*" multiple hidden>
-      <button class="btn pri" data-a="add" style="margin-left:auto">Speichern</button>
+      <button class="btn pri" data-a="add" style="margin-left:auto">${t('cmt.save')}</button>
     </div>
-    <p class="hint">${TOUCH
-      ? 'Screenshots über <b>Bild wählen</b> aus Fotos oder Dateien hinzufügen. Bilder werden vor dem Speichern verkleinert.'
-      : 'Screenshot aus der Zwischenablage: Textfeld anklicken und <b>Strg+V</b> drücken.'}</p>
+    <p class="hint">${TOUCH ? t('cmt.touch') : t('cmt.desktop')}</p>
   </div>`;
 }
 function bindComments(key){
@@ -1174,7 +1595,7 @@ function bindComments(key){
     box.querySelector('[data-a=add]').onclick=()=>{
       if(!ta.value.trim()&&!buf.length) return;
       (DB.cmt[key]=DB.cmt[key]||[]).unshift({t:Date.now(),text:ta.value.trim(),imgs:buf});
-      save(); refreshComments(box,key); toast('Notiz gespeichert.');
+      save(); refreshComments(box,key); toast(t('cmt.saved'));
     };
   });
 }
@@ -1206,9 +1627,9 @@ function handle(files){
       const r=importRows(rows);
       log.push(`<div class="card" style="margin-top:12px">
         <b>${esc(f.name)}</b><br>
-        <span class="pos">✔ ${r.neu} neu</span> · <span class="mut">${r.dup} Duplikate übersprungen</span>
-        · <span class="pos">${r.upd} aktualisiert</span>${r.skip?` · <span class="mut">${r.skip} per Statusfilter ausgelassen</span>`:''}${bad.length?` · <span class="neg">${bad.length} Zeilen unlesbar</span>`:''}</div>`);
-      if(++done===files.length){ rep.innerHTML=log.join(''); render(); toast('Import abgeschlossen.'); }
+        <span class="pos">${t('imp.new',r.neu)}</span> · <span class="mut">${t('imp.dup',r.dup)}</span>
+        · <span class="pos">${t('imp.upd',r.upd)}</span>${r.skip?` · <span class="mut">${t('imp.skip',r.skip)}</span>`:''}${bad.length?` · <span class="neg">${t('imp.bad',bad.length)}</span>`:''}</div>`);
+      if(++done===files.length){ rep.innerHTML=log.join(''); render(); toast(t('imp.done')); }
     };
     rd.readAsText(f,'utf-8');
   });
@@ -1217,10 +1638,9 @@ document.getElementById('expJson').onclick=()=>{
   saveFile('depot_backup_'+isoToday()+'.json', JSON.stringify(DB), 'application/json');
 };
 document.getElementById('impJson').onclick=()=>document.getElementById('jsonFile').click();
-/* Ein Backup ist eine Datei von außen. Übernommen wird deshalb nur, was hier
-   ausdrücklich erwartet wird – alle übrigen Felder werden verworfen, Zahlen
-   werden zu Zahlen und Bilder müssen eingebettete Daten sein. So kann eine
-   manipulierte Datei keine fremden Inhalte in die Anzeige einschleusen. */
+/* A backup is a file from outside. Only what is explicitly expected here is taken over –
+   all other fields are discarded, numbers become numbers and images must be embedded
+   data. That way a manipulated file cannot smuggle foreign content into the UI. */
 const str=v=> typeof v==='string' ? v : (v===undefined||v===null ? '' : String(v));
 const fin=v=> { const x=Number(v); return isFinite(x) ? x : 0; };
 function cleanBackup(d){
@@ -1230,11 +1650,11 @@ function cleanBackup(d){
     if(!o || typeof o!=='object') return;
     const r={};
     COLS.forEach(c=> r[c]=str(o[c]));
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) return;      // ohne gültiges Datum unbrauchbar
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) return;      // unusable without a valid date
     r.sharesN=fin(o.sharesN); r.priceN=fin(o.priceN); r.amountN=fin(o.amountN);
     r.feeN=fin(o.feeN); r.taxN=fin(o.taxN);
     r.dt = r.date+' '+(r.time||'00:00:00');
-    r.id = txId(r);                                       // Kennung immer neu bilden
+    r.id = txId(r);                                       // always rebuild the identity
     tx[r.id]=r;
   });
   const cs=(d && typeof d==='object' && d.cmt && typeof d.cmt==='object') ? d.cmt : {};
@@ -1256,68 +1676,200 @@ document.getElementById('jsonFile').onchange=e=>{
     const dropTx  = Object.keys((d&&d.tx)||{}).length  - Object.keys(c.tx).length;
     const dropCmt = Object.keys((d&&d.cmt)||{}).length - Object.keys(c.cmt).length;
     if(!Object.keys(c.tx).length && !Object.keys(c.cmt).length)
-      return toast('In dieser Datei stehen keine verwertbaren Daten.');
+      return toast(t('data.emptyBackup'));
     Object.assign(DB.tx,c.tx); Object.assign(DB.cmt,c.cmt);
     migrateIds(); save(); render();
-    toast('Backup eingespielt.'+((dropTx>0||dropCmt>0)
-      ? `\n${Math.max(dropTx,0)} Vorgänge und ${Math.max(dropCmt,0)} Notizfelder wurden dabei als unbrauchbar verworfen.` : ''));
-  }catch(err){ toast('Ungültige Backup-Datei.'); } };
+    toast(t('data.restored')+((dropTx>0||dropCmt>0)
+      ? t('data.dropped',Math.max(dropTx,0),Math.max(dropCmt,0)) : ''));
+  }catch(err){ toast(t('data.badBackup')); } };
   rd.readAsText(e.target.files[0]);
 };
 function buildImportFilter(){
   const box=document.getElementById('impStatus');
   box.innerHTML=ST_KNOWN.map(s=>`<label class="chk" style="border:1px solid var(--line)">
     <input type="checkbox" value="${s}" ${UI.impStatus.includes(s)?'checked':''}>
-    <span class="st ${s}">${s}</span><span class="hint">${ST_LABEL[s]}</span></label>`).join('');
+    <span class="st ${s}">${s}</span><span class="hint">${esc(stLabel(s))}</span></label>`).join('');
   box.querySelectorAll('input').forEach(i=> i.onchange=()=>{
     UI.impStatus=[...box.querySelectorAll('input:checked')].map(x=>x.value); saveUI();
-    toast(UI.impStatus.length? 'Import übernimmt künftig: '+UI.impStatus.join(', ')
-                             : 'Kein Status gewählt – der Import übernimmt wieder alle Zeilen.');
+    toast(UI.impStatus.length? t('imp.take',UI.impStatus.map(stLabel).join(', ')) : t('imp.takeNone'));
   });
 }
-/* Bestätigung ohne confirm(): Safari unterdrückt Systemdialoge, sobald der Nutzer einmal
-   „weitere Dialoge blockieren" gewählt hat oder die Seite im Home-Bildschirm-Modus läuft.
-   Der Knopf fragt deshalb selbst nach – zweiter Tipp innerhalb von 6 Sekunden löscht. */
-function armDanger(btn, ask, action){
-  const label=btn.textContent;
-  const reset=()=>{ btn.textContent=label; btn.dataset.armed=''; clearTimeout(btn._t); };
+/* Which transaction types an import takes over. The list holds every type the app
+   knows, plus whatever is already stored – so a broker-specific type can be
+   switched off as soon as it has been seen once. */
+function buildImportTypeFilter(){
+  const box=document.getElementById('impType');
+  const list=[...new Set(Object.keys(TYPE_CLASS)
+    .concat(Object.values(DB.tx).map(r=>r.type).filter(Boolean))
+    .concat(UI.impSkipType))].sort((a,b)=> typeName(a).localeCompare(typeName(b), UI.lang));
+  box.innerHTML=list.map(ty=>`<label class="chk" style="border:1px solid var(--line)">
+    <input type="checkbox" value="${esc(ty)}" ${UI.impSkipType.includes(ty)?'':'checked'}>
+    ${typeTag({type:ty})}</label>`).join('');
+  box.querySelectorAll('input').forEach(i=> i.onchange=()=>{
+    UI.impSkipType=[...box.querySelectorAll('input:not(:checked)')].map(x=>x.value); saveUI();
+    toast(UI.impSkipType.length
+      ? t('imp.skipTypes', UI.impSkipType.map(typeName).join(', '))
+      : t('imp.skipNone'));
+  });
+}
+/* Confirmation without confirm(): Safari suppresses system dialogs once the user has chosen
+   “block further dialogs” or the page is running in home-screen mode.
+   The button therefore asks by itself – a second tap within 6 seconds deletes. */
+/* Both captions are looked up when they are needed, not captured once: the language
+   can change while the button sits on screen. */
+function armDanger(btn, askKey, action){
+  const reset=()=>{ btn.textContent=t(btn.dataset.i18n); btn.dataset.armed=''; clearTimeout(btn._t); };
   btn.onclick=()=>{
     if(btn.dataset.armed){ reset(); action(); return; }
-    btn.dataset.armed='1'; btn.textContent=ask;
+    btn.dataset.armed='1'; btn.textContent=t(askKey);
     clearTimeout(btn._t); btn._t=setTimeout(reset,6000);
   };
   return reset;
 }
-armDanger(document.getElementById('dropCancelled'), 'Sicher? Nochmal tippen', ()=>{
-  const ids=Object.keys(DB.tx).filter(k=>DB.tx[k].status==='Cancelled');
-  if(!ids.length) return toast('Es sind keine abgebrochenen Vorgänge gespeichert.');
-  ids.forEach(k=>delete DB.tx[k]); save(); render();
-  toast(ids.length+' abgebrochene Vorgänge entfernt.');
+/* Remove every stored transaction of one type – for bookings that are of no interest
+   in this depot, a securities transfer say. The notes hanging off those transactions
+   go with them; left behind they would be invisible and could never be reached again. */
+function buildTypeRemover(){
+  const sel=document.getElementById('dropTypeSel'), list=typeList(), cnt={};
+  Object.values(DB.tx).forEach(r=>cnt[r.type]=(cnt[r.type]||0)+1);
+  const keep=sel.value;
+  sel.innerHTML = list.length
+    ? list.map(ty=>`<option value="${esc(ty)}" ${ty===keep?'selected':''}>${esc(typeName(ty))} · ${cnt[ty]||0}</option>`).join('')
+    : `<option value="">${t('data.typeSelNone')}</option>`;
+  sel.disabled = document.getElementById('dropType').disabled = !list.length;
+}
+armDanger(document.getElementById('dropType'), 'data.askDelete', ()=>{
+  const ty=document.getElementById('dropTypeSel').value;
+  const ids=Object.keys(DB.tx).filter(k=>DB.tx[k].type===ty);
+  if(!ids.length) return toast(t('data.typeNone'));
+  let notes=0;
+  ids.forEach(k=>{ delete DB.tx[k]; if(DB.cmt['tx:'+k]){ delete DB.cmt['tx:'+k]; notes++; } });
+  save(); render();
+  toast(t('data.typeGone',ids.length,typeName(ty))+(notes?t('data.typeNotes',notes):'')+'\n'+t('data.typeBack'));
 });
-armDanger(document.getElementById('wipe'), 'Alles löschen? Nochmal tippen', ()=>{
+armDanger(document.getElementById('dropCancelled'), 'data.askDelete', ()=>{
+  const ids=Object.keys(DB.tx).filter(k=>DB.tx[k].status==='Cancelled');
+  if(!ids.length) return toast(t('data.noCancelled'));
+  ids.forEach(k=>delete DB.tx[k]); save(); render();
+  toast(t('data.cancelledGone',ids.length));
+});
+armDanger(document.getElementById('wipe'), 'data.askWipe', ()=>{
   DB.tx={}; DB.cmt={};
   save();
-  /* Schlüssel zusätzlich entfernen, damit nach dem Neuladen garantiert nichts zurückkommt */
+  /* Remove the keys as well, so that nothing can possibly come back after a reload */
   try{ localStorage.removeItem('dc_tx'); localStorage.removeItem('dc_cmt'); }catch(e){}
   render();
-  toast('Alle Daten gelöscht.');
+  toast(t('data.wiped'));
 });
 
-/* ============================ Start ============================ */
-if(TOUCH){
-  document.getElementById('dropHint').textContent =
-    'Mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen';
+/* ============================ Startup ============================ */
+/* Everything the markup carries statically. Runs once at startup and again on
+   every language change; an armed danger button keeps its question. */
+function applyStatic(){
+  document.documentElement.lang=UI.lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    if(el.dataset.armed) return;
+    el.innerHTML=t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=> el.placeholder=t(el.dataset.i18nPh));
+  document.querySelectorAll('[data-i18n-title]').forEach(el=> el.title=t(el.dataset.i18nTitle));
+  document.querySelectorAll('[data-i18n-aria]').forEach(el=> el.setAttribute('aria-label',t(el.dataset.i18nAria)));
+  document.getElementById('introBody').innerHTML=t('intro.body');
+  document.getElementById('dropHint').textContent = TOUCH ? t('imp.dropTouch') : t('imp.drop');
+  document.querySelectorAll('#langSeg button').forEach(b=> b.classList.toggle('on', b.dataset.l===UI.lang));
+  if(!LS.ok) document.getElementById('storageWarn').innerHTML=t('data.noStore');
+  buildChangelog();
 }
+document.querySelectorAll('#langSeg button').forEach(b=> b.onclick=()=>{
+  if(UI.lang===b.dataset.l) return;
+  UI.lang=b.dataset.l; saveUI();
+  /* The import report of the previous language would stay behind untranslated */
+  document.getElementById('report').innerHTML='';
+  applyStatic(); render();
+});
 if(!LS.ok){
-  const w=document.getElementById('storageWarn');
-  w.style.display='block';
-  w.innerHTML='<span class="neg">⚠ Dieser Browser speichert gerade nichts.</span> '+
-    'Safari sperrt den Speicher, wenn die Datei direkt aus „Dateien" geöffnet wird oder ein privates Fenster aktiv ist. '+
-    'Die App funktioniert, aber alles ist nach dem Neuladen weg. Bitte die Seite über eine Web-Adresse (https://…) öffnen.';
-  toast('⚠️ Kein Speicher verfügbar – Daten gehen beim Neuladen verloren. Details unter „Import / Daten".');
+  document.getElementById('storageWarn').style.display='block';
+  toast(t('data.noStoreToast'));
 }
 
-/* ---------- Begrüßung: einmalig beim ersten Start, danach über „ℹ Hinweise" ---------- */
+/* ---------- Version history ---------- */
+/* Newest first. The version number matches VERSION in sw.js, so the entry at the
+   top is always the version currently running. One line per feature, kept short,
+   in both languages. */
+const CHANGELOG=[
+  {v:'v28', d:'2026-08-13', items:[
+    {en:'Fixed: the open tab kept its highlight only after a click of your own – starting on the import or opening a position left the bar unmarked.',
+     de:'Behoben: Der offene Tab war erst nach einem eigenen Klick markiert – beim Start im Import oder in einer Position blieb die Leiste ohne Markierung.'},
+    {en:'The import now also asks which transaction types to take over, so bookings like securities transfers are never stored in the first place.',
+     de:'Der Import fragt jetzt auch, welche Vorgangstypen übernommen werden – Buchungen wie Depotüberträge werden so gar nicht erst gespeichert.'},
+    {en:'Top bar and dialogs tidied up: a drawn notes icon, a filter button shaped like the language switch, and the version history closes from its title row.',
+     de:'Kopfzeile und Dialoge aufgeräumt: gezeichnetes Hinweis-Symbol, ein Filterknopf in Form des Sprachschalters, und der Versionsverlauf schließt über seine Titelzeile.'}
+  ]},
+  {v:'v27', d:'2026-08-13', items:[
+    {en:'On a phone the tables no longer scroll sideways: every transaction, position and month becomes a card with all its figures under each other.',
+     de:'Auf dem Telefon scrollen die Tabellen nicht mehr seitwärts: Jeder Vorgang, jede Position und jeder Monat wird zur Karte mit allen Werten untereinander.'},
+    {en:'The filters fold away behind a button in the top bar and free up a fifth of the screen; a dot shows when one of them is narrowing the figures.',
+     de:'Die Filter klappen hinter einen Knopf in der Kopfzeile und geben ein Fünftel des Bildschirms frei; ein Punkt zeigt, wenn einer die Werte einschränkt.'},
+    {en:'Calendar days with bookings but no realized result carry a dot, and the open tab scrolls into view by itself.',
+     de:'Kalendertage mit Vorgängen ohne Realisierung tragen einen Punkt, und der offene Tab rückt von selbst ins Bild.'}
+  ]},
+  {v:'v26', d:'2026-08-13', items:[
+    {en:'The notes now open from an “ℹ” button next to the app name in the top bar, reachable from every tab instead of only from Import / Data.',
+     de:'Die Hinweise öffnen jetzt über ein „ℹ“ neben dem App-Namen in der Kopfzeile – aus jedem Tab erreichbar, nicht mehr nur unter Import / Daten.'},
+    {en:'Overview and positions show taxes and fees as costs without a minus. A minus now appears only where tax was reimbursed.',
+     de:'Übersicht und Positionen zeigen Steuern und Gebühren als Kosten ohne Minus. Ein Minus steht jetzt nur noch für erstattete Steuern.'},
+    {en:'The interface switches between German and English with the toggle in the top bar; the choice is remembered.',
+     de:'Die Oberfläche wechselt über den Schalter in der Kopfzeile zwischen Deutsch und Englisch; die Wahl bleibt gespeichert.'},
+    {en:'Stored data: transactions of one type – securities transfers, say – can be removed together, along with their notes.',
+     de:'Gespeicherte Daten: Vorgänge eines Typs – etwa Depotüberträge – lassen sich gemeinsam entfernen, samt ihrer Notizen.'}
+  ]},
+  {v:'v25', d:'2026-08-13', items:[
+    {en:'Version history: this list, reachable under Import / Data. It shows which version is running and what every earlier one changed.',
+     de:'Versionsverlauf: diese Liste unter Import / Daten. Sie zeigt, welche Version läuft und was jede frühere gebracht hat.'},
+    {en:'Stored data: the four buttons now sit in two rows – the backups above, clean-up and deletion below.',
+     de:'Gespeicherte Daten: die vier Knöpfe stehen jetzt in zwei Reihen – oben die Backups, darunter Aufräumen und Löschen.'}
+  ]},
+  {v:'v24', d:'2026-08-13', items:[
+    {en:'The entire interface is now in English: navigation, tables, filters, notes and every message.',
+     de:'Die gesamte Oberfläche liegt auf Englisch vor: Navigation, Tabellen, Filter, Notizen und alle Meldungen.'}
+  ]},
+  {v:'v23', d:'2026-08-08', items:[
+    {en:'The year and month filters now also apply to the return and loss rankings on the overview.',
+     de:'Jahr- und Monatsfilter wirken jetzt auch auf die Ertrags- und Verlustrangliste der Übersicht.'},
+    {en:'New “Cost basis” filter: sales without a matching purchase in the imported period can be excluded pro rata.',
+     de:'Neuer Filter „Einstand“: Verkäufe ohne passenden Kauf im importierten Zeitraum lassen sich anteilig herausrechnen.'},
+    {en:'Taxes now carry the correct sign; transfers in and out are included in the cost basis.',
+     de:'Steuern tragen das richtige Vorzeichen; Ein- und Ausbuchungen fließen in den Einstand ein.'}
+  ]},
+  {v:'v20.2', d:'2026-08-04', items:[
+    {en:'Welcome screen on first start, explaining what the app is for and how it is installed. Reopenable any time via the notes.',
+     de:'Begrüßung beim ersten Start: wozu die App dient und wie sie installiert wird. Jederzeit über die Hinweise wieder zu öffnen.'}
+  ]},
+  {v:'v20.1', d:'2026-08-02', items:[
+    {en:'Security hardening: content security policy, stricter escaping, images only from embedded data, and backup files validated field by field on import.',
+     de:'Härtung: Content-Security-Policy, strengeres Escaping, Bilder nur aus eingebetteten Daten und Backup-Dateien werden beim Einspielen Feld für Feld geprüft.'}
+  ]},
+  {v:'v20', d:'2026-08-02', items:[
+    {en:'First release: CSV import, positions with FIFO gains, distributions, fees and taxes, calendar, notes with screenshots, backups and offline use as a home-screen app.',
+     de:'Erste Fassung: CSV-Import, Positionen mit FIFO-Gewinnen, Ausschüttungen, Gebühren und Steuern, Kalender, Notizen mit Screenshots, Backups und Offline-Betrieb als Home-Bildschirm-App.'}
+  ]}
+];
+const APP_VERSION=CHANGELOG[0].v;
+function buildChangelog(){
+  document.getElementById('verNow').textContent=t('ver.now',APP_VERSION,dt(CHANGELOG[0].d));
+  document.getElementById('chgList').innerHTML=CHANGELOG.map((r,i)=>
+    `<div class="chg-v"><b>${esc(r.v)}</b><span class="hint">${esc(dt(r.d))}</span>${i?'':`<span class="st Executed">${t('ver.current')}</span>`}</div>
+     <ul>${r.items.map(o=>`<li>${esc(o[UI.lang]||o.en)}</li>`).join('')}</ul>`).join('');
+}
+const chg=document.getElementById('chg');
+const closeChg=()=>chg.classList.remove('on');
+document.getElementById('chgOk').onclick=closeChg;
+chg.onclick=e=>{ if(e.target===chg) closeChg(); };
+document.getElementById('chgOpen').onclick=()=>{
+  document.getElementById('chgBox').scrollTop=0; chg.classList.add('on');
+};
+
+/* ---------- Welcome screen: once on first start, afterwards via the “ℹ” in the top bar ---------- */
 const intro=document.getElementById('intro');
 const closeIntro=()=>{ intro.classList.remove('on'); UI.seenIntro=1; saveUI(); };
 document.getElementById('introOk').onclick=closeIntro;
@@ -1326,25 +1878,28 @@ document.getElementById('introOpen').onclick=()=>intro.classList.add('on');
 
 migrateIds();
 migrateSigns();
+document.body.dataset.view=view;
+applyStatic();
 render();
+scrollNavIntoView();
 if(!Object.keys(DB.tx).length) show('imp');
 if(!UI.seenIntro) intro.classList.add('on');
 
-/* ============================ Offline-Betrieb ============================ */
-/* Der Service Worker legt die App im Gerät ab, damit sie ohne Netz startet.
-   Er läuft nur über https:// (und localhost) – bei file:// passiert nichts,
-   die App funktioniert dann wie bisher, nur ohne garantierte Offline-Fähigkeit. */
+/* ============================ Offline operation ============================ */
+/* The service worker stores the app on the device so it starts without a network.
+   It only runs over https:// (and localhost) – with file:// nothing happens and
+   the app works as before, just without guaranteed offline capability. */
 if('serviceWorker' in navigator && location.protocol==='https:'){
   window.addEventListener('load',()=>{
     navigator.serviceWorker.register('./sw.js').then(reg=>{
-      /* Beim Start nach einer neueren Fassung sehen */
+      /* Look for a newer version on startup */
       reg.update().catch(()=>{});
       reg.addEventListener('updatefound',()=>{
         const sw=reg.installing; if(!sw) return;
         sw.addEventListener('statechange',()=>{
           if(sw.state==='installed' && navigator.serviceWorker.controller){
-            /* Nicht mitten in der Sitzung austauschen – erst beim nächsten Start */
-            toast('Eine neue Version wurde geladen. Sie ist aktiv, sobald die App einmal vollständig geschlossen und neu geöffnet wurde.');
+            /* Do not swap mid-session – only on the next start */
+            toast(t('sw.update'));
           }
         });
       });

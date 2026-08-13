@@ -1,22 +1,22 @@
 /* ============================================================
    Depot Cockpit – Service Worker
    ------------------------------------------------------------
-   Sorgt dafür, dass die App auch ohne Netz startet.
+   Makes sure the app starts even without a network.
 
-   WICHTIG BEI JEDER ÄNDERUNG AN index.html:
-   Unten die VERSION hochzählen (z. B. 'v20' -> 'v21').
-   Nur dann merkt der Browser, dass er die neue Fassung laden muss.
-   Die alte Version wird beim Aktivieren automatisch aufgeräumt.
+   IMPORTANT ON EVERY CHANGE TO index.html:
+   Bump the VERSION below (e.g. 'v20' -> 'v21').
+   Only then does the browser notice it has to load the new version.
+   The old version is cleaned up automatically on activation.
 
-   Gespeicherte Daten (localStorage) sind davon NICHT betroffen –
-   sie überleben jedes Update und jedes Leeren dieses Caches.
+   Stored data (localStorage) is NOT affected by this –
+   it survives every update and every clearing of this cache.
    ============================================================ */
 
-const VERSION = 'v23';
+const VERSION = 'v28';
 const CACHE   = 'depot-' + VERSION;
 
-/* Alles, was die App zum Starten braucht. Relative Pfade, damit es
-   auch in einem Unterordner funktioniert (z. B. username.github.io/depot/). */
+/* Everything the app needs to start. Relative paths so that it also
+   works in a subfolder (e.g. username.github.io/depot/). */
 const SHELL = [
   './',
   './index.html',
@@ -27,19 +27,19 @@ const SHELL = [
   './icon-512-maskable.png'
 ];
 
-/* ---------- Installation: App-Shell einmalig in den Cache legen ---------- */
+/* ---------- Install: put the app shell into the cache once ---------- */
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const c = await caches.open(CACHE);
-    /* Einzeln statt addAll: eine fehlende Datei (z. B. ein Icon) darf
-       die Installation nicht komplett scheitern lassen. */
+    /* One by one instead of addAll: a missing file (an icon, say) must not
+       make the whole installation fail. */
     await Promise.all(SHELL.map(u =>
       c.add(new Request(u, {cache: 'reload'})).catch(() => {})
     ));
   })());
 });
 
-/* ---------- Aktivierung: alte Caches entfernen ---------- */
+/* ---------- Activate: remove old caches ---------- */
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
     const keys = await caches.keys();
@@ -54,15 +54,15 @@ self.addEventListener('activate', e => {
   })());
 });
 
-/* ---------- Abruf: erst Cache, dann im Hintergrund auffrischen ----------
-   So startet die App offline sofort und holt sich online still die
-   neueste Fassung für den nächsten Start. */
+/* ---------- Fetch: cache first, then refresh in the background ----------
+   This way the app starts instantly offline and, when online, quietly picks up
+   the newest version for the next start. */
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return;   // fremde Adressen nicht anfassen
+  if (url.origin !== self.location.origin) return;   // do not touch foreign addresses
 
   e.respondWith((async () => {
     const cache  = await caches.open(CACHE);
@@ -78,19 +78,19 @@ self.addEventListener('fetch', e => {
     const res = await fromNet;
     if (res) return res;
 
-    /* Kein Netz und nichts im Cache: bei Seitenaufrufen die App ausliefern. */
+    /* No network and nothing cached: serve the app for page navigations. */
     if (req.mode === 'navigate') {
       const shell = await cache.match('./index.html', {ignoreSearch: true});
       if (shell) return shell;
     }
-    return new Response('Offline und nicht im Zwischenspeicher.', {
+    return new Response('Offline and not cached.', {
       status: 503,
       headers: {'Content-Type': 'text/plain; charset=utf-8'}
     });
   })());
 });
 
-/* ---------- Update sofort übernehmen, wenn die Seite darum bittet ---------- */
+/* ---------- Apply an update immediately when the page asks for it ---------- */
 self.addEventListener('message', e => {
   if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
