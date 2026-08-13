@@ -249,6 +249,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
       <div class="scroll"><table id="posTable"></table></div>
       <p class="hint">Holdings &amp; cost basis are always calculated over the <b>entire</b> history (FIFO) and only from executed transactions.
         The year, month and status filters above apply to transactions, the calendar and the overview's key figures and rankings.</p>
+      <p class="hint">Fees and taxes are costs and are shown without a minus. A minus appears only where tax was <b>reimbursed</b>.</p>
     </div>
   </section>
 
@@ -511,12 +512,21 @@ function migrateIds(){
 }
 
 /* Bring rows stored before this sign rule into line: negative fees and taxes used to be
-   subtracted from the result and thereby counted as return. */
+   subtracted from the result and thereby counted as return.
+   Decided per column and by majority, not per row: a column written as a deduction
+   throughout is flipped as a whole, while a single negative value among positive ones is
+   a reimbursement and keeps its sign. Flipping those too would turn money paid back into
+   another cost. Once a column is positive the pass is a no-op, so it may run on every start. */
+function majorityNegative(values){
+  let neg=0, pos=0;
+  values.forEach(v=>{ if(v<-1e-9) neg++; else if(v>1e-9) pos++; });
+  return neg>pos;
+}
 function migrateSigns(){
-  let changed=0;
-  Object.values(DB.tx).forEach(r=>{
-    if(r.feeN<0){ r.feeN=-r.feeN; changed++; }
-    if(r.taxN<0){ r.taxN=-r.taxN; changed++; }
+  const rows=Object.values(DB.tx); let changed=0;
+  ['feeN','taxN'].forEach(k=>{
+    if(!majorityNegative(rows.map(r=>+r[k]||0))) return;
+    rows.forEach(r=>{ if(+r[k]){ r[k]=-r[k]; changed++; } });
   });
   if(changed) save();
 }
@@ -535,13 +545,16 @@ function parseCSV(text){
   });
   const dec = detectDec(recs.flatMap(r=>[r.shares,r.price,r.amount,r.fee,r.tax]));
   /* Internally fees and taxes are always positive costs. Some exports, however, write the
-     deduction as a negative booking (-8.94). If a column contains negative values, the file
-     follows that notation and the column is flipped as a whole – the sign is preserved in
-     the process, so a refund becomes a credit rather than further costs. */
-  const flipFee = recs.some(r=>num(r.fee,dec)<0), flipTax = recs.some(r=>num(r.tax,dec)<0);
-  recs.forEach(r=>{
+     deduction as a negative booking (-8.94). Which notation a file uses is decided by the
+     majority of the column: only when most of its values are negative is the column flipped
+     as a whole. A lone negative value among positive ones is a reimbursement instead and
+     keeps its sign – otherwise a single refunded tax would flip every ordinary tax of the
+     file into a minus. */
+  const feeV=recs.map(r=>num(r.fee,dec)), taxV=recs.map(r=>num(r.tax,dec));
+  const flipFee = majorityNegative(feeV), flipTax = majorityNegative(taxV);
+  recs.forEach((r,i)=>{
     r.sharesN=num(r.shares,dec); r.priceN=num(r.price,dec); r.amountN=num(r.amount,dec);
-    r.feeN=num(r.fee,dec)*(flipFee?-1:1); r.taxN=num(r.tax,dec)*(flipTax?-1:1);
+    r.feeN=feeV[i]*(flipFee?-1:1); r.taxN=taxV[i]*(flipTax?-1:1);
     r.dt = r.date+' '+(r.time||'00:00:00');
     r.id = txId(r);
     out.push(r);
@@ -733,6 +746,11 @@ function qty(n){
 const raw=n=> (n===null||n===undefined||!isFinite(n)) ? '' : String(n);
 const eur=n=> fmt(n)+' €';
 const sign=n=> `<span class="${n>0.004?'pos':n<-0.004?'neg':'mut'}">${n>0.004?'+':''}${eur(n)}</span>`;
+/* Taxes and fees are costs, so they are shown without a minus: the label already says
+   what the figure is. A minus is therefore left over for the one case where it carries
+   information – tax paid back – and that case is marked as a credit. */
+const TAX_BACK='Reimbursement – this amount was paid back.';
+const cost=n=> n<-0.004 ? `<span class="pos" title="${TAX_BACK}">${eur(n)}</span>` : eur(Math.abs(n));
 /* Date display: the raw values are already in yyyy-mm-dd form */
 const dt=d=> d || '';
 const esc=s=> String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -894,7 +912,7 @@ function dash(){
     ['Distributions'+per, sign(divTotal), scope],
     ['Purchases'+per, eur(inv), f.filter(isBuy).length+' transactions'],
     ['Sales'+per, eur(sel), f.filter(isSell).length+' transactions'],
-    ['Fees / taxes'+per, eur(fee)+' / '+eur(tax), ''],
+    ['Fees / taxes'+per, cost(fee)+' / '+cost(tax), 'costs · a minus is a reimbursement'],
     ['Deposits / withdrawals'+per, eur(dep)+' / '+eur(wit), '']
   ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="hint">${h}</div></div>`).join('');
 
@@ -960,8 +978,8 @@ function dash(){
     `<thead><tr><th>Month</th><th class="num">Transactions</th><th class="num">Purchases</th><th class="num">Sales</th><th class="num">Distributions</th><th class="num">Fees</th><th class="num">Taxes</th><th class="num">realized</th></tr></thead><tbody>`+
     ms.map(m=>{const [y,mo]=m.k.split('-');return `<tr class="clickable" onclick="jumpMonth('${y}','${mo}')">
       <td>${MON[+mo-1]} ${y}</td><td class="num mut">${m.n}</td><td class="num">${eur(m.buy)}</td>
-      <td class="num">${eur(m.sell)}</td><td class="num pos">${eur(m.div)}</td><td class="num mut">${eur(m.fee)}</td>
-      <td class="num mut">${eur(m.tax)}</td><td class="num"><b>${sign(m.pnl)}</b></td></tr>`}).join('')+'</tbody>';
+      <td class="num">${eur(m.sell)}</td><td class="num pos">${eur(m.div)}</td><td class="num mut">${cost(m.fee)}</td>
+      <td class="num mut">${cost(m.tax)}</td><td class="num"><b>${sign(m.pnl)}</b></td></tr>`}).join('')+'</tbody>';
 }
 function jumpMonth(y,m){F.year=y;F.month=m;document.querySelector('nav button[data-v="tx"]').click();}
 
@@ -992,8 +1010,8 @@ function posView(){
       <td class="num">${p.open?sign(p.unreal):'<span class="mut">–</span>'}</td>
       <td class="num">${sign(p.realized)}</td>
       <td class="num pos">${eur(p.div)}</td>
-      <td class="num mut">${eur(p.fees)}</td>
-      <td class="num mut">${eur(p.taxes)}</td>
+      <td class="num mut">${cost(p.fees)}</td>
+      <td class="num mut">${cost(p.taxes)}</td>
       <td class="num"><b>${sign(p.total)}</b></td>
       <td class="num mut">${p.n}</td>
     </tr>`).join('')+'</tbody>';
@@ -1012,7 +1030,7 @@ function detail(isin){
     ['Avg. cost per share',eur(p.shares?p.cost/p.shares:0)],['Last price',eur(p.last)],
     ['Value (estimated)',eur(p.value)],['Unrealized',p.open?sign(p.unreal):'–'],
     ['Realized (FIFO)',sign(p.realized)],['Distributions',sign(p.div)],
-    ['Fees',eur(p.fees)],['Taxes',eur(p.taxes)],['Total return',`<b>${sign(p.total)}</b>`],
+    ['Fees',cost(p.fees)],['Taxes',cost(p.taxes)],['Total return',`<b>${sign(p.total)}</b>`],
     ['First transaction',rows.length?dt(rows[rows.length-1].date):'–']];
   document.getElementById('v-det').innerHTML=`
     <button class="back" onclick="document.querySelector('nav button[data-v=pos]').click()">‹ back to positions</button>
@@ -1348,7 +1366,8 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short. */
 const CHANGELOG=[
   {v:'v26', d:'2026-08-13', items:[
-    'The notes now open from an “ℹ” button next to the app name in the top bar, reachable from every tab instead of only from Import / Data.'
+    'The notes now open from an “ℹ” button next to the app name in the top bar, reachable from every tab instead of only from Import / Data.',
+    'Overview and positions show taxes and fees as costs without a minus. A minus now appears only where tax was reimbursed.'
   ]},
   {v:'v25', d:'2026-08-13', items:[
     'Version history: this list, reachable under Import / Data. It shows which version is running and what every earlier one changed.',
