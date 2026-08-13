@@ -1436,6 +1436,9 @@ function txTableHtml(rows){
      its own it would only be noise, so it is marked and left out there. */
   const l=i=>`data-l="${esc(cols[i])}"`;
   const md=v=> v ? '' : ' mdash';
+  /* Amount stays uncoloured – the leading sign already says which way the money
+     went, so the column is set in bold instead of green/red. */
+  const amt=n=> `<b>${n>0.004?'+':''}${eur(n)}</b>`;
   const body='<tbody>'+rows.map(r=>{const c=(DB.cmt['tx:'+r.id]||[]).length;
     return `<tr>
       <td class="mhead">${r.isin?`<span class="clickable" onclick="detail('${js(r.isin)}')">${esc(r.description||r.isin)}</span>`:esc(r.description||'–')}
@@ -1447,7 +1450,7 @@ function txTableHtml(rows){
       <td class="mhide" ${l(4)}>${r.isin?`<span class="clickable" onclick="detail('${js(r.isin)}')">${esc(r.description||r.isin)}</span>`:esc(r.description||'–')}</td>
       <td class="num${md(r.sharesN)}" ${l(5)}>${r.sharesN?fmt(r.sharesN,r.sharesN%1?6:0):'<span class="mut">–</span>'}</td>
       <td class="num mut${md(r.priceN)}" ${l(6)}>${r.priceN?fmt(r.priceN):'–'}</td>
-      <td class="num${md(r.amountN)}" ${l(7)}>${r.amountN?sign(r.amountN):'<span class="mut">–</span>'}</td>
+      <td class="num${md(r.amountN)}" ${l(7)}>${r.amountN?amt(r.amountN):'<span class="mut">–</span>'}</td>
       <td class="num${md(RPL[r.id]!==undefined)}" ${l(8)}>${RPL[r.id]!==undefined?`<b>${sign(RPL[r.id])}</b>${orphanMark(r)}`:'<span class="mut">–</span>'}</td>
       <td class="num mut" ${l(9)}>${r.feeN?fmt(r.feeN):''}</td>
       <td class="num mut" ${l(10)}>${r.taxN?fmt(r.taxN):''}</td>
