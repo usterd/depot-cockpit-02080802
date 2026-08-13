@@ -36,6 +36,11 @@ header{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.92);-webkit-ba
   padding:12px max(20px,env(safe-area-inset-right)) 12px max(20px,env(safe-area-inset-left))}
 .logo{font-weight:700;font-size:17px;letter-spacing:.3px}
 .logo span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+/* Round icon button in the top bar – the notes sit next to the app name.
+   Declared after the .btn defaults further down would be cleaner, but the
+   double class keeps it winning over them regardless of order. */
+button.btn.ico{width:34px;height:34px;min-height:34px;padding:0;border-radius:50%;flex:0 0 auto;
+  display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
 nav{display:flex;gap:4px;flex-wrap:wrap}
 nav button{background:transparent;border:1px solid transparent;color:var(--mut);padding:7px 14px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:500;min-height:36px}
 nav button:hover{color:var(--fg);background:var(--bg3)}
@@ -194,6 +199,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
 <header>
   <div class="hd">
     <div class="logo">◆ Depot <span>Cockpit</span></div>
+    <button class="btn ico" id="introOpen" title="Notes" aria-label="Notes">ℹ</button>
     <nav>
       <button data-v="dash" class="on">Overview</button>
       <button data-v="pos">Positions</button>
@@ -284,10 +290,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
   <!-- IMPORT -->
   <section class="view" id="v-imp">
     <div class="panel">
-      <div class="row" style="margin-bottom:12px">
-        <h2 style="margin:0">Upload CSV</h2>
-        <button class="btn" id="introOpen" style="margin-left:auto">ℹ Notes</button>
-      </div>
+      <h2>Upload CSV</h2>
       <div class="drop" id="drop">
         <button class="btn pri" id="pick">Choose file</button><br>
         <span class="hint" id="dropHint">or drag a CSV here · multiple files and partial exports are fine · duplicates are detected and skipped automatically</span>
@@ -1344,6 +1347,9 @@ if(!LS.ok){
 /* Newest first. The version number matches VERSION in sw.js, so the entry at the
    top is always the version currently running. One line per feature, kept short. */
 const CHANGELOG=[
+  {v:'v26', d:'2026-08-13', items:[
+    'The notes now open from an “ℹ” button next to the app name in the top bar, reachable from every tab instead of only from Import / Data.'
+  ]},
   {v:'v25', d:'2026-08-13', items:[
     'Version history: this list, reachable under Import / Data. It shows which version is running and what every earlier one changed.',
     'Stored data: the four buttons now sit in two rows – the backups above, clean-up and deletion below.'
