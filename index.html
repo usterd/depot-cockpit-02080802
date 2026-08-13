@@ -41,6 +41,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.92);-webkit-ba
    double class keeps it winning over them regardless of order. */
 button.btn.ico{width:34px;height:34px;min-height:34px;padding:0;border-radius:50%;flex:0 0 auto;
   display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
+button.btn.ico svg{width:19px;height:19px;display:block}
 /* Language switch – two states side by side, the active one is highlighted */
 .seg{display:inline-flex;flex:0 0 auto;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--bg3)}
 .seg button{background:transparent;border:none;color:var(--mut);font:inherit;font-size:12px;font-weight:600;
@@ -272,7 +273,15 @@ table.rsp td.mhead{display:none}
 <header>
   <div class="hd">
     <div class="logo">◆ Depot <span>Cockpit</span></div>
-    <button class="btn ico" id="introOpen" data-i18n-title="hdr.notes" data-i18n-aria="hdr.notes">ℹ</button>
+    <!-- Drawn rather than typed: the ℹ glyph is a serif italic in most fonts and
+         looked nothing like the rest of the bar. -->
+    <button class="btn ico" id="introOpen" data-i18n-title="hdr.notes" data-i18n-aria="hdr.notes">
+      <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="10" cy="5.9" r="1.15" fill="currentColor"/>
+        <path d="M10 8.9v5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+    </button>
     <div class="seg" id="langSeg" data-i18n-title="hdr.lang">
       <button data-l="en">EN</button><button data-l="de">DE</button>
     </div>
