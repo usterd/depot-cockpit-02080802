@@ -162,6 +162,11 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .dd .pop hr{border:none;border-top:1px solid var(--line);margin:6px 0}
 .dd .pop .row button{font-size:12px;padding:4px 9px}
 .btn.note{padding:3px 10px;font-size:12px;min-height:30px}
+#filtToggle{display:none;white-space:nowrap;position:relative}
+/* A dot on the button when a filter is narrowing what is shown – otherwise a
+   folded-away filter would silently change every figure on the screen. */
+#filtToggle.act::after{content:'';position:absolute;top:5px;right:6px;width:7px;height:7px;
+  border-radius:50%;background:var(--acc);border:2px solid var(--bg)}
 
 /* ---------- Touch and iPhone adjustments ---------- */
 @media (hover:none){
@@ -175,7 +180,11 @@ textarea{width:100%;min-height:70px;resize:vertical}
   nav{order:3;width:100%;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
   nav::-webkit-scrollbar{display:none}
   nav button{flex:0 0 auto;min-height:40px}
-  .filters{order:4;margin-left:0;width:100%;flex-wrap:wrap}
+  /* The six filters filled half the screen on a phone. They now sit behind the
+     button in the first row and only unfold when they are actually wanted. */
+  #filtToggle{display:inline-flex}
+  .filters{order:4;margin-left:0;width:100%;flex-wrap:wrap;display:none}
+  .filters.open{display:flex}
   .filters>*{flex:1 1 130px;min-height:40px}
   .dd{position:static}
   .dd .pop{left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));top:auto}
@@ -190,10 +199,58 @@ textarea{width:100%;min-height:70px;resize:vertical}
   .day{min-height:58px;padding:4px}
   .day .ev,.day .hint{display:none}
   .day .d{font-size:12px}
+  /* A day box is barely 50 px wide here – the currency sign would wrap the figure */
+  .day .pnl .cur{display:none}
+  /* Events are hidden at this width – a dot keeps days with bookings visible */
+  .day.has::after{content:'';display:block;width:5px;height:5px;border-radius:50%;
+    background:var(--acc);margin:3px auto 0}
   .drop{padding:22px 14px}
   .modal{inset:0;width:100%;max-height:100%;border-radius:0;
     padding:calc(14px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))}
   .toast{left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));max-width:none}
+}
+/* On a phone the first header row has to hold name, notes, language and the
+   filter button. Trimmed like this they stay on one line down to about 380 px –
+   below that the button drops to a line of its own, which is still fine. */
+@media (max-width:480px){
+  .hd{gap:8px;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
+  .logo{font-size:16px}
+  .seg button{padding:0 9px}
+  #filtToggle{font-size:13px;padding:0 10px}
+  main{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
+}
+/* Filters do nothing on these two views, so they do not take up room there either */
+body[data-view="imp"] .filters,body[data-view="det"] .filters,
+body[data-view="imp"] #filtToggle,body[data-view="det"] #filtToggle{display:none}
+
+/* ---------- Tables on a narrow screen ----------
+   Thirteen columns cannot be read through a 390 px window; scrolling sideways
+   hid exactly the columns that matter (amount, result, the note button). Below
+   640 px every row therefore becomes its own card: one line per field, the
+   column header in front of the value, nothing cut off. Each card is headed by
+   a name – either the row's own first cell (.mfirst) or a cell added just for
+   this layout (.mhead), which stays out of the way on a wide screen. */
+table.rsp td.mhead{display:none}
+@media (max-width:640px){
+  table.rsp,table.rsp tbody,table.rsp tr,table.rsp td{display:block;width:100%}
+  table.rsp thead{display:none}
+  table.rsp{border-spacing:0}
+  table.rsp tr{background:var(--bg3);border:1px solid var(--line);border-radius:10px;
+    padding:8px 11px;margin-bottom:9px}
+  table.rsp tr:hover{background:var(--bg3)}
+  table.rsp td{border:none;padding:4px 0;white-space:normal;text-align:right;
+    display:flex;gap:12px;align-items:baseline;justify-content:space-between;font-size:13px}
+  table.rsp td::before{content:attr(data-l);text-align:left;color:var(--mut);font-size:11px;
+    text-transform:uppercase;letter-spacing:.6px;flex:0 0 auto}
+  table.rsp td:empty{display:none}
+  /* Card headline: the name, no label in front of it */
+  table.rsp td.mhead,table.rsp td.mfirst{display:block;text-align:left;padding:0 0 6px;
+    margin-bottom:5px;border-bottom:1px solid var(--line);font-size:14px}
+  table.rsp td.mhead::before,table.rsp td.mfirst::before{content:none}
+  table.rsp td.mhead .hint,table.rsp td.mfirst .hint{display:block;font-size:11px}
+  /* Whatever the headline already says, and every field the row does not have,
+     needs no line of its own */
+  table.rsp td.mhide,table.rsp td.mdash{display:none}
 }
 @media (prefers-reduced-motion:reduce){
   *{scroll-behavior:auto!important;transition:none!important;animation:none!important}
@@ -208,6 +265,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
     <div class="seg" id="langSeg" data-i18n-title="hdr.lang">
       <button data-l="en">EN</button><button data-l="de">DE</button>
     </div>
+    <button class="btn" id="filtToggle" data-i18n="hdr.filtersBtn" aria-expanded="false">Filters ▾</button>
     <nav>
       <button data-v="dash" class="on" data-i18n="nav.dash">Overview</button>
       <button data-v="pos" data-i18n="nav.pos">Positions</button>
@@ -244,7 +302,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
       <div id="rank"></div></div>
     <div class="panel" id="lossPanel" style="display:none"><h2><span data-i18n="dash.loss">Losses per position</span> <span class="hint" id="lossScope"></span></h2>
       <div id="rankLoss"></div></div>
-    <div class="panel"><h2 data-i18n="dash.cash">Cash flow per month</h2><div class="scroll"><table id="monthly"></table></div></div>
+    <div class="panel"><h2 data-i18n="dash.cash">Cash flow per month</h2><div class="scroll"><table id="monthly" class="rsp"></table></div></div>
   </section>
 
   <!-- POSITIONEN -->
@@ -254,7 +312,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
         <input id="posSearch" data-i18n-ph="pos.search" style="flex:1;min-width:220px">
         <label class="hint"><input type="checkbox" id="showClosed" checked> <span data-i18n="pos.closed">show closed positions</span></label>
       </div>
-      <div class="scroll"><table id="posTable"></table></div>
+      <div class="scroll"><table id="posTable" class="rsp"></table></div>
       <p class="hint" data-i18n="pos.note"></p>
       <p class="hint" data-i18n="pos.taxNote"></p>
     </div>
@@ -394,7 +452,7 @@ const saveUI = () => { try{ LS.set('dc_ui', JSON.stringify(UI)); }catch(e){} };
    The keys of the CSV (status, type, ISIN) are data and stay untranslated. */
 const L={
 en:{
-  'hdr.notes':'Notes','hdr.lang':'Language','hdr.numfmt':'Number format',
+  'hdr.notes':'Notes','hdr.lang':'Language','hdr.numfmt':'Number format','hdr.filtersBtn':'Filters ▾',
   'nav.dash':'Overview','nav.pos':'Positions','nav.tx':'Transactions','nav.cal':'Calendar','nav.imp':'Import / Data',
   mon:['January','February','March','April','May','June','July','August','September','October','November','December'],
   dow:['Mo','Tu','We','Th','Fr','Sa','Su'],
@@ -518,7 +576,7 @@ en:{
     under <b>Import / Data → Save backup (JSON)</b>.</p>`
 },
 de:{
-  'hdr.notes':'Hinweise','hdr.lang':'Sprache','hdr.numfmt':'Zahlenformat',
+  'hdr.notes':'Hinweise','hdr.lang':'Sprache','hdr.numfmt':'Zahlenformat','hdr.filtersBtn':'Filter ▾',
   'nav.dash':'Übersicht','nav.pos':'Positionen','nav.tx':'Transaktionen','nav.cal':'Kalender','nav.imp':'Import / Daten',
   mon:['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'],
   dow:['Mo','Di','Mi','Do','Fr','Sa','So'],
@@ -1022,12 +1080,36 @@ document.querySelectorAll('nav button').forEach(b=> b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
   show(b.dataset.v);
 });
+/* The tab strip scrolls sideways on a phone – keep the open tab in view rather
+   than leaving it half cut off at the edge. Only the strip moves, not the page. */
+function scrollNavIntoView(){
+  const nav=document.querySelector('nav'), b=nav.querySelector('button.on');
+  if(!b || nav.scrollWidth<=nav.clientWidth) return;
+  nav.scrollTo({left: Math.max(0, b.offsetLeft - (nav.clientWidth-b.offsetWidth)/2), behavior:'smooth'});
+}
 function show(v){
   view=v;
+  document.body.dataset.view=v;          // drives which chrome a view shows
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
   document.getElementById('v-'+v).classList.add('on');
   render();
+  scrollNavIntoView();
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* --- Filters folded away on a phone --- */
+const filters=document.querySelector('.filters');
+const filtToggle=document.getElementById('filtToggle');
+filtToggle.onclick=()=>{
+  const open=filters.classList.toggle('open');
+  filtToggle.setAttribute('aria-expanded', open?'true':'false');
+};
+/* Mark the button while something is narrowing the figures, so a filter that is
+   folded away cannot be forgotten */
+function markFilters(){
+  filtToggle.classList.toggle('act',
+    !!(F.year || F.month || UI.type.length || UI.hideOrphan ||
+       (UI.status.length && !(UI.status.length===1 && UI.status[0]==='Executed'))));
 }
 
 /* ============================ Filter ============================ */
@@ -1117,7 +1199,7 @@ fNum.onchange=e=>{UI.numfmt=e.target.value;saveUI();render()};
 
 /* ============================ Render ============================ */
 function render(){
-  buildFilters(); buildStatusFilter(); buildTypeFilter(); buildImportFilter(); buildTypeRemover();
+  buildFilters(); buildStatusFilter(); buildTypeFilter(); buildImportFilter(); buildTypeRemover(); markFilters();
   positions();   // fills RPL / RPD / ROR for all views
   buildOrphanFilter();
   document.getElementById('dbInfo').textContent = t('data.info',
@@ -1213,9 +1295,12 @@ function dash(){
   document.getElementById('monthly').innerHTML=
     '<thead><tr>'+mh.map((h,i)=>`<th class="${i?'num':''}">${h}</th>`).join('')+'</tr></thead><tbody>'+
     ms.map(m=>{const [y,mo]=m.k.split('-');return `<tr class="clickable" onclick="jumpMonth('${y}','${mo}')">
-      <td>${MON()[+mo-1]} ${y}</td><td class="num mut">${m.n}</td><td class="num">${eur(m.buy)}</td>
-      <td class="num">${eur(m.sell)}</td><td class="num pos">${eur(m.div)}</td><td class="num mut">${cost(m.fee)}</td>
-      <td class="num mut">${cost(m.tax)}</td><td class="num"><b>${sign(m.pnl)}</b></td></tr>`}).join('')+'</tbody>';
+      <td class="mfirst"><b>${MON()[+mo-1]} ${y}</b></td>
+      <td class="num mut" data-l="${esc(mh[1])}">${m.n}</td><td class="num" data-l="${esc(mh[2])}">${eur(m.buy)}</td>
+      <td class="num" data-l="${esc(mh[3])}">${eur(m.sell)}</td><td class="num pos" data-l="${esc(mh[4])}">${eur(m.div)}</td>
+      <td class="num mut" data-l="${esc(mh[5])}">${cost(m.fee)}</td>
+      <td class="num mut" data-l="${esc(mh[6])}">${cost(m.tax)}</td>
+      <td class="num" data-l="${esc(mh[7])}"><b>${sign(m.pnl)}</b></td></tr>`}).join('')+'</tbody>';
 }
 function jumpMonth(y,m){F.year=y;F.month=m;document.querySelector('nav button[data-v="tx"]').click();}
 
@@ -1235,19 +1320,20 @@ function posView(){
       `<th class="${i?'num':''}" onclick="sortPos('${k}')">${labels[i]}${posSort.c===k?(posSort.d>0?' ▲':' ▼'):''}</th>`
     ).join('')+'</tr></thead>';
 
+  const l=i=>`data-l="${esc(labels[i])}"`;
   const body='<tbody>'+P.map(p=>`<tr class="clickable" onclick="detail('${js(p.isin)}')">
-      <td><b>${esc(p.name||p.isin)}</b><br><span class="hint">${p.isin}${p.open?'':t('pos.closedTag')}${p.orphan?' · <span class="neg">'+t('pos.orphanTag')+'</span>':''}</span></td>
-      <td class="num">${fmt(p.shares,p.shares%1?6:0)}</td>
-      <td class="num">${eur(p.cost)}</td>
-      <td class="num mut">${p.last?fmt(p.last):'–'}</td>
-      <td class="num">${eur(p.value)}</td>
-      <td class="num">${p.open?sign(p.unreal):'<span class="mut">–</span>'}</td>
-      <td class="num">${sign(p.realized)}</td>
-      <td class="num pos">${eur(p.div)}</td>
-      <td class="num mut">${cost(p.fees)}</td>
-      <td class="num mut">${cost(p.taxes)}</td>
-      <td class="num"><b>${sign(p.total)}</b></td>
-      <td class="num mut">${p.n}</td>
+      <td class="mfirst"><b>${esc(p.name||p.isin)}</b><br><span class="hint">${p.isin}${p.open?'':t('pos.closedTag')}${p.orphan?' · <span class="neg">'+t('pos.orphanTag')+'</span>':''}</span></td>
+      <td class="num" ${l(1)}>${fmt(p.shares,p.shares%1?6:0)}</td>
+      <td class="num" ${l(2)}>${eur(p.cost)}</td>
+      <td class="num mut" ${l(3)}>${p.last?fmt(p.last):'–'}</td>
+      <td class="num" ${l(4)}>${eur(p.value)}</td>
+      <td class="num" ${l(5)}>${p.open?sign(p.unreal):'<span class="mut">–</span>'}</td>
+      <td class="num" ${l(6)}>${sign(p.realized)}</td>
+      <td class="num pos" ${l(7)}>${eur(p.div)}</td>
+      <td class="num mut" ${l(8)}>${cost(p.fees)}</td>
+      <td class="num mut" ${l(9)}>${cost(p.taxes)}</td>
+      <td class="num" ${l(10)}><b>${sign(p.total)}</b></td>
+      <td class="num mut" ${l(11)}>${p.n}</td>
     </tr>`).join('')+'</tbody>';
 
   document.getElementById('posTable').innerHTML = head+body;
@@ -1276,7 +1362,7 @@ function detail(isin){
     <div class="panel"><h2>${t('det.notes')}</h2>${commentHtml('isin:'+isin)}</div>`;
   document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
-  document.getElementById('v-det').classList.add('on'); view='det';
+  document.getElementById('v-det').classList.add('on'); view='det'; document.body.dataset.view='det';
   bindComments('isin:'+isin);
   window.scrollTo({top:0});
 }
@@ -1293,23 +1379,30 @@ function txTableHtml(rows){
   const cols=tv('tx.cols');
   const nums=[5,6,7,8,9,10];
   const head='<thead><tr>'+cols.map((c,i)=>`<th class="${nums.includes(i)?'num':''}" style="cursor:default">${c}</th>`).join('')+'</tr></thead>';
+  /* data-l feeds the column name into the card layout on a narrow screen.
+     A field the row does not have shows a dash in the table; as a card line of
+     its own it would only be noise, so it is marked and left out there. */
+  const l=i=>`data-l="${esc(cols[i])}"`;
+  const md=v=> v ? '' : ' mdash';
   const body='<tbody>'+rows.map(r=>{const c=(DB.cmt['tx:'+r.id]||[]).length;
     return `<tr>
-      <td>${dt(r.date)}</td>
-      <td class="mut">${(r.time||'').slice(0,5)}</td>
-      <td><span class="st ${esc(r.status)}">${esc(r.status)}</span></td>
-      <td>${typeTag(r)}</td>
-      <td>${r.isin?`<span class="clickable" onclick="detail('${js(r.isin)}')">${esc(r.description||r.isin)}</span>`:esc(r.description||'–')}</td>
-      <td class="num">${r.sharesN?fmt(r.sharesN,r.sharesN%1?6:0):'<span class="mut">–</span>'}</td>
-      <td class="num mut">${r.priceN?fmt(r.priceN):'–'}</td>
-      <td class="num">${r.amountN?sign(r.amountN):'<span class="mut">–</span>'}</td>
-      <td class="num">${RPL[r.id]!==undefined?`<b>${sign(RPL[r.id])}</b>${orphanMark(r)}`:'<span class="mut">–</span>'}</td>
-      <td class="num mut">${r.feeN?fmt(r.feeN):''}</td>
-      <td class="num mut">${r.taxN?fmt(r.taxN):''}</td>
-      <td class="mut" style="font-size:11px">${esc(r.reference).slice(0,22)}</td>
-      <td><button class="btn note" onclick="txNote(this.dataset.id)" data-id="${esc(r.id)}">💬${c?' '+c:''}</button></td>
+      <td class="mhead">${r.isin?`<span class="clickable" onclick="detail('${js(r.isin)}')">${esc(r.description||r.isin)}</span>`:esc(r.description||'–')}
+        <span class="hint">${dt(r.date)}${r.time?' · '+r.time.slice(0,5):''}</span></td>
+      <td class="mhide" ${l(0)}>${dt(r.date)}</td>
+      <td class="mut mhide" ${l(1)}>${(r.time||'').slice(0,5)}</td>
+      <td ${l(2)}><span class="st ${esc(r.status)}">${esc(r.status)}</span></td>
+      <td ${l(3)}>${typeTag(r)}</td>
+      <td class="mhide" ${l(4)}>${r.isin?`<span class="clickable" onclick="detail('${js(r.isin)}')">${esc(r.description||r.isin)}</span>`:esc(r.description||'–')}</td>
+      <td class="num${md(r.sharesN)}" ${l(5)}>${r.sharesN?fmt(r.sharesN,r.sharesN%1?6:0):'<span class="mut">–</span>'}</td>
+      <td class="num mut${md(r.priceN)}" ${l(6)}>${r.priceN?fmt(r.priceN):'–'}</td>
+      <td class="num${md(r.amountN)}" ${l(7)}>${r.amountN?sign(r.amountN):'<span class="mut">–</span>'}</td>
+      <td class="num${md(RPL[r.id]!==undefined)}" ${l(8)}>${RPL[r.id]!==undefined?`<b>${sign(RPL[r.id])}</b>${orphanMark(r)}`:'<span class="mut">–</span>'}</td>
+      <td class="num mut" ${l(9)}>${r.feeN?fmt(r.feeN):''}</td>
+      <td class="num mut" ${l(10)}>${r.taxN?fmt(r.taxN):''}</td>
+      <td class="mut" style="font-size:11px" ${l(11)}>${esc(r.reference).slice(0,22)}</td>
+      <td ${l(12)}><button class="btn note" onclick="txNote(this.dataset.id)" data-id="${esc(r.id)}">💬${c?' '+c:''}</button></td>
     </tr>`}).join('')+'</tbody>';
-  return '<table>'+head+body+'</table>';
+  return '<table class="rsp">'+head+body+'</table>';
 }
 function txView(){
   const q=document.getElementById('txSearch').value.toLowerCase();
@@ -1363,8 +1456,8 @@ function calView(manual){
   for(let d=1;d<=days;d++){
     const ev=byDay[d]||[], iso=`${mk}-${String(d).padStart(2,'0')}`, pnl=RPD[iso]||0;
     const cls = pnl>0.004?'win' : pnl<-0.004?'loss' : '';
-    h+=`<div class="day ${iso===today?'today':''} ${cls}" onclick="calDay('${iso}')">
-        <div class="d"><span>${d}</span>${Math.abs(pnl)>0.004?`<span class="pnl ${pnl>0?'pos':'neg'}">${pnl>0?'+':''}${fmt(pnl,0)} €</span>`:''}</div>`+
+    h+=`<div class="day ${iso===today?'today':''} ${cls} ${ev.length?'has':''}" onclick="calDay('${iso}')">
+        <div class="d"><span>${d}</span>${Math.abs(pnl)>0.004?`<span class="pnl ${pnl>0?'pos':'neg'}">${pnl>0?'+':''}${fmt(pnl,0)}<span class="cur"> €</span></span>`:''}</div>`+
       ev.slice(0,3).map(r=>{const c=isBuy(r)?'t-Buy':isSell(r)?'t-Sell':isDiv(r)?'t-Dividende':isCash(r)?'t-Cash':'t-Sonst';
         return `<span class="ev tag ${c}">${esc((r.description||r.type).slice(0,18))}</span>`}).join('')+
       (ev.length>3?`<span class="hint">${t('cal.more',ev.length-3)}</span>`:'')+'</div>';
@@ -1634,6 +1727,14 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v27', d:'2026-08-13', items:[
+    {en:'On a phone the tables no longer scroll sideways: every transaction, position and month becomes a card with all its figures under each other.',
+     de:'Auf dem Telefon scrollen die Tabellen nicht mehr seitwärts: Jeder Vorgang, jede Position und jeder Monat wird zur Karte mit allen Werten untereinander.'},
+    {en:'The filters fold away behind a button in the top bar and free up a fifth of the screen; a dot shows when one of them is narrowing the figures.',
+     de:'Die Filter klappen hinter einen Knopf in der Kopfzeile und geben ein Fünftel des Bildschirms frei; ein Punkt zeigt, wenn einer die Werte einschränkt.'},
+    {en:'Calendar days with bookings but no realized result carry a dot, and the open tab scrolls into view by itself.',
+     de:'Kalendertage mit Vorgängen ohne Realisierung tragen einen Punkt, und der offene Tab rückt von selbst ins Bild.'}
+  ]},
   {v:'v26', d:'2026-08-13', items:[
     {en:'The notes now open from an “ℹ” button next to the app name in the top bar, reachable from every tab instead of only from Import / Data.',
      de:'Die Hinweise öffnen jetzt über ein „ℹ“ neben dem App-Namen in der Kopfzeile – aus jedem Tab erreichbar, nicht mehr nur unter Import / Daten.'},
@@ -1699,8 +1800,10 @@ document.getElementById('introOpen').onclick=()=>intro.classList.add('on');
 
 migrateIds();
 migrateSigns();
+document.body.dataset.view=view;
 applyStatic();
 render();
+scrollNavIntoView();
 if(!Object.keys(DB.tx).length) show('imp');
 if(!UI.seenIntro) intro.classList.add('on');
 
