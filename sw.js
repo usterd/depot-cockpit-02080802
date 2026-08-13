@@ -12,7 +12,7 @@
    sie überleben jedes Update und jedes Leeren dieses Caches.
    ============================================================ */
 
-const VERSION = 'v23';
+const VERSION = 'v24';
 const CACHE   = 'depot-' + VERSION;
 
 /* Alles, was die App zum Starten braucht. Relative Pfade, damit es
@@ -83,7 +83,7 @@ self.addEventListener('fetch', e => {
       const shell = await cache.match('./index.html', {ignoreSearch: true});
       if (shell) return shell;
     }
-    return new Response('Offline und nicht im Zwischenspeicher.', {
+    return new Response('Offline and not cached.', {
       status: 503,
       headers: {'Content-Type': 'text/plain; charset=utf-8'}
     });

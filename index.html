@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -190,11 +190,11 @@ textarea{width:100%;min-height:70px;resize:vertical}
   <div class="hd">
     <div class="logo">◆ Depot <span>Cockpit</span></div>
     <nav>
-      <button data-v="dash" class="on">Übersicht</button>
-      <button data-v="pos">Positionen</button>
-      <button data-v="tx">Transaktionen</button>
-      <button data-v="cal">Kalender</button>
-      <button data-v="imp">Import / Daten</button>
+      <button data-v="dash" class="on">Overview</button>
+      <button data-v="pos">Positions</button>
+      <button data-v="tx">Transactions</button>
+      <button data-v="cal">Calendar</button>
+      <button data-v="imp">Import / Data</button>
     </nav>
     <div class="filters">
       <select id="fYear"></select>
@@ -204,14 +204,14 @@ textarea{width:100%;min-height:70px;resize:vertical}
         <div class="pop" id="ddStatusPop"></div>
       </div>
       <div class="dd" id="ddType">
-        <button class="btn" id="ddTypeBtn">Typ ▾</button>
+        <button class="btn" id="ddTypeBtn">Type ▾</button>
         <div class="pop" id="ddTypePop"></div>
       </div>
       <div class="dd" id="ddOrphan">
-        <button class="btn" id="ddOrphanBtn">Einstand ▾</button>
+        <button class="btn" id="ddOrphanBtn">Cost basis ▾</button>
         <div class="pop" id="ddOrphanPop"></div>
       </div>
-      <select id="fNum" title="Zahlenformat"></select>
+      <select id="fNum" title="Number format"></select>
     </div>
   </div>
 </header>
@@ -221,23 +221,23 @@ textarea{width:100%;min-height:70px;resize:vertical}
   <section class="view on" id="v-dash">
     <div class="cards" id="kpis"></div>
     <p class="hint" id="orphNote" style="display:none"></p>
-    <div class="panel"><h2>Ertrag pro Position <span class="hint" id="rankScope">(realisiert + Ausschüttungen − Gebühren − Steuern, gesamter Zeitraum)</span></h2>
+    <div class="panel"><h2>Return per position <span class="hint" id="rankScope">(realized + distributions − fees − taxes, entire period)</span></h2>
       <div id="rank"></div></div>
-    <div class="panel" id="lossPanel" style="display:none"><h2>Verluste pro Position <span class="hint" id="lossScope">(nur Positionen mit negativem Ertrag, gesamter Zeitraum)</span></h2>
+    <div class="panel" id="lossPanel" style="display:none"><h2>Losses per position <span class="hint" id="lossScope">(only positions with a negative return, entire period)</span></h2>
       <div id="rankLoss"></div></div>
-    <div class="panel"><h2>Cashflow pro Monat</h2><div class="scroll"><table id="monthly"></table></div></div>
+    <div class="panel"><h2>Cash flow per month</h2><div class="scroll"><table id="monthly"></table></div></div>
   </section>
 
   <!-- POSITIONEN -->
   <section class="view" id="v-pos">
     <div class="panel">
       <div class="row" style="margin-bottom:10px">
-        <input id="posSearch" placeholder="Suche Name / ISIN…" style="flex:1;min-width:220px">
-        <label class="hint"><input type="checkbox" id="showClosed" checked> geschlossene Positionen zeigen</label>
+        <input id="posSearch" placeholder="Search name / ISIN…" style="flex:1;min-width:220px">
+        <label class="hint"><input type="checkbox" id="showClosed" checked> show closed positions</label>
       </div>
       <div class="scroll"><table id="posTable"></table></div>
-      <p class="hint">Bestand &amp; Einstand werden immer über die <b>gesamte</b> Historie berechnet (FIFO) und nur aus ausgeführten Vorgängen.
-        Jahr-, Monats- und Statusfilter oben wirken auf Transaktionen, Kalender sowie Kennzahlen und Ranglisten der Übersicht.</p>
+      <p class="hint">Holdings &amp; cost basis are always calculated over the <b>entire</b> history (FIFO) and only from executed transactions.
+        The year, month and status filters above apply to transactions, the calendar and the overview's key figures and rankings.</p>
     </div>
   </section>
 
@@ -248,8 +248,8 @@ textarea{width:100%;min-height:70px;resize:vertical}
   <section class="view" id="v-tx">
     <div class="panel">
       <div class="row" style="margin-bottom:10px">
-        <input id="txSearch" placeholder="Suche…" style="flex:1;min-width:220px">
-        <button class="btn" id="expCsv">CSV exportieren</button>
+        <input id="txSearch" placeholder="Search…" style="flex:1;min-width:220px">
+        <button class="btn" id="expCsv">Export CSV</button>
       </div>
       <div class="scroll" id="txWrap"></div>
     </div>
@@ -263,14 +263,14 @@ textarea{width:100%;min-height:70px;resize:vertical}
         <button class="btn" id="calPrev">‹</button>
         <b id="calTitle"></b>
         <button class="btn" id="calNext">›</button>
-        <span class="hint">Tag anklicken für Details</span>
+        <span class="hint">Click a day for details</span>
       </div>
       <div class="cal" id="calGrid"></div>
       <div class="legend">
-        <span><i style="background:#3fb95055"></i>Gewinntag</span>
-        <span><i style="background:#f8514955"></i>Verlusttag</span>
-        <span><i style="background:var(--line)"></i>ohne Realisierung</span>
-        <span>Der Tageswert enthält FIFO-Verkaufsgewinne abzüglich Steuern sowie Netto-Ausschüttungen.</span>
+        <span><i style="background:#3fb95055"></i>Gain day</span>
+        <span><i style="background:#f8514955"></i>Loss day</span>
+        <span><i style="background:var(--line)"></i>nothing realized</span>
+        <span>The daily figure includes FIFO sale gains less taxes as well as net distributions.</span>
       </div>
     </div>
     <div class="panel" id="calDetail" style="display:none"></div>
@@ -280,32 +280,32 @@ textarea{width:100%;min-height:70px;resize:vertical}
   <section class="view" id="v-imp">
     <div class="panel">
       <div class="row" style="margin-bottom:12px">
-        <h2 style="margin:0">CSV hochladen</h2>
-        <button class="btn" id="introOpen" style="margin-left:auto">ℹ Hinweise</button>
+        <h2 style="margin:0">Upload CSV</h2>
+        <button class="btn" id="introOpen" style="margin-left:auto">ℹ Notes</button>
       </div>
       <div class="drop" id="drop">
-        <button class="btn pri" id="pick">Datei wählen</button><br>
-        <span class="hint" id="dropHint">oder CSV hierher ziehen · mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen</span>
+        <button class="btn pri" id="pick">Choose file</button><br>
+        <span class="hint" id="dropHint">or drag a CSV here · multiple files and partial exports are fine · duplicates are detected and skipped automatically</span>
       </div>
       <input type="file" id="file" accept=".csv,.txt,text/csv,text/comma-separated-values,application/csv,text/plain" multiple hidden>
-      <h3>Welche Status übernehmen?</h3>
+      <h3>Which statuses to import?</h3>
       <div class="row" id="impStatus"></div>
-      <p class="hint">Nicht gewählte Zeilen werden gar nicht erst gespeichert. Abgebrochene und offene Orders enthalten
-        bei Scalable keine Beträge – sie dokumentieren nur den Versuch. Bereits importierte Zeilen bleiben erhalten;
-        zum Aufräumen unten „Abgebrochene entfernen“ nutzen.</p>
+      <p class="hint">Rows that are not selected are never stored in the first place. At Scalable, cancelled and pending orders
+        carry no amounts – they only document the attempt. Rows already imported are kept;
+        use “Remove cancelled” below to clean up.</p>
       <div id="report"></div>
     </div>
     <div class="panel">
-      <h2>Gespeicherte Daten</h2>
+      <h2>Stored data</h2>
       <div class="row">
         <span id="dbInfo" class="hint"></span>
-        <button class="btn" id="expJson" style="margin-left:auto">Backup (JSON) sichern</button>
-        <button class="btn" id="impJson">Backup einspielen</button>
-        <button class="btn" id="dropCancelled">Abgebrochene entfernen</button>
-        <button class="btn" id="wipe" style="border-color:#f8514955;color:var(--neg)">Alles löschen</button>
+        <button class="btn" id="expJson" style="margin-left:auto">Save backup (JSON)</button>
+        <button class="btn" id="impJson">Restore backup</button>
+        <button class="btn" id="dropCancelled">Remove cancelled</button>
+        <button class="btn" id="wipe" style="border-color:#f8514955;color:var(--neg)">Delete everything</button>
       </div>
       <input type="file" id="jsonFile" accept=".json,application/json,text/plain" hidden>
-      <p class="hint">Backup enthält Transaktionen, Kommentare und Screenshots. Speicherort ist der Browser (localStorage) – für einen Gerätewechsel bitte Backup nutzen.</p>
+      <p class="hint">The backup contains transactions, comments and screenshots. Everything is stored in this browser (localStorage) – use a backup when moving to another device.</p>
       <p class="hint" id="storageWarn" style="display:none"></p>
     </div>
   </section>
@@ -314,33 +314,33 @@ textarea{width:100%;min-height:70px;resize:vertical}
 <div id="intro"><div id="introBox">
   <h2>◆ Depot <span style="background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent">Cockpit</span></h2>
 
-  <h3>Wozu</h3>
-  <p>Ein privates Cockpit für dein Wertpapierdepot: Positionen, realisierte Gewinne nach FIFO,
-    Ausschüttungen, Gebühren und Steuern – als Übersicht, Tabelle und Kalender.
-    Es werden keine Kurse aus dem Netz geholt; gerechnet wird ausschließlich mit dem, was du importierst.</p>
+  <h3>What it is for</h3>
+  <p>A private cockpit for your securities portfolio: positions, realized gains by FIFO,
+    distributions, fees and taxes – as an overview, a table and a calendar.
+    No prices are fetched from the internet; everything is calculated purely from what you import.</p>
 
-  <h3>Was du brauchst</h3>
-  <p>Den Transaktionsexport von Scalable Capital als CSV-Datei.<br>
-    Im Broker unter <b>Konto → Transaktionen → Export</b>, Zeitraum wählen, Datei sichern.</p>
-  <p class="small">Mehrere Dateien und Teilzeiträume sind kein Problem: doppelte Zeilen erkennt die App
-    selbst und überspringt sie. Import unter <b>Import / Daten</b>.</p>
+  <h3>What you need</h3>
+  <p>The transaction export from Scalable Capital as a CSV file.<br>
+    In the broker under <b>Account → Transactions → Export</b>, pick a period and save the file.</p>
+  <p class="small">Multiple files and partial periods are no problem: the app detects duplicate rows
+    itself and skips them. Import under <b>Import / Data</b>.</p>
 
-  <h3>Als App aufs iPhone</h3>
+  <h3>As an app on your iPhone</h3>
   <ol>
-    <li>Diese Seite in <b>Safari</b> öffnen (Chrome kann es nicht).</li>
-    <li>Einmal vollständig laden, solange Internet da ist.</li>
-    <li>Teilen-Symbol → <b>Zum Home-Bildschirm</b>.</li>
-    <li>Ab dann startet sie wie eine App – auch im Flugmodus.</li>
+    <li>Open this page in <b>Safari</b> (Chrome cannot do it).</li>
+    <li>Let it load completely once, while you have internet.</li>
+    <li>Share icon → <b>Add to Home Screen</b>.</li>
+    <li>From then on it starts like an app – even in airplane mode.</li>
   </ol>
 
-  <h3>Deine Daten bleiben hier</h3>
-  <p>Die App sendet keine Finanzdaten. Alles liegt im Speicher dieses Browsers, auf diesem Gerät.
-    Es gibt keinen Server, kein Konto, keine Auswertung im Hintergrund.</p>
-  <p>Nach außen geht etwas nur, wenn du es selbst auslöst – CSV-Export oder Backup über das Teilen-Menü.</p>
-  <p class="small"><b>Wichtig:</b> Der Browserspeicher ist nicht dauerhaft. Sichere regelmäßig ein Backup
-    unter <b>Import / Daten → Backup (JSON) sichern</b>.</p>
+  <h3>Your data stays here</h3>
+  <p>The app sends no financial data. Everything lives in this browser's storage, on this device.
+    There is no server, no account, no background analysis.</p>
+  <p>Nothing leaves unless you trigger it yourself – a CSV export or a backup via the share menu.</p>
+  <p class="small"><b>Important:</b> browser storage is not permanent. Save a backup regularly
+    under <b>Import / Data → Save backup (JSON)</b>.</p>
 
-  <button class="btn pri" id="introOk">Verstanden</button>
+  <button class="btn pri" id="introOk">Got it</button>
 </div></div>
 
 <div id="lightbox"><img alt=""></div>
@@ -378,7 +378,7 @@ const save = () => {
   try{
     LS.set('dc_tx',  JSON.stringify(DB.tx));
     LS.set('dc_cmt', JSON.stringify(DB.cmt));
-  }catch(e){ toast('⚠️ Der Browserspeicher ist voll. Bitte ein Backup sichern und Screenshots entfernen – neue Eingaben gehen sonst beim Neuladen verloren.'); }
+  }catch(e){ toast('⚠️ Browser storage is full. Please save a backup and remove screenshots – otherwise new entries will be lost on reload.'); }
 };
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',5000);}
 
@@ -542,10 +542,10 @@ function importRows(rows){
 const all = () => Object.values(DB.tx).sort((a,b)=> a.dt<b.dt?1:a.dt>b.dt?-1:0);
 const F = {year:'', month:''};
 const ST_KNOWN=['Executed','Pending','Cancelled'];
-const ST_LABEL={Executed:'ausgeführt',Pending:'offen',Cancelled:'abgebrochen'};
+const ST_LABEL={Executed:'executed',Pending:'pending',Cancelled:'cancelled'};
 const stList=()=> [...new Set(ST_KNOWN.concat(Object.values(DB.tx).map(r=>r.status).filter(Boolean)))];
 const typeList=()=> [...new Set(Object.values(DB.tx).map(r=>r.type).filter(Boolean))]
-  .sort((a,b)=> (TYPE_MAP[a]?TYPE_MAP[a][0]:a).localeCompare(TYPE_MAP[b]?TYPE_MAP[b][0]:b,'de'));
+  .sort((a,b)=> (TYPE_MAP[a]?TYPE_MAP[a][0]:a).localeCompare(TYPE_MAP[b]?TYPE_MAP[b][0]:b,'en'));
 /* leere Auswahl = keine Einschränkung, damit die Ansicht nie ohne Grund leer bleibt */
 const statusOK = r => !UI.status.length || UI.status.includes(r.status);
 const typeOK   = r => !UI.type.length || UI.type.includes(r.type);
@@ -563,7 +563,7 @@ const isCash = r => r.assetType==='Cash' && !r.isin;
 
 /* Realisiertes Ergebnis je Transaktion (RPL, netto) und je Tag (RPD) – gefüllt von positions().
    RGR hält denselben Vorgang brutto, also vor Gebühren und Steuern – das ist die Größe,
-   die auf der Übersicht als „Realisiert (FIFO)" ausgewiesen wird.
+   die auf der Übersicht als „Realized (FIFO)" ausgewiesen wird.
    ROR hält je Verkauf die Stückzahl, für die kein passender Kauf gefunden wurde. */
 let RPL={}, RPD={}, RGR={}, ROR={};
 
@@ -709,7 +709,8 @@ function qty(n){
 const raw=n=> (n===null||n===undefined||!isFinite(n)) ? '' : String(n);
 const eur=n=> fmt(n)+' €';
 const sign=n=> `<span class="${n>0.004?'pos':n<-0.004?'neg':'mut'}">${n>0.004?'+':''}${eur(n)}</span>`;
-const de=d=> d? d.split('-').reverse().join('.') : '';
+/* Datumsanzeige: die Rohwerte liegen bereits als yyyy-mm-dd vor */
+const dt=d=> d || '';
 const esc=s=> String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* Wert, der in einem onclick-Attribut als JS-Zeichenkette landet: erst für
    JavaScript entschärfen, dann für HTML. Ein Feld aus einer fremden CSV
@@ -718,11 +719,13 @@ const js=s=> esc(String(s??'').replace(/[\\'"]/g,'\\$&').replace(/\r?\n/g,'\\n')
 /* Nur eingebettete Bilder zulassen. Eine Adresse auf einen fremden Server
    würde beim Anzeigen einer Notiz einen Aufruf nach außen auslösen. */
 const safeImg=s=> /^data:image\/(png|jpe?g|gif|webp|avif);base64,[A-Za-z0-9+/=\s]+$/i.test(String(s||'')) ? String(s) : '';
-const TYPE_MAP={Buy:['Kauf','Buy'],Sell:['Verkauf','Sell'],'Savings plan':['Sparplan','Sparplan'],
-    Distribution:['Ausschüttung','Dividende'],Deposit:['Einzahlung','Cash'],Withdrawal:['Auszahlung','Cash'],
-    'Cash Transfer In':['Übertrag ein','Cash'],'Cash Transfer Out':['Übertrag aus','Cash'],
-    Taxes:['Steuern','Sonst'],'Corporate action':['Kapitalmaßnahme','Sonst'],
-    'Security transfer':['Depotübertrag','Sonst']};
+/* Anzeigename und CSS-Klassenkürzel je Vorgangsart. Die Schlüssel stammen aus der CSV
+   und dürfen nicht übersetzt werden; die Kürzel hängen an den .t-… Regeln im Stylesheet. */
+const TYPE_MAP={Buy:['Buy','Buy'],Sell:['Sell','Sell'],'Savings plan':['Savings plan','Sparplan'],
+    Distribution:['Distribution','Dividende'],Deposit:['Deposit','Cash'],Withdrawal:['Withdrawal','Cash'],
+    'Cash Transfer In':['Transfer in','Cash'],'Cash Transfer Out':['Transfer out','Cash'],
+    Taxes:['Taxes','Sonst'],'Corporate action':['Corporate action','Sonst'],
+    'Security transfer':['Security transfer','Sonst']};
 function typeTag(r){
   const [lbl,cls]=TYPE_MAP[r.type]||[r.type,'Sonst'];
   return `<span class="tag t-${cls}">${esc(lbl)}</span>`;
@@ -743,13 +746,13 @@ function show(v){
 }
 
 /* ============================ Filter ============================ */
-const MON=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
 function buildFilters(){
   const ys=[...new Set(all().map(r=>r.date.slice(0,4)))].sort().reverse();
   const y=document.getElementById('fYear');
-  y.innerHTML='<option value="">Alle Jahre</option>'+ys.map(v=>`<option ${F.year===v?'selected':''}>${v}</option>`).join('');
+  y.innerHTML='<option value="">All years</option>'+ys.map(v=>`<option ${F.year===v?'selected':''}>${v}</option>`).join('');
   const m=document.getElementById('fMonth');
-  m.innerHTML='<option value="">Alle Monate</option>'+MON.map((n,i)=>{const v=String(i+1).padStart(2,'0');
+  m.innerHTML='<option value="">All months</option>'+MON.map((n,i)=>{const v=String(i+1).padStart(2,'0');
     return `<option value="${v}" ${F.month===v?'selected':''}>${n}</option>`}).join('');
 }
 document.getElementById('fYear').onchange=e=>{F.year=e.target.value;render()};
@@ -766,8 +769,8 @@ function buildStatusFilter(){
     list.map(s=>`<label class="chk"><input type="checkbox" value="${esc(s)}" ${UI.status.includes(s)?'checked':''}>
       <span class="st ${esc(s)}">${esc(s)}</span> <span>${ST_LABEL[s]||''}</span>
       <span class="cnt">${cnt[s]||0}</span></label>`).join('')+
-    `<hr><div class="row"><button class="btn" data-p="all">alle</button>
-      <button class="btn" data-p="exec">nur ausgeführt</button></div>`;
+    `<hr><div class="row"><button class="btn" data-p="all">all</button>
+      <button class="btn" data-p="exec">executed only</button></div>`;
   const pop=document.getElementById('ddStatusPop');
   pop.querySelectorAll('input').forEach(i=> i.onchange=()=>{
     UI.status=[...pop.querySelectorAll('input:checked')].map(x=>x.value); saveUI(); render();
@@ -776,9 +779,9 @@ function buildStatusFilter(){
   pop.querySelector('[data-p=exec]').onclick=()=>{UI.status=['Executed'];saveUI();render()};
   const n=UI.status.length;
   document.getElementById('ddStatusBtn').textContent =
-    (!n||n===list.length) ? 'alle Status ▾'
+    (!n||n===list.length) ? 'all statuses ▾'
     : n===1 ? (ST_LABEL[UI.status[0]]||UI.status[0])+' ▾'
-    : `${n} Status ▾`;
+    : `${n} statuses ▾`;
 }
 
 /* --- Typ-Filter (Mehrfachauswahl) --- */
@@ -791,7 +794,7 @@ function buildTypeFilter(){
   document.getElementById('ddTypePop').innerHTML=
     list.map(t=>`<label class="chk"><input type="checkbox" value="${esc(t)}" ${UI.type.includes(t)?'checked':''}>
       ${typeTag({type:t})} <span class="cnt">${cnt[t]||0}</span></label>`).join('')+
-    `<hr><div class="row"><button class="btn" data-p="all">alle</button></div>`;
+    `<hr><div class="row"><button class="btn" data-p="all">all</button></div>`;
   const pop=document.getElementById('ddTypePop');
   pop.querySelectorAll('input').forEach(i=> i.onchange=()=>{
     UI.type=[...pop.querySelectorAll('input:checked')].map(x=>x.value); saveUI(); render();
@@ -799,9 +802,9 @@ function buildTypeFilter(){
   pop.querySelector('[data-p=all]').onclick =()=>{UI.type=[];saveUI();render()};
   const n=UI.type.length;
   document.getElementById('ddTypeBtn').textContent =
-    (!n) ? 'alle Typen ▾'
+    (!n) ? 'all types ▾'
     : n===1 ? (TYPE_MAP[UI.type[0]]?TYPE_MAP[UI.type[0]][0]:UI.type[0])+' ▾'
-    : `${n} Typen ▾`;
+    : `${n} types ▾`;
 }
 
 /* --- Verkäufe ohne passenden Kauf --- */
@@ -814,14 +817,14 @@ function buildOrphanFilter(){
   document.getElementById('ddOrphanPop').innerHTML=
     `<label class="chk" style="align-items:flex-start">
       <input type="checkbox" id="orphChk" style="margin-top:3px" ${UI.hideOrphan?'checked':''}>
-      <span style="white-space:normal;max-width:230px">Verkäufe ohne passenden Kauf anteilig herausrechnen</span>
+      <span style="white-space:normal;max-width:230px">Exclude sales without a matching purchase, pro rata</span>
       <span class="cnt">${n}</span></label>
-     <hr><p class="hint" style="margin:0;white-space:normal;max-width:250px">Für verkaufte Stücke ohne Kaufbeleg ist kein
-      Einstand bekannt, ihr Erlös zählt sonst in voller Höhe als Gewinn. Aktiv zählt nur der Erlös der belegten Stücke;
-      Gebühren und Steuern bleiben ungekürzt.</p>`;
+     <hr><p class="hint" style="margin:0;white-space:normal;max-width:250px">For shares sold without a purchase record there is no
+      known cost basis, so their proceeds would otherwise count as gain in full. When active, only the proceeds of covered shares count;
+      fees and taxes are not reduced.</p>`;
   document.getElementById('orphChk').onchange=e=>{UI.hideOrphan=e.target.checked?1:0;saveUI();render()};
   document.getElementById('ddOrphanBtn').textContent =
-    UI.hideOrphan ? '⚠ anteilig ▾' : (n ? `⚠ ${n} ohne Einstand ▾` : 'Einstand ▾');
+    UI.hideOrphan ? '⚠ pro rata ▾' : (n ? `⚠ ${n} without cost basis ▾` : 'Cost basis ▾');
 }
 
 /* --- Zahlenformat --- */
@@ -836,7 +839,7 @@ function render(){
   positions();   // füllt RPL / RPD / ROR für alle Ansichten
   buildOrphanFilter();
   document.getElementById('dbInfo').textContent =
-    `${Object.keys(DB.tx).length} Transaktionen · ${Object.keys(DB.cmt).length} kommentierte Objekte · ${(JSON.stringify(DB).length/1024).toFixed(0)} KB`;
+    `${Object.keys(DB.tx).length} transactions · ${Object.keys(DB.cmt).length} commented objects · ${(JSON.stringify(DB).length/1024).toFixed(0)} KB`;
   if(view==='dash') dash();
   if(view==='pos')  posView();
   if(view==='tx')   txView();
@@ -858,17 +861,17 @@ function dash(){
   const realTotal=f.reduce((s,r)=>s+(RGR[r.id]||0),0);
   const divTotal=f.filter(isDiv).reduce((s,r)=>s+r.amountN,0);
   const per=(F.year||F.month)? ' (Filter)':'';
-  const scope=(F.year||F.month)? 'gewählter Zeitraum':'gesamte Historie';
+  const scope=(F.year||F.month)? 'selected period':'entire history';
 
   document.getElementById('kpis').innerHTML=[
-    ['Depotwert (geschätzt)', eur(P.reduce((s,p)=>s+p.value,0)), 'letzter bekannter Kurs'],
-    ['Ertrag gesamt'+per, sign(realTotal+divTotal-fee-tax), 'realisiert + Ausschüttungen − Kosten'],
-    ['Realisiert (FIFO)'+per, sign(realTotal), scope],
-    ['Ausschüttungen'+per, sign(divTotal), scope],
-    ['Käufe'+per, eur(inv), f.filter(isBuy).length+' Vorgänge'],
-    ['Verkäufe'+per, eur(sel), f.filter(isSell).length+' Vorgänge'],
-    ['Gebühren / Steuern'+per, eur(fee)+' / '+eur(tax), ''],
-    ['Ein-/Auszahlungen'+per, eur(dep)+' / '+eur(wit), '']
+    ['Portfolio value (estimated)', eur(P.reduce((s,p)=>s+p.value,0)), 'last known price'],
+    ['Total return'+per, sign(realTotal+divTotal-fee-tax), 'realized + distributions − costs'],
+    ['Realized (FIFO)'+per, sign(realTotal), scope],
+    ['Distributions'+per, sign(divTotal), scope],
+    ['Purchases'+per, eur(inv), f.filter(isBuy).length+' transactions'],
+    ['Sales'+per, eur(sel), f.filter(isSell).length+' transactions'],
+    ['Fees / taxes'+per, eur(fee)+' / '+eur(tax), ''],
+    ['Deposits / withdrawals'+per, eur(dep)+' / '+eur(wit), '']
   ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="hint">${h}</div></div>`).join('');
 
   /* Sichtbar machen, wie viel Erlös auf Stücke ohne Kaufbeleg entfällt – sonst bliebe
@@ -879,23 +882,23 @@ function dash(){
   if(!og.length) oNote.textContent='';
   if(og.length){
     const one = og.length===1;
-    const w = one ? 'Ein Verkauf' : `${og.length} Verkäufe`;
+    const w = one ? '1 sale' : `${og.length} sales`;
     oNote.innerHTML = UI.hideOrphan
-      ? `⚠ ${w} ohne passenden Kauf: ${eur(ocut)} Erlös ist herausgerechnet.`
-      : `⚠ ${w} ohne passenden Kauf ${one?'erhöht':'erhöhen'} das Ergebnis um bis zu ${eur(ocut)}. `+
-        `Filter „Einstand“ oben rechnet ${one?'ihn':'sie'} heraus.`;
+      ? `⚠ ${w} without a matching purchase: ${eur(ocut)} of proceeds is excluded.`
+      : `⚠ ${w} without a matching purchase ${one?'inflates':'inflate'} the result by up to ${eur(ocut)}. `+
+        `The “Cost basis” filter above excludes them.`;
   }
 
   /* Beide Ranglisten folgen dem Jahr-/Monatsfilter wie die Kennzahlen darüber */
   const RK=rankByPeriod(f,P);
   const periodLabel = (F.year&&F.month) ? `${MON[+F.month-1]} ${F.year}`
     : F.year  ? F.year
-    : F.month ? `${MON[+F.month-1]}, alle Jahre`
-    : 'gesamter Zeitraum';
+    : F.month ? `${MON[+F.month-1]}, all years`
+    : 'entire period';
   document.getElementById('rankScope').textContent =
-    `(realisiert + Ausschüttungen − Gebühren − Steuern, ${periodLabel})`;
+    `(realized + distributions − fees − taxes, ${periodLabel})`;
   document.getElementById('lossScope').textContent =
-    `(nur Positionen mit negativem Ertrag, ${periodLabel})`;
+    `(only positions with a negative return, ${periodLabel})`;
 
   const top=RK.filter(p=>p.n).slice(0,12), max=Math.max(...top.map(p=>Math.abs(p.total)),1);
   document.getElementById('rank').innerHTML = top.map(p=>`
@@ -904,7 +907,7 @@ function dash(){
         <span class="clickable" onclick="detail('${js(p.isin)}')">${esc(p.name||p.isin)}</span>${sign(p.total)}
       </div>
       <div class="bar"><i style="width:${Math.abs(p.total)/max*100}%;${p.total<0?'background:var(--neg)':''}"></i></div>
-    </div>`).join('') || `<p class="hint">${(F.year||F.month)?'Keine Vorgänge im gewählten Zeitraum.':'Noch keine Daten.'}</p>`;
+    </div>`).join('') || `<p class="hint">${(F.year||F.month)?'No transactions in the selected period.':'No data yet.'}</p>`;
 
   const losses=RK.filter(p=>p.n&&p.total<-0.004).sort((a,b)=>a.total-b.total).slice(0,12);
   const lossPanel=document.getElementById('lossPanel');
@@ -930,7 +933,7 @@ function dash(){
   });
   const ms=Object.values(M).sort((a,b)=>b.k.localeCompare(a.k));
   document.getElementById('monthly').innerHTML=
-    `<thead><tr><th>Monat</th><th class="num">Vorgänge</th><th class="num">Käufe</th><th class="num">Verkäufe</th><th class="num">Ausschüttungen</th><th class="num">Gebühren</th><th class="num">Steuern</th><th class="num">realisiert</th></tr></thead><tbody>`+
+    `<thead><tr><th>Month</th><th class="num">Transactions</th><th class="num">Purchases</th><th class="num">Sales</th><th class="num">Distributions</th><th class="num">Fees</th><th class="num">Taxes</th><th class="num">realized</th></tr></thead><tbody>`+
     ms.map(m=>{const [y,mo]=m.k.split('-');return `<tr class="clickable" onclick="jumpMonth('${y}','${mo}')">
       <td>${MON[+mo-1]} ${y}</td><td class="num mut">${m.n}</td><td class="num">${eur(m.buy)}</td>
       <td class="num">${eur(m.sell)}</td><td class="num pos">${eur(m.div)}</td><td class="num mut">${eur(m.fee)}</td>
@@ -947,17 +950,17 @@ function posView(){
   P.sort((a,b)=>{const x=a[posSort.c],y=b[posSort.c];
     return (typeof x==='string'? String(x).localeCompare(String(y)): (x||0)-(y||0))*posSort.d});
 
-  const cols=[['name','Position',''],['shares','Stück','num'],['cost','Einstand','num'],['last','letzter Kurs','num'],
-    ['value','Wert (gesch.)','num'],['unreal','unrealisiert','num'],['realized','realisiert','num'],
-    ['div','Ausschüttung','num'],['fees','Gebühren','num'],['taxes','Steuern','num'],
-    ['total','Ertrag gesamt','num'],['n','Vorgänge','num']];
+  const cols=[['name','Position',''],['shares','Shares','num'],['cost','Cost basis','num'],['last','Last price','num'],
+    ['value','Value (est.)','num'],['unreal','Unrealized','num'],['realized','Realized','num'],
+    ['div','Distributions','num'],['fees','Fees','num'],['taxes','Taxes','num'],
+    ['total','Total return','num'],['n','Transactions','num']];
 
   const head='<thead><tr>'+cols.map(c=>
       `<th class="${c[2]}" onclick="sortPos('${c[0]}')">${c[1]}${posSort.c===c[0]?(posSort.d>0?' ▲':' ▼'):''}</th>`
     ).join('')+'</tr></thead>';
 
   const body='<tbody>'+P.map(p=>`<tr class="clickable" onclick="detail('${js(p.isin)}')">
-      <td><b>${esc(p.name||p.isin)}</b><br><span class="hint">${p.isin}${p.open?'':' · geschlossen'}${p.orphan?' · <span class="neg">⚠ Einstand unvollständig</span>':''}</span></td>
+      <td><b>${esc(p.name||p.isin)}</b><br><span class="hint">${p.isin}${p.open?'':' · closed'}${p.orphan?' · <span class="neg">⚠ incomplete cost basis</span>':''}</span></td>
       <td class="num">${fmt(p.shares,p.shares%1?6:0)}</td>
       <td class="num">${eur(p.cost)}</td>
       <td class="num mut">${p.last?fmt(p.last):'–'}</td>
@@ -981,20 +984,20 @@ document.getElementById('showClosed').onchange=posView;
 function detail(isin){
   const p=positions().find(x=>x.isin===isin); if(!p) return;
   const rows=all().filter(r=>r.isin===isin);
-  const stat=[['Bestand',fmt(p.shares,p.shares%1?6:0)+' Stück'],['Einstand (offen)',eur(p.cost)],
-    ['Ø Einstandskurs',eur(p.shares?p.cost/p.shares:0)],['Letzter Kurs',eur(p.last)],
-    ['Wert (geschätzt)',eur(p.value)],['Unrealisiert',p.open?sign(p.unreal):'–'],
-    ['Realisiert (FIFO)',sign(p.realized)],['Ausschüttungen',sign(p.div)],
-    ['Gebühren',eur(p.fees)],['Steuern',eur(p.taxes)],['Ertrag gesamt',`<b>${sign(p.total)}</b>`],
-    ['Erster Vorgang',rows.length?de(rows[rows.length-1].date):'–']];
+  const stat=[['Holding',fmt(p.shares,p.shares%1?6:0)+' shares'],['Cost basis (open)',eur(p.cost)],
+    ['Avg. cost per share',eur(p.shares?p.cost/p.shares:0)],['Last price',eur(p.last)],
+    ['Value (estimated)',eur(p.value)],['Unrealized',p.open?sign(p.unreal):'–'],
+    ['Realized (FIFO)',sign(p.realized)],['Distributions',sign(p.div)],
+    ['Fees',eur(p.fees)],['Taxes',eur(p.taxes)],['Total return',`<b>${sign(p.total)}</b>`],
+    ['First transaction',rows.length?dt(rows[rows.length-1].date):'–']];
   document.getElementById('v-det').innerHTML=`
-    <button class="back" onclick="document.querySelector('nav button[data-v=pos]').click()">‹ zurück zu den Positionen</button>
+    <button class="back" onclick="document.querySelector('nav button[data-v=pos]').click()">‹ back to positions</button>
     <div class="panel"><h2>${esc(p.name||p.isin)} <span class="hint">${p.isin}</span></h2>
-      ${p.orphan?`<p class="hint neg">⚠ ${qty(p.orphan)} Stück wurden verkauft, ohne dass ein passender Kauf im importierten Zeitraum liegt. ${UI.hideOrphan?'Ihr Erlös ist über den Filter „Einstand“ herausgerechnet.':'Der realisierte Gewinn dieser Stücke ist dadurch zu hoch ausgewiesen.'}</p>`:''}
+      ${p.orphan?`<p class="hint neg">⚠ ${qty(p.orphan)} shares were sold without a matching purchase within the imported period. ${UI.hideOrphan?'Their proceeds are excluded via the “Cost basis” filter.':'The realized gain of these shares is therefore overstated.'}</p>`:''}
       <div class="cards">${stat.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:17px">${v}</div></div>`).join('')}</div>
     </div>
-    <div class="panel"><h2>Alle Vorgänge (${rows.length})</h2><div class="scroll">${txTableHtml(rows)}</div></div>
-    <div class="panel"><h2>Notizen &amp; Screenshots</h2>${commentHtml('isin:'+isin)}</div>`;
+    <div class="panel"><h2>All transactions (${rows.length})</h2><div class="scroll">${txTableHtml(rows)}</div></div>
+    <div class="panel"><h2>Notes &amp; screenshots</h2>${commentHtml('isin:'+isin)}</div>`;
   document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
   document.getElementById('v-det').classList.add('on'); view='det';
@@ -1006,18 +1009,18 @@ function detail(isin){
 /* Verkauf kennzeichnen, dem für einen Teil der Stücke der Kauf fehlt */
 function orphanMark(r){
   const o=ROR[r.id]; if(!o) return '';
-  const t=`${qty(o)} von ${qty(r.sharesN)} Stück ohne passenden Kauf – `+
-    (UI.hideOrphan ? `Erlös von ${eur(orphanCut(r))} ist herausgerechnet.`
-                   : `der Gewinn ist um bis zu ${eur(orphanCut(r))} zu hoch.`);
+  const t=`${qty(o)} of ${qty(r.sharesN)} shares without a matching purchase – `+
+    (UI.hideOrphan ? `proceeds of ${eur(orphanCut(r))} are excluded.`
+                   : `the gain is overstated by up to ${eur(orphanCut(r))}.`);
   return ` <span class="neg" title="${esc(t)}">⚠</span>`;
 }
 function txTableHtml(rows){
-  const cols=['Datum','Zeit','Status','Typ','Bezeichnung','Stück','Kurs','Betrag','realisiert','Geb.','Steuer','Referenz','Notiz'];
+  const cols=['Date','Time','Status','Type','Description','Shares','Price','Amount','realized','Fee','Tax','Reference','Note'];
   const nums=[5,6,7,8,9,10];
   const head='<thead><tr>'+cols.map((c,i)=>`<th class="${nums.includes(i)?'num':''}" style="cursor:default">${c}</th>`).join('')+'</tr></thead>';
   const body='<tbody>'+rows.map(r=>{const c=(DB.cmt['tx:'+r.id]||[]).length;
     return `<tr>
-      <td>${de(r.date)}</td>
+      <td>${dt(r.date)}</td>
       <td class="mut">${(r.time||'').slice(0,5)}</td>
       <td><span class="st ${esc(r.status)}">${esc(r.status)}</span></td>
       <td>${typeTag(r)}</td>
@@ -1038,14 +1041,14 @@ function txView(){
   const rows=filtered().filter(r=>((r.description||'')+r.isin+r.reference+r.type).toLowerCase().includes(q));
   const sum=rows.reduce((s,r)=>s+(RPL[r.id]||0),0);
   document.getElementById('txWrap').innerHTML=
-    `<p class="hint">${rows.length} Vorgänge · realisiertes Ergebnis in der Auswahl: ${sign(sum)}</p>`+txTableHtml(rows);
+    `<p class="hint">${rows.length} transactions · realized result in this selection: ${sign(sum)}</p>`+txTableHtml(rows);
 }
 document.getElementById('txSearch').oninput=txView;
 document.getElementById('expCsv').onclick=()=>{
   const rows=filtered();
   const NUMC={shares:'sharesN',price:'priceN',amount:'amountN',fee:'feeN',tax:'taxN'};
   const cell=(r,c)=> NUMC[c] ? (r[c]===''||r[c]===undefined ? '' : raw(r[NUMC[c]])) : String(r[c]??'');
-  const csv=[COLS.concat(['realisiert']).join(';')]
+  const csv=[COLS.concat(['realized']).join(';')]
     .concat(rows.map(r=>COLS.map(c=>cell(r,c))
       .concat([RPL[r.id]!==undefined?RPL[r.id].toFixed(2):'']).join(';'))).join('\n');
   saveFile('depot_export_'+isoToday()+'.csv', csv, 'text/csv');
@@ -1054,9 +1057,9 @@ function txNote(id){
   const r=DB.tx[id]; if(!r) return;
   const box=document.createElement('div');
   box.className='panel modal';
-  box.innerHTML=`<div class="row"><b>${esc(r.description||r.type)} · ${de(r.date)}</b>
+  box.innerHTML=`<div class="row"><b>${esc(r.description||r.type)} · ${dt(r.date)}</b>
     <button class="btn" style="margin-left:auto" onclick="this.closest('.panel').remove()">✕</button></div>
-    <p class="hint">${esc(r.reference)}${RPL[id]!==undefined?' · realisiert: '+eur(RPL[id]):''}</p>${commentHtml('tx:'+id)}`;
+    <p class="hint">${esc(r.reference)}${RPL[id]!==undefined?' · realized: '+eur(RPL[id]):''}</p>${commentHtml('tx:'+id)}`;
   document.body.appendChild(box); bindComments('tx:'+id);
 }
 
@@ -1073,14 +1076,14 @@ function calView(manual){
   const mk=`${y}-${String(m+1).padStart(2,'0')}`;
   const monthPnl=Object.entries(RPD).filter(([d])=>d.startsWith(mk)).reduce((s,[,v])=>s+v,0);
   document.getElementById('calTitle').innerHTML=
-    `${MON[m]} ${y}<br><span class="hint">realisiert: ${sign(monthPnl)}</span>`;
+    `${MON[m]} ${y}<br><span class="hint">realized: ${sign(monthPnl)}</span>`;
   calYearBox(y);
 
   const byDay={};
   all().filter(r=>statusOK(r)&&typeOK(r)&&r.date.startsWith(mk))
        .forEach(r=>{const d=+r.date.slice(8,10); (byDay[d]=byDay[d]||[]).push(r)});
   const first=(new Date(y,m,1).getDay()+6)%7, days=new Date(y,m+1,0).getDate(), today=isoToday();
-  let h=['Mo','Di','Mi','Do','Fr','Sa','So'].map(d=>`<div class="dow">${d}</div>`).join('');
+  let h=['Mo','Tu','We','Th','Fr','Sa','Su'].map(d=>`<div class="dow">${d}</div>`).join('');
   for(let i=0;i<first;i++) h+='<div class="day empty"></div>';
   for(let d=1;d<=days;d++){
     const ev=byDay[d]||[], iso=`${mk}-${String(d).padStart(2,'0')}`, pnl=RPD[iso]||0;
@@ -1089,7 +1092,7 @@ function calView(manual){
         <div class="d"><span>${d}</span>${Math.abs(pnl)>0.004?`<span class="pnl ${pnl>0?'pos':'neg'}">${pnl>0?'+':''}${fmt(pnl,0)} €</span>`:''}</div>`+
       ev.slice(0,3).map(r=>{const c=isBuy(r)?'t-Buy':isSell(r)?'t-Sell':isDiv(r)?'t-Dividende':isCash(r)?'t-Cash':'t-Sonst';
         return `<span class="ev tag ${c}">${esc((r.description||r.type).slice(0,18))}</span>`}).join('')+
-      (ev.length>3?`<span class="hint">+${ev.length-3} weitere</span>`:'')+'</div>';
+      (ev.length>3?`<span class="hint">+${ev.length-3} more</span>`:'')+'</div>';
   }
   document.getElementById('calGrid').innerHTML=h;
   document.getElementById('calDetail').style.display='none';
@@ -1111,23 +1114,23 @@ function calYearBox(y){
   const worst=days.reduce((a,b)=> b[1]<(a?a[1]:Infinity)?b:a, null);
 
   document.getElementById('calYear').innerHTML=[
-    ['Ertrag '+yr, sign(total), 'realisiert + Ausschüttungen − Kosten'],
-    ['Realisiert (FIFO)', sign(realized), sells.length+' Verkäufe'],
-    ['Ausschüttungen', sign(div), divs.length+' Zahlungen'],
-    ['Gebühren / Steuern', eur(fee)+' / '+eur(tax), ''],
-    ['Gewinn- / Verlusttage', `<span class="pos">${win}</span> / <span class="neg">${loss}</span>`,
-      best&&best[1]>0.004 ? 'bester Tag '+de(best[0])+': '+eur(best[1]) : ''],
-    ['Schlechtester Tag', worst&&worst[1]<-0.004 ? sign(worst[1]) : '<span class="mut">–</span>',
-      worst&&worst[1]<-0.004 ? de(worst[0]) : '']
+    ['Return '+yr, sign(total), 'realized + distributions − costs'],
+    ['Realized (FIFO)', sign(realized), sells.length+' sales'],
+    ['Distributions', sign(div), divs.length+' payments'],
+    ['Fees / taxes', eur(fee)+' / '+eur(tax), ''],
+    ['Gain / loss days', `<span class="pos">${win}</span> / <span class="neg">${loss}</span>`,
+      best&&best[1]>0.004 ? 'best day '+dt(best[0])+': '+eur(best[1]) : ''],
+    ['Worst day', worst&&worst[1]<-0.004 ? sign(worst[1]) : '<span class="mut">–</span>',
+      worst&&worst[1]<-0.004 ? dt(worst[0]) : '']
   ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:19px">${v}</div><div class="hint">${h}</div></div>`).join('');
 }
 function calDay(iso){
   const rows=all().filter(r=>r.date===iso&&statusOK(r)&&typeOK(r));
   const pnl=RPD[iso]||0;
   const el=document.getElementById('calDetail'); el.style.display='block';
-  el.innerHTML=`<h2>${de(iso)} · ${rows.length} Vorgänge · realisiert ${sign(pnl)}</h2>`+
-    (rows.length?`<div class="scroll">${txTableHtml(rows)}</div>`:'<p class="hint">Keine Vorgänge an diesem Tag.</p>')+
-    `<h3>Tagesnotiz</h3>${commentHtml('day:'+iso)}`;
+  el.innerHTML=`<h2>${dt(iso)} · ${rows.length} transactions · realized ${sign(pnl)}</h2>`+
+    (rows.length?`<div class="scroll">${txTableHtml(rows)}</div>`:'<p class="hint">No transactions on this day.</p>')+
+    `<h3>Day note</h3>${commentHtml('day:'+iso)}`;
   bindComments('day:'+iso);
   el.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -1136,20 +1139,20 @@ function calDay(iso){
 function commentHtml(key){
   const list=DB.cmt[key]||[];
   return `<div class="cmts" data-k="${esc(key)}">
-    ${list.map((c,i)=>`<div class="cmt"><div class="meta">🕒 ${new Date(c.t).toLocaleString('de-DE')}
-      <button onclick="delCmt('${js(key)}',${i})">löschen</button></div>
+    ${list.map((c,i)=>`<div class="cmt"><div class="meta">🕒 ${new Date(c.t).toLocaleString('sv-SE')}
+      <button onclick="delCmt('${js(key)}',${i})">delete</button></div>
       <div>${esc(c.text).replace(/\n/g,'<br>')}</div>
       ${(c.imgs||[]).map(safeImg).filter(Boolean).map(s=>`<img src="${s}" onclick="lb(this.src)" alt="">`).join('')}</div>`).join('')}
-    <textarea placeholder="Notiz schreiben… Screenshot mit Strg+V direkt einfügen"></textarea>
+    <textarea placeholder="Write a note… paste a screenshot directly with Ctrl+V"></textarea>
     <div class="shots"></div>
     <div class="row" style="margin-top:8px">
-      <button class="btn" data-a="pick">📎 Bild wählen</button>
+      <button class="btn" data-a="pick">📎 Choose image</button>
       <input type="file" accept="image/*" multiple hidden>
-      <button class="btn pri" data-a="add" style="margin-left:auto">Speichern</button>
+      <button class="btn pri" data-a="add" style="margin-left:auto">Save</button>
     </div>
     <p class="hint">${TOUCH
-      ? 'Screenshots über <b>Bild wählen</b> aus Fotos oder Dateien hinzufügen. Bilder werden vor dem Speichern verkleinert.'
-      : 'Screenshot aus der Zwischenablage: Textfeld anklicken und <b>Strg+V</b> drücken.'}</p>
+      ? 'Add screenshots from Photos or Files via <b>Choose image</b>. Images are downsized before being stored.'
+      : 'Screenshot from the clipboard: click the text field and press <b>Ctrl+V</b>.'}</p>
   </div>`;
 }
 function bindComments(key){
@@ -1174,7 +1177,7 @@ function bindComments(key){
     box.querySelector('[data-a=add]').onclick=()=>{
       if(!ta.value.trim()&&!buf.length) return;
       (DB.cmt[key]=DB.cmt[key]||[]).unshift({t:Date.now(),text:ta.value.trim(),imgs:buf});
-      save(); refreshComments(box,key); toast('Notiz gespeichert.');
+      save(); refreshComments(box,key); toast('Note saved.');
     };
   });
 }
@@ -1206,9 +1209,9 @@ function handle(files){
       const r=importRows(rows);
       log.push(`<div class="card" style="margin-top:12px">
         <b>${esc(f.name)}</b><br>
-        <span class="pos">✔ ${r.neu} neu</span> · <span class="mut">${r.dup} Duplikate übersprungen</span>
-        · <span class="pos">${r.upd} aktualisiert</span>${r.skip?` · <span class="mut">${r.skip} per Statusfilter ausgelassen</span>`:''}${bad.length?` · <span class="neg">${bad.length} Zeilen unlesbar</span>`:''}</div>`);
-      if(++done===files.length){ rep.innerHTML=log.join(''); render(); toast('Import abgeschlossen.'); }
+        <span class="pos">✔ ${r.neu} new</span> · <span class="mut">${r.dup} duplicates skipped</span>
+        · <span class="pos">${r.upd} updated</span>${r.skip?` · <span class="mut">${r.skip} left out by the status filter</span>`:''}${bad.length?` · <span class="neg">${bad.length} unreadable rows</span>`:''}</div>`);
+      if(++done===files.length){ rep.innerHTML=log.join(''); render(); toast('Import complete.'); }
     };
     rd.readAsText(f,'utf-8');
   });
@@ -1256,12 +1259,12 @@ document.getElementById('jsonFile').onchange=e=>{
     const dropTx  = Object.keys((d&&d.tx)||{}).length  - Object.keys(c.tx).length;
     const dropCmt = Object.keys((d&&d.cmt)||{}).length - Object.keys(c.cmt).length;
     if(!Object.keys(c.tx).length && !Object.keys(c.cmt).length)
-      return toast('In dieser Datei stehen keine verwertbaren Daten.');
+      return toast('This file contains no usable data.');
     Object.assign(DB.tx,c.tx); Object.assign(DB.cmt,c.cmt);
     migrateIds(); save(); render();
-    toast('Backup eingespielt.'+((dropTx>0||dropCmt>0)
-      ? `\n${Math.max(dropTx,0)} Vorgänge und ${Math.max(dropCmt,0)} Notizfelder wurden dabei als unbrauchbar verworfen.` : ''));
-  }catch(err){ toast('Ungültige Backup-Datei.'); } };
+    toast('Backup restored.'+((dropTx>0||dropCmt>0)
+      ? `\n${Math.max(dropTx,0)} transactions and ${Math.max(dropCmt,0)} note fields were discarded as unusable.` : ''));
+  }catch(err){ toast('Invalid backup file.'); } };
   rd.readAsText(e.target.files[0]);
 };
 function buildImportFilter(){
@@ -1271,8 +1274,8 @@ function buildImportFilter(){
     <span class="st ${s}">${s}</span><span class="hint">${ST_LABEL[s]}</span></label>`).join('');
   box.querySelectorAll('input').forEach(i=> i.onchange=()=>{
     UI.impStatus=[...box.querySelectorAll('input:checked')].map(x=>x.value); saveUI();
-    toast(UI.impStatus.length? 'Import übernimmt künftig: '+UI.impStatus.join(', ')
-                             : 'Kein Status gewählt – der Import übernimmt wieder alle Zeilen.');
+    toast(UI.impStatus.length? 'The import will now take: '+UI.impStatus.join(', ')
+                             : 'No status selected – the import takes all rows again.');
   });
 }
 /* Bestätigung ohne confirm(): Safari unterdrückt Systemdialoge, sobald der Nutzer einmal
@@ -1288,36 +1291,36 @@ function armDanger(btn, ask, action){
   };
   return reset;
 }
-armDanger(document.getElementById('dropCancelled'), 'Sicher? Nochmal tippen', ()=>{
+armDanger(document.getElementById('dropCancelled'), 'Sure? Tap again', ()=>{
   const ids=Object.keys(DB.tx).filter(k=>DB.tx[k].status==='Cancelled');
-  if(!ids.length) return toast('Es sind keine abgebrochenen Vorgänge gespeichert.');
+  if(!ids.length) return toast('No cancelled transactions are stored.');
   ids.forEach(k=>delete DB.tx[k]); save(); render();
-  toast(ids.length+' abgebrochene Vorgänge entfernt.');
+  toast(ids.length+' cancelled transactions removed.');
 });
-armDanger(document.getElementById('wipe'), 'Alles löschen? Nochmal tippen', ()=>{
+armDanger(document.getElementById('wipe'), 'Delete everything? Tap again', ()=>{
   DB.tx={}; DB.cmt={};
   save();
   /* Schlüssel zusätzlich entfernen, damit nach dem Neuladen garantiert nichts zurückkommt */
   try{ localStorage.removeItem('dc_tx'); localStorage.removeItem('dc_cmt'); }catch(e){}
   render();
-  toast('Alle Daten gelöscht.');
+  toast('All data deleted.');
 });
 
 /* ============================ Start ============================ */
 if(TOUCH){
   document.getElementById('dropHint').textContent =
-    'Mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen';
+    'Multiple files and partial exports are fine · duplicates are detected and skipped automatically';
 }
 if(!LS.ok){
   const w=document.getElementById('storageWarn');
   w.style.display='block';
-  w.innerHTML='<span class="neg">⚠ Dieser Browser speichert gerade nichts.</span> '+
-    'Safari sperrt den Speicher, wenn die Datei direkt aus „Dateien" geöffnet wird oder ein privates Fenster aktiv ist. '+
-    'Die App funktioniert, aber alles ist nach dem Neuladen weg. Bitte die Seite über eine Web-Adresse (https://…) öffnen.';
-  toast('⚠️ Kein Speicher verfügbar – Daten gehen beim Neuladen verloren. Details unter „Import / Daten".');
+  w.innerHTML='<span class="neg">⚠ This browser is not storing anything right now.</span> '+
+    'Safari blocks storage when the file is opened directly from “Files” or a private window is active. '+
+    'The app works, but everything is gone after a reload. Please open the page via a web address (https://…).';
+  toast('⚠️ No storage available – data will be lost on reload. Details under “Import / Data”.');
 }
 
-/* ---------- Begrüßung: einmalig beim ersten Start, danach über „ℹ Hinweise" ---------- */
+/* ---------- Begrüßung: einmalig beim ersten Start, danach über „ℹ Notes" ---------- */
 const intro=document.getElementById('intro');
 const closeIntro=()=>{ intro.classList.remove('on'); UI.seenIntro=1; saveUI(); };
 document.getElementById('introOk').onclick=closeIntro;
@@ -1344,7 +1347,7 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
         sw.addEventListener('statechange',()=>{
           if(sw.state==='installed' && navigator.serviceWorker.controller){
             /* Nicht mitten in der Sitzung austauschen – erst beim nächsten Start */
-            toast('Eine neue Version wurde geladen. Sie ist aktiv, sobald die App einmal vollständig geschlossen und neu geöffnet wurde.');
+            toast('A new version has been loaded. It becomes active once the app has been fully closed and reopened.');
           }
         });
       });
