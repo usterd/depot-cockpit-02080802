@@ -1076,10 +1076,13 @@ function typeTag(r){
 
 /* ============================ Navigation ============================ */
 let view='dash';
-document.querySelectorAll('nav button').forEach(b=> b.onclick=()=>{
-  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
-  show(b.dataset.v);
-});
+document.querySelectorAll('nav button').forEach(b=> b.onclick=()=> show(b.dataset.v));
+/* Which tab is highlighted belongs to show(), not to the click handler: the view
+   is also switched from code – at startup straight to the import when nothing is
+   stored yet – and the highlight used to stay behind on the tab last clicked. */
+function markTab(v){
+  document.querySelectorAll('nav button').forEach(x=> x.classList.toggle('on', x.dataset.v===v));
+}
 /* The tab strip scrolls sideways on a phone – keep the open tab in view rather
    than leaving it half cut off at the edge. Only the strip moves, not the page. */
 function scrollNavIntoView(){
@@ -1090,6 +1093,7 @@ function scrollNavIntoView(){
 function show(v){
   view=v;
   document.body.dataset.view=v;          // drives which chrome a view shows
+  markTab(v);
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
   document.getElementById('v-'+v).classList.add('on');
   render();
@@ -1360,7 +1364,9 @@ function detail(isin){
     </div>
     <div class="panel"><h2>${t('det.all',rows.length)}</h2><div class="scroll">${txTableHtml(rows)}</div></div>
     <div class="panel"><h2>${t('det.notes')}</h2>${commentHtml('isin:'+isin)}</div>`;
-  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
+  /* The detail is reached from the positions and its back button returns there,
+     so that tab stays highlighted instead of leaving the bar without a mark. */
+  markTab('pos');
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
   document.getElementById('v-det').classList.add('on'); view='det'; document.body.dataset.view='det';
   bindComments('isin:'+isin);
@@ -1727,6 +1733,10 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v28', d:'2026-08-13', items:[
+    {en:'Fixed: the open tab kept its highlight only after a click of your own – starting on the import or opening a position left the bar unmarked.',
+     de:'Behoben: Der offene Tab war erst nach einem eigenen Klick markiert – beim Start im Import oder in einer Position blieb die Leiste ohne Markierung.'}
+  ]},
   {v:'v27', d:'2026-08-13', items:[
     {en:'On a phone the tables no longer scroll sideways: every transaction, position and month becomes a card with all its figures under each other.',
      de:'Auf dem Telefon scrollen die Tabellen nicht mehr seitwärts: Jeder Vorgang, jede Position und jeder Monat wird zur Karte mit allen Werten untereinander.'},
