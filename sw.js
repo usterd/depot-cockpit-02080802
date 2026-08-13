@@ -4,7 +4,7 @@
    Sorgt dafür, dass die App auch ohne Netz startet.
 
    WICHTIG BEI JEDER ÄNDERUNG AN index.html:
-   Unten die VERSION hochzählen (z. B. 'v20' -> 'v20.1').
+   Unten die VERSION hochzählen (z. B. 'v20' -> 'v21').
    Nur dann merkt der Browser, dass er die neue Fassung laden muss.
    Die alte Version wird beim Aktivieren automatisch aufgeräumt.
 
@@ -12,7 +12,7 @@
    sie überleben jedes Update und jedes Leeren dieses Caches.
    ============================================================ */
 
-const VERSION = 'v20.2';
+const VERSION = 'v23';
 const CACHE   = 'depot-' + VERSION;
 
 /* Alles, was die App zum Starten braucht. Relative Pfade, damit es
