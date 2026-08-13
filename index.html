@@ -174,7 +174,13 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .dd .pop hr{border:none;border-top:1px solid var(--line);margin:6px 0}
 .dd .pop .row button{font-size:12px;padding:4px 9px}
 .btn.note{padding:3px 10px;font-size:12px;min-height:30px}
-#filtToggle{display:none;white-space:nowrap;position:relative}
+/* Same shape as the language switch next to it: pill, one line high, small
+   capitals – the two sit side by side and would otherwise not look related. */
+button.btn#filtToggle{display:none;position:relative;white-space:nowrap;
+  height:36px;min-height:36px;padding:0 12px;border-radius:999px;background:var(--bg3);
+  font-size:12px;font-weight:600;letter-spacing:.4px;color:var(--mut);
+  align-items:center;justify-content:center}
+button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2));border-color:transparent;color:#fff}
 /* A dot on the button when a filter is narrowing what is shown – otherwise a
    folded-away filter would silently change every figure on the screen. */
 #filtToggle.act::after{content:'';position:absolute;top:5px;right:6px;width:7px;height:7px;
@@ -194,7 +200,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
   nav button{flex:0 0 auto;min-height:40px}
   /* The six filters filled half the screen on a phone. They now sit behind the
      button in the first row and only unfold when they are actually wanted. */
-  #filtToggle{display:inline-flex}
+  button.btn#filtToggle{display:inline-flex}
   .filters{order:4;margin-left:0;width:100%;flex-wrap:wrap;display:none}
   .filters.open{display:flex}
   .filters>*{flex:1 1 130px;min-height:40px}
@@ -228,7 +234,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
   .hd{gap:8px;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
   .logo{font-size:16px}
   .seg button{padding:0 9px}
-  #filtToggle{font-size:13px;padding:0 10px}
+  button.btn#filtToggle{padding:0 10px}
   main{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
 }
 /* Filters do nothing on these two views, so they do not take up room there either */
@@ -1144,6 +1150,7 @@ const filters=document.querySelector('.filters');
 const filtToggle=document.getElementById('filtToggle');
 filtToggle.onclick=()=>{
   const open=filters.classList.toggle('open');
+  filtToggle.classList.toggle('on', open);        // lit while the panel is out, like the language switch
   filtToggle.setAttribute('aria-expanded', open?'true':'false');
 };
 /* Mark the button while something is narrowing the figures, so a filter that is
@@ -1794,7 +1801,9 @@ const CHANGELOG=[
     {en:'Fixed: the open tab kept its highlight only after a click of your own – starting on the import or opening a position left the bar unmarked.',
      de:'Behoben: Der offene Tab war erst nach einem eigenen Klick markiert – beim Start im Import oder in einer Position blieb die Leiste ohne Markierung.'},
     {en:'The import now also asks which transaction types to take over, so bookings like securities transfers are never stored in the first place.',
-     de:'Der Import fragt jetzt auch, welche Vorgangstypen übernommen werden – Buchungen wie Depotüberträge werden so gar nicht erst gespeichert.'}
+     de:'Der Import fragt jetzt auch, welche Vorgangstypen übernommen werden – Buchungen wie Depotüberträge werden so gar nicht erst gespeichert.'},
+    {en:'Top bar and dialogs tidied up: a drawn notes icon, a filter button shaped like the language switch, and the version history closes from its title row.',
+     de:'Kopfzeile und Dialoge aufgeräumt: gezeichnetes Hinweis-Symbol, ein Filterknopf in Form des Sprachschalters, und der Versionsverlauf schließt über seine Titelzeile.'}
   ]},
   {v:'v27', d:'2026-08-13', items:[
     {en:'On a phone the tables no longer scroll sideways: every transaction, position and month becomes a card with all its figures under each other.',
