@@ -12,7 +12,7 @@
    it survives every update and every clearing of this cache.
    ============================================================ */
 
-const VERSION = 'v24';
+const VERSION = 'v25';
 const CACHE   = 'depot-' + VERSION;
 
 /* Everything the app needs to start. Relative paths so that it also

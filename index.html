@@ -110,22 +110,27 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .hint{font-size:12px;color:var(--mut)}
 #lightbox{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;z-index:200}
 #lightbox img{max-width:92vw;max-height:92vh;border-radius:10px}
-/* Welcome screen on first start */
-#intro{position:fixed;inset:0;background:#000c;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+/* Welcome screen on first start, version history */
+#intro,#chg{position:fixed;inset:0;background:#000c;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
   display:none;align-items:center;justify-content:center;z-index:250;padding:20px}
-#intro.on{display:flex}
-#introBox{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
+#intro.on,#chg.on{display:flex}
+#introBox,#chgBox{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
   width:min(600px,100%);max-height:88vh;overflow:auto;padding:22px 24px;box-shadow:0 24px 70px #000c}
-#introBox h2{margin:0 0 4px;font-size:19px}
+#introBox h2,#chgBox h2{margin:0 0 4px;font-size:19px}
 #introBox h3{margin:18px 0 6px;font-size:12px;color:var(--acc);text-transform:uppercase;letter-spacing:.8px}
-#introBox p{margin:0 0 8px;color:var(--fg)}
-#introBox ol{margin:0;padding-left:20px}
-#introBox li{margin-bottom:4px}
-#introBox .small{color:var(--mut);font-size:13px}
-#introOk{width:100%;margin-top:22px;padding:12px;font-size:15px;min-height:48px}
+#introBox p,#chgBox p{margin:0 0 8px;color:var(--fg)}
+#introBox ol,#chgBox ul{margin:0;padding-left:20px}
+#introBox li,#chgBox li{margin-bottom:4px}
+#introBox .small,#chgBox .small{color:var(--mut);font-size:13px}
+#introOk,#chgOk{width:100%;margin-top:22px;padding:12px;font-size:15px;min-height:48px}
+/* One block per version: heading line with number, date and marker */
+.chg-v{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:18px 0 6px;
+  padding-top:12px;border-top:1px solid var(--line)}
+.chg-v:first-child{margin-top:10px;padding-top:0;border-top:none}
+.chg-v b{font-size:14px;color:var(--acc)}
 @media (max-width:820px){
-  #intro{padding:0;align-items:stretch}
-  #introBox{width:100%;max-height:100%;border-radius:0;border:none;
+  #intro,#chg{padding:0;align-items:stretch}
+  #introBox,#chgBox{width:100%;max-height:100%;border-radius:0;border:none;
     padding:calc(20px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom))}
 }
 .toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--acc);padding:12px 16px;border-radius:10px;z-index:300;display:none;max-width:380px;white-space:pre-line}
@@ -297,16 +302,25 @@ textarea{width:100%;min-height:70px;resize:vertical}
     </div>
     <div class="panel">
       <h2>Stored data</h2>
-      <div class="row">
-        <span id="dbInfo" class="hint"></span>
-        <button class="btn" id="expJson" style="margin-left:auto">Save backup (JSON)</button>
+      <p id="dbInfo" class="hint" style="margin:0 0 12px"></p>
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn" id="expJson">Save backup (JSON)</button>
         <button class="btn" id="impJson">Restore backup</button>
+      </div>
+      <div class="row">
         <button class="btn" id="dropCancelled">Remove cancelled</button>
         <button class="btn" id="wipe" style="border-color:#f8514955;color:var(--neg)">Delete everything</button>
       </div>
       <input type="file" id="jsonFile" accept=".json,application/json,text/plain" hidden>
       <p class="hint">The backup contains transactions, comments and screenshots. Everything is stored in this browser (localStorage) – use a backup when moving to another device.</p>
       <p class="hint" id="storageWarn" style="display:none"></p>
+    </div>
+    <div class="panel">
+      <div class="row">
+        <h2 style="margin:0">Version</h2>
+        <span class="hint" id="verNow"></span>
+        <button class="btn" id="chgOpen" style="margin-left:auto">Version history</button>
+      </div>
     </div>
   </section>
 </main>
@@ -341,6 +355,13 @@ textarea{width:100%;min-height:70px;resize:vertical}
     under <b>Import / Data → Save backup (JSON)</b>.</p>
 
   <button class="btn pri" id="introOk">Got it</button>
+</div></div>
+
+<div id="chg"><div id="chgBox">
+  <h2>Version history</h2>
+  <p class="small">What each version of Depot Cockpit brought. Your stored data is never touched by an update.</p>
+  <div id="chgList"></div>
+  <button class="btn pri" id="chgOk">Close</button>
 </div></div>
 
 <div id="lightbox"><img alt=""></div>
@@ -1318,6 +1339,45 @@ if(!LS.ok){
     'The app works, but everything is gone after a reload. Please open the page via a web address (https://…).';
   toast('⚠️ No storage available – data will be lost on reload. Details under “Import / Data”.');
 }
+
+/* ---------- Version history ---------- */
+/* Newest first. The version number matches VERSION in sw.js, so the entry at the
+   top is always the version currently running. One line per feature, kept short. */
+const CHANGELOG=[
+  {v:'v25', d:'2026-08-13', items:[
+    'Version history: this list, reachable under Import / Data. It shows which version is running and what every earlier one changed.',
+    'Stored data: the four buttons now sit in two rows – the backups above, clean-up and deletion below.'
+  ]},
+  {v:'v24', d:'2026-08-13', items:[
+    'The entire interface is now in English: navigation, tables, filters, notes and every message.'
+  ]},
+  {v:'v23', d:'2026-08-08', items:[
+    'The year and month filters now also apply to the return and loss rankings on the overview.',
+    'New “Cost basis” filter: sales without a matching purchase in the imported period can be excluded pro rata.',
+    'Taxes now carry the correct sign; transfers in and out are included in the cost basis.'
+  ]},
+  {v:'v20.2', d:'2026-08-04', items:[
+    'Welcome screen on first start, explaining what the app is for and how it is installed. Reopenable any time via “ℹ Notes”.'
+  ]},
+  {v:'v20.1', d:'2026-08-02', items:[
+    'Security hardening: content security policy, stricter escaping, images only from embedded data, and backup files validated field by field on import.'
+  ]},
+  {v:'v20', d:'2026-08-02', items:[
+    'First release: CSV import, positions with FIFO gains, distributions, fees and taxes, calendar, notes with screenshots, backups and offline use as a home-screen app.'
+  ]}
+];
+const APP_VERSION=CHANGELOG[0].v;
+document.getElementById('verNow').textContent='Running version '+APP_VERSION+' · '+CHANGELOG[0].d;
+document.getElementById('chgList').innerHTML=CHANGELOG.map((r,i)=>
+  `<div class="chg-v"><b>${esc(r.v)}</b><span class="hint">${esc(r.d)}</span>${i?'':'<span class="st Executed">current</span>'}</div>
+   <ul>${r.items.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`).join('');
+const chg=document.getElementById('chg');
+const closeChg=()=>chg.classList.remove('on');
+document.getElementById('chgOk').onclick=closeChg;
+chg.onclick=e=>{ if(e.target===chg) closeChg(); };
+document.getElementById('chgOpen').onclick=()=>{
+  document.getElementById('chgBox').scrollTop=0; chg.classList.add('on');
+};
 
 /* ---------- Welcome screen: once on first start, afterwards via “ℹ Notes” ---------- */
 const intro=document.getElementById('intro');
