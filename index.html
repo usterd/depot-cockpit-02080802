@@ -365,6 +365,9 @@ table.rsp td.mhead{display:none}
       <h3 data-i18n="imp.which">Which statuses to import?</h3>
       <div class="row" id="impStatus"></div>
       <p class="hint" data-i18n="imp.whichNote"></p>
+      <h3 data-i18n="imp.whichType">Which types to import?</h3>
+      <div class="row" id="impType"></div>
+      <p class="hint" data-i18n="imp.whichTypeNote"></p>
       <div id="report"></div>
     </div>
     <div class="panel">
@@ -441,7 +444,8 @@ const UI = Object.assign({
   status:['Executed'],
   type:[],
   hideOrphan:0,
-  impStatus:['Executed','Pending','Cancelled']
+  impStatus:['Executed','Pending','Cancelled'],
+  impSkipType:[]                           // types left out on import, empty = take everything
 }, readJSON('dc_ui'));
 const saveUI = () => { try{ LS.set('dc_ui', JSON.stringify(UI)); }catch(e){} };
 
@@ -519,9 +523,13 @@ en:{
   'imp.which':'Which statuses to import?',
   'imp.whichNote':'Rows that are not selected are never stored in the first place. At Scalable, cancelled and pending orders carry no amounts – they only document the attempt. Rows already imported are kept; use “Remove cancelled” below to clean up.',
   'imp.new':n=>`✔ ${n} new`,'imp.dup':n=>`${n} duplicates skipped`,'imp.upd':n=>`${n} updated`,
-  'imp.skip':n=>`${n} left out by the status filter`,'imp.bad':n=>`${n} unreadable rows`,
+  'imp.skip':n=>`${n} left out by the import filters`,'imp.bad':n=>`${n} unreadable rows`,
   'imp.done':'Import complete.','imp.take':s=>'The import will now take: '+s,
   'imp.takeNone':'No status selected – the import takes all rows again.',
+  'imp.whichType':'Which types to import?',
+  'imp.whichTypeNote':'Unticked types are never stored – useful for bookings that are of no interest in this depot, securities transfers say. A type that is not listed here yet is always imported, so nothing is dropped without a word. Already stored rows stay; “Remove type” below clears them out.',
+  'imp.skipTypes':s=>'The import will now leave out: '+s,
+  'imp.skipNone':'Every type is imported again.',
   'data.title':'Stored data','data.save':'Save backup (JSON)','data.restore':'Restore backup',
   'data.dropCancelled':'Remove cancelled','data.wipe':'Delete everything',
   'data.dropType':'Remove type','data.typeSelNone':'no types stored',
@@ -643,9 +651,13 @@ de:{
   'imp.which':'Welche Status übernehmen?',
   'imp.whichNote':'Nicht gewählte Zeilen werden gar nicht erst gespeichert. Abgebrochene und offene Orders enthalten bei Scalable keine Beträge – sie dokumentieren nur den Versuch. Bereits importierte Zeilen bleiben erhalten; zum Aufräumen unten „Abgebrochene entfernen“ nutzen.',
   'imp.new':n=>`✔ ${n} neu`,'imp.dup':n=>`${n} Duplikate übersprungen`,'imp.upd':n=>`${n} aktualisiert`,
-  'imp.skip':n=>`${n} per Statusfilter ausgelassen`,'imp.bad':n=>`${n} Zeilen unlesbar`,
+  'imp.skip':n=>`${n} per Importfilter ausgelassen`,'imp.bad':n=>`${n} Zeilen unlesbar`,
   'imp.done':'Import abgeschlossen.','imp.take':s=>'Import übernimmt künftig: '+s,
   'imp.takeNone':'Kein Status gewählt – der Import übernimmt wieder alle Zeilen.',
+  'imp.whichType':'Welche Typen übernehmen?',
+  'imp.whichTypeNote':'Nicht angehakte Typen werden gar nicht erst gespeichert – praktisch für Buchungen, die in diesem Depot nicht interessieren, etwa Depotüberträge. Ein hier noch nicht aufgeführter Typ wird immer übernommen, damit nichts stillschweigend verloren geht. Bereits gespeicherte Zeilen bleiben; „Typ entfernen“ unten räumt sie weg.',
+  'imp.skipTypes':s=>'Der Import lässt künftig aus: '+s,
+  'imp.skipNone':'Alle Typen werden wieder übernommen.',
   'data.title':'Gespeicherte Daten','data.save':'Backup (JSON) sichern','data.restore':'Backup einspielen',
   'data.dropCancelled':'Abgebrochene entfernen','data.wipe':'Alles löschen',
   'data.dropType':'Typ entfernen','data.typeSelNone':'keine Typen gespeichert',
@@ -869,6 +881,10 @@ function importRows(rows){
   let neu=0,dup=0,upd=0,skip=0;
   rows.forEach(r=>{
     if(UI.impStatus.length && !UI.impStatus.includes(r.status)){ skip++; return; }
+    /* Kept as a list of what to leave out, not of what to take: a type that
+       turns up in a later export without being known here is imported rather
+       than dropped without a word. */
+    if(UI.impSkipType.includes(r.type)){ skip++; return; }
     const ex = DB.tx[r.id];
     if(!ex) { DB.tx[r.id]=r; neu++; }
     else if(JSON.stringify(ex)!==JSON.stringify(r)) { DB.tx[r.id]={...ex,...r}; upd++; }
@@ -1203,7 +1219,8 @@ fNum.onchange=e=>{UI.numfmt=e.target.value;saveUI();render()};
 
 /* ============================ Render ============================ */
 function render(){
-  buildFilters(); buildStatusFilter(); buildTypeFilter(); buildImportFilter(); buildTypeRemover(); markFilters();
+  buildFilters(); buildStatusFilter(); buildTypeFilter();
+  buildImportFilter(); buildImportTypeFilter(); buildTypeRemover(); markFilters();
   positions();   // fills RPL / RPD / ROR for all views
   buildOrphanFilter();
   document.getElementById('dbInfo').textContent = t('data.info',
@@ -1648,6 +1665,24 @@ function buildImportFilter(){
     toast(UI.impStatus.length? t('imp.take',UI.impStatus.map(stLabel).join(', ')) : t('imp.takeNone'));
   });
 }
+/* Which transaction types an import takes over. The list holds every type the app
+   knows, plus whatever is already stored – so a broker-specific type can be
+   switched off as soon as it has been seen once. */
+function buildImportTypeFilter(){
+  const box=document.getElementById('impType');
+  const list=[...new Set(Object.keys(TYPE_CLASS)
+    .concat(Object.values(DB.tx).map(r=>r.type).filter(Boolean))
+    .concat(UI.impSkipType))].sort((a,b)=> typeName(a).localeCompare(typeName(b), UI.lang));
+  box.innerHTML=list.map(ty=>`<label class="chk" style="border:1px solid var(--line)">
+    <input type="checkbox" value="${esc(ty)}" ${UI.impSkipType.includes(ty)?'':'checked'}>
+    ${typeTag({type:ty})}</label>`).join('');
+  box.querySelectorAll('input').forEach(i=> i.onchange=()=>{
+    UI.impSkipType=[...box.querySelectorAll('input:not(:checked)')].map(x=>x.value); saveUI();
+    toast(UI.impSkipType.length
+      ? t('imp.skipTypes', UI.impSkipType.map(typeName).join(', '))
+      : t('imp.skipNone'));
+  });
+}
 /* Confirmation without confirm(): Safari suppresses system dialogs once the user has chosen
    “block further dialogs” or the page is running in home-screen mode.
    The button therefore asks by itself – a second tap within 6 seconds deletes. */
@@ -1735,7 +1770,9 @@ if(!LS.ok){
 const CHANGELOG=[
   {v:'v28', d:'2026-08-13', items:[
     {en:'Fixed: the open tab kept its highlight only after a click of your own – starting on the import or opening a position left the bar unmarked.',
-     de:'Behoben: Der offene Tab war erst nach einem eigenen Klick markiert – beim Start im Import oder in einer Position blieb die Leiste ohne Markierung.'}
+     de:'Behoben: Der offene Tab war erst nach einem eigenen Klick markiert – beim Start im Import oder in einer Position blieb die Leiste ohne Markierung.'},
+    {en:'The import now also asks which transaction types to take over, so bookings like securities transfers are never stored in the first place.',
+     de:'Der Import fragt jetzt auch, welche Vorgangstypen übernommen werden – Buchungen wie Depotüberträge werden so gar nicht erst gespeichert.'}
   ]},
   {v:'v27', d:'2026-08-13', items:[
     {en:'On a phone the tables no longer scroll sideways: every transaction, position and month becomes a card with all its figures under each other.',
