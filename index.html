@@ -159,7 +159,10 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .back{background:none;border:none;color:var(--acc);cursor:pointer;padding:0;margin-bottom:10px;font:inherit}
-.modal{position:fixed;inset:6% 0 auto 0;margin:0 auto;width:min(680px,92vw);z-index:150;max-height:84vh;overflow:auto;box-shadow:0 20px 60px #000a}
+.modal{--mpy:16px;--mpx:16px;
+  position:fixed;inset:6% 0 auto 0;margin:0 auto;width:min(680px,92vw);z-index:150;max-height:84vh;overflow:auto;box-shadow:0 20px 60px #000a}
+/* Holds a transaction table – give it the room a table needs */
+.modal.wide{width:min(1000px,94vw)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:12px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 .dd{position:relative}
@@ -223,8 +226,9 @@ button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2)
   .day.has::after{content:'';display:block;width:5px;height:5px;border-radius:50%;
     background:var(--acc);margin:3px auto 0}
   .drop{padding:22px 14px}
-  .modal{inset:0;width:100%;max-height:100%;border-radius:0;
-    padding:calc(14px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))}
+  .modal,.modal.wide{--mpy:calc(14px + env(safe-area-inset-top));--mpx:16px;
+    inset:0;width:100%;max-height:100%;border-radius:0;
+    padding:var(--mpy) var(--mpx) calc(16px + env(safe-area-inset-bottom))}
   .toast{left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));max-width:none}
 }
 /* On a phone the first header row has to hold name, notes, language and the
@@ -560,6 +564,12 @@ en:{
   'imp.done':'Import complete.',
   'imp.skipStatuses':s=>'The import will now leave out: '+s,
   'imp.otherStatus':'other statuses','imp.otherType':'other types',
+  'imp.tapFigure':'Tap a figure to see the rows behind it.',
+  'imp.title.new':'Newly stored','imp.title.dup':'Already stored','imp.title.upd':'Updated',
+  'imp.title.skip':'Left out','imp.title.bad':'Not read',
+  'imp.reason.status':'Left out by the status filter','imp.reason.type':'Left out by the type filter',
+  'imp.badHint':'A line is read when it holds at least 11 fields separated by semicolons and starts with a date in the form yyyy-mm-dd. Header and blank lines are skipped on purpose and are not listed here.',
+  'imp.line':'Line','imp.text':'Content','imp.more':(a,b)=>`Showing the first ${a} of ${b} rows.`,
   'imp.whichType':'Which types to import?',
   'imp.whichTypeNote':'Unticked types are never stored – useful for bookings that are of no interest in this depot, securities transfers say. The dashed box covers types this list does not name yet; leave it ticked and a type from a future export comes in rather than being dropped without a word. Already stored rows stay; “Remove type” below clears them out.',
   'imp.skipTypes':s=>'The import will now leave out: '+s,
@@ -689,6 +699,12 @@ de:{
   'imp.done':'Import abgeschlossen.',
   'imp.skipStatuses':s=>'Der Import lässt künftig aus: '+s,
   'imp.otherStatus':'andere Status','imp.otherType':'andere Typen',
+  'imp.tapFigure':'Auf eine Zahl tippen, um die Zeilen dahinter zu sehen.',
+  'imp.title.new':'Neu gespeichert','imp.title.dup':'Schon gespeichert','imp.title.upd':'Aktualisiert',
+  'imp.title.skip':'Ausgelassen','imp.title.bad':'Nicht gelesen',
+  'imp.reason.status':'Vom Statusfilter ausgelassen','imp.reason.type':'Vom Typfilter ausgelassen',
+  'imp.badHint':'Eine Zeile wird gelesen, wenn sie mindestens 11 durch Semikolon getrennte Felder enthält und mit einem Datum der Form jjjj-mm-tt beginnt. Kopf- und Leerzeilen werden bewusst übersprungen und stehen hier nicht.',
+  'imp.line':'Zeile','imp.text':'Inhalt','imp.more':(a,b)=>`Es werden die ersten ${a} von ${b} Zeilen gezeigt.`,
   'imp.whichType':'Welche Typen übernehmen?',
   'imp.whichTypeNote':'Nicht angehakte Typen werden gar nicht erst gespeichert – praktisch für Buchungen, die in diesem Depot nicht interessieren, etwa Depotüberträge. Das gestrichelte Kästchen steht für Typen, die diese Liste noch nicht kennt; bleibt es angehakt, kommt ein Typ aus einem künftigen Export herein, statt stillschweigend verloren zu gehen. Bereits gespeicherte Zeilen bleiben; „Typ entfernen“ unten räumt sie weg.',
   'imp.skipTypes':s=>'Der Import lässt künftig aus: '+s,
@@ -883,13 +899,14 @@ function migrateSigns(){
 
 function parseCSV(text){
   const out=[], bad=[], recs=[];
-  text.replace(/^\uFEFF/,'').split(/\r?\n/).forEach(raw=>{
+  text.replace(/^\uFEFF/,'').split(/\r?\n/).forEach((raw,i)=>{
     let line = raw.replace(/"/g,'').trim();
     if(!line) return;
     line = line.replace(/[,;\s]+$/,'');
     if(/^date;time;status/i.test(line)) return;
     const p = line.split(';');
-    if(p.length < 11 || !/^\d{4}-\d{2}-\d{2}$/.test(p[0])){ bad.push(raw); return; }
+    /* The line number travels with the text so the import report can point at it */
+    if(p.length < 11 || !/^\d{4}-\d{2}-\d{2}$/.test(p[0])){ bad.push({n:i+1, text:raw}); return; }
     const r={}; COLS.forEach((c,j)=> r[c]=(p[j]||'').trim());
     recs.push(r);
   });
@@ -1451,8 +1468,10 @@ function orphanMark(r){
     (UI.hideOrphan ? t('tx.markOn',eur(orphanCut(r))) : t('tx.markOff',eur(orphanCut(r))));
   return ` <span class="neg" title="${esc(msg)}">⚠</span>`;
 }
-function txTableHtml(rows){
-  const cols=tv('tx.cols');
+/* notes=false leaves the note column out: rows that were never stored have nothing to
+   attach a note to, and the button would look up a transaction that does not exist. */
+function txTableHtml(rows, notes=true){
+  const cols=tv('tx.cols').slice(0, notes?13:12);
   const nums=[5,6,7,8,9,10];
   const head='<thead><tr>'+cols.map((c,i)=>`<th class="${nums.includes(i)?'num':''}" style="cursor:default">${c}</th>`).join('')+'</tr></thead>';
   /* data-l feeds the column name into the card layout on a narrow screen.
@@ -1476,7 +1495,7 @@ function txTableHtml(rows){
       <td class="num mut" ${l(9)}>${r.feeN?fmt(r.feeN):''}</td>
       <td class="num mut" ${l(10)}>${r.taxN?fmt(r.taxN):''}</td>
       <td class="mut" style="font-size:11px" ${l(11)}>${esc(r.reference).slice(0,22)}</td>
-      <td ${l(12)}><button class="btn note" onclick="txNote(this.dataset.id)" data-id="${esc(r.id)}">💬${c?' '+c:''}</button></td>
+      ${notes?`<td ${l(12)}><button class="btn note" onclick="txNote(this.dataset.id)" data-id="${esc(r.id)}">💬${c?' '+c:''}</button></td>`:''}
     </tr>`}).join('')+'</tbody>';
   return '<table class="rsp">'+head+body+'</table>';
 }
@@ -1641,22 +1660,66 @@ fileInp.onchange=()=>handle(fileInp.files);
 ['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('hot')}));
 ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('hot')}));
 drop.addEventListener('drop',ev=>handle(ev.dataTransfer.files));
+/* What the last import did, kept so every figure in the report can show the rows
+   behind it. Lives in memory only, for as long as the report is on screen. */
+let LAST_IMPORT=[];
 function handle(files){
   const rep=document.getElementById('report'); let done=0, log=[];
   if(!files.length) return;
+  LAST_IMPORT=[];
   [...files].forEach(f=>{
     const rd=new FileReader();
     rd.onload=()=>{
       const {rows,bad}=parseCSV(rd.result);
       const r=importRows(rows);
+      /* Card and record are pushed together, so the index in the onclick always
+         points at the file the figures belong to – the files finish in any order. */
+      const i=LAST_IMPORT.push({name:f.name, res:r, bad})-1;
+      const fig=(kind,n,cls)=> !n ? '' :
+        `<span class="clickable ${cls}" onclick="importDetail(${i},'${kind}')">${t('imp.'+kind,n)}</span>`;
       log.push(`<div class="card" style="margin-top:12px">
         <b>${esc(f.name)}</b><br>
-        <span class="pos">${t('imp.new',r.neu)}</span> · <span class="mut">${t('imp.dup',r.dup)}</span>
-        · <span class="pos">${t('imp.upd',r.upd)}</span>${r.skip?` · <span class="mut">${t('imp.skip',r.skip)}</span>`:''}${bad.length?` · <span class="neg">${t('imp.bad',bad.length)}</span>`:''}</div>`);
+        ${[fig('new',r.neu,'pos'), fig('dup',r.dup,'mut'), fig('upd',r.upd,'pos'),
+           fig('skip',r.skip,'mut'), fig('bad',bad.length,'neg')].filter(Boolean).join(' · ')}
+        <br><span class="hint">${t('imp.tapFigure')}</span></div>`);
       if(++done===files.length){ rep.innerHTML=log.join(''); render(); toast(t('imp.done')); }
     };
     rd.readAsText(f,'utf-8');
   });
+}
+/* The figures of the import report, opened as a list. Rows that were left out or not
+   read never reach the database, so this is the only place they can be looked at. */
+const IMP_MAX=300;
+function importDetail(i,kind){
+  const e=LAST_IMPORT[i]; if(!e) return;
+  const r=e.res;
+  let body='';
+  if(kind==='bad'){
+    const rows=e.bad.slice(0,IMP_MAX);
+    body=`<p class="hint">${t('imp.badHint')}</p><div class="scroll"><table class="rsp"><thead><tr>
+        <th>${t('imp.line')}</th><th>${t('imp.text')}</th></tr></thead><tbody>`+
+      rows.map(b=>`<tr><td class="mut" data-l="${esc(t('imp.line'))}">${b.n}</td>
+        <td class="mfirst" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px">${esc(b.text)||'—'}</td></tr>`).join('')+
+      `</tbody></table></div>${e.bad.length>IMP_MAX?`<p class="hint">${t('imp.more',IMP_MAX,e.bad.length)}</p>`:''}`;
+  } else if(kind==='skip'){
+    /* Grouped by the reason, so it is plain which filter dropped what */
+    body=['status','type'].map(why=>{
+      const rows=r.rowsSkip.filter(x=>x.why===why).map(x=>x.r);
+      if(!rows.length) return '';
+      return `<h3>${t('imp.reason.'+why)} (${rows.length})</h3>`+
+        `<div class="scroll">${txTableHtml(rows.slice(0,IMP_MAX),false)}</div>`+
+        (rows.length>IMP_MAX?`<p class="hint">${t('imp.more',IMP_MAX,rows.length)}</p>`:'');
+    }).join('');
+  } else {
+    const rows={new:r.rowsNew, dup:r.rowsDup, upd:r.rowsUpd}[kind]||[];
+    body=`<div class="scroll">${txTableHtml(rows.slice(0,IMP_MAX),false)}</div>`+
+      (rows.length>IMP_MAX?`<p class="hint">${t('imp.more',IMP_MAX,rows.length)}</p>`:'');
+  }
+  const box=document.createElement('div');
+  box.className='panel modal wide';
+  box.innerHTML=`<div class="modal-hd"><h2>${t('imp.title.'+kind)} <span class="hint">${esc(e.name)}</span></h2>
+      <button class="btn ico" onclick="this.closest('.panel').remove()">✕</button></div>${body}`;
+  document.body.appendChild(box);
 }
 document.getElementById('expJson').onclick=()=>{
   saveFile('depot_backup_'+isoToday()+'.json', JSON.stringify(DB), 'application/json');
@@ -1818,7 +1881,7 @@ document.querySelectorAll('#langSeg button').forEach(b=> b.onclick=()=>{
   if(UI.lang===b.dataset.l) return;
   UI.lang=b.dataset.l; saveUI();
   /* The import report of the previous language would stay behind untranslated */
-  document.getElementById('report').innerHTML='';
+  document.getElementById('report').innerHTML=''; LAST_IMPORT=[];
   applyStatic(); render();
 });
 if(!LS.ok){
@@ -1831,6 +1894,12 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v29', d:'2026-08-14', items:[
+    {en:'Every figure of the import report opens the rows behind it – what was stored, what was already there, and above all what was left out or could not be read.',
+     de:'Jede Zahl des Importberichts zeigt die Zeilen dahinter – was gespeichert wurde, was schon da war und vor allem, was ausgelassen oder nicht gelesen wurde.'},
+    {en:'A status the app does not know is imported instead of being dropped in silence; both import filters end with a box that decides this case explicitly.',
+     de:'Ein unbekannter Status wird übernommen statt stillschweigend verworfen; beide Importfilter enden mit einem Kästchen, das diesen Fall ausdrücklich entscheidet.'}
+  ]},
   {v:'v28', d:'2026-08-13', items:[
     {en:'Fixed: the open tab kept its highlight only after a click of your own – starting on the import or opening a position left the bar unmarked.',
      de:'Behoben: Der offene Tab war erst nach einem eigenen Klick markiert – beim Start im Import oder in einer Position blieb die Leiste ohne Markierung.'},
