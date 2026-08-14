@@ -39,7 +39,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.92);-webkit-ba
 /* Round icon button in the top bar – the notes sit next to the app name.
    Declared after the .btn defaults further down would be cleaner, but the
    double class keeps it winning over them regardless of order. */
-button.btn.ico{width:34px;height:34px;min-height:34px;padding:0;border-radius:50%;flex:0 0 auto;
+/* 36px, the height of the language switch: its 34px buttons sit inside a border on
+   each side, and the filter pill was matched to it – the icons follow suit. */
+button.btn.ico{width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;flex:0 0 auto;
   display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
 button.btn.ico svg{width:19px;height:19px;display:block}
 /* An icon that stands for a view is lit like the tab it replaces */
@@ -1922,6 +1924,10 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v31', d:'2026-08-14', items:[
+    {en:'The notes and calendar icons are now as tall as the language switch and the filter button next to them.',
+     de:'Hinweis- und Kalendersymbol sind jetzt so hoch wie der Sprachschalter und der Filterknopf daneben.'}
+  ]},
   {v:'v30', d:'2026-08-14', items:[
     {en:'The calendar left the tab strip: it opens from a calendar icon at the right end of the top bar, which lights up while it is showing.',
      de:'Der Kalender hat die Tab-Leiste verlassen: Er öffnet über ein Kalendersymbol rechts in der Kopfzeile, das leuchtet, solange er zu sehen ist.'}
