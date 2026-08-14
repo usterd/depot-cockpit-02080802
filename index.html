@@ -323,7 +323,8 @@ table.rsp td.mhead{display:none}
     </nav>
     <!-- The calendar is a view of its own rather than another list, so it sits as an icon
          at the end of this line instead of taking a slot in the tab strip. -->
-    <button class="btn ico" id="calBtn" data-v="cal" data-i18n-title="nav.cal" data-i18n-aria="nav.cal">
+    <button class="btn ico" id="calBtn" data-v="cal" data-back="dash"
+            data-i18n-title="nav.cal" data-i18n-aria="nav.cal">
       <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
         <rect x="2.75" y="4.4" width="14.5" height="12.85" rx="2.4" fill="none"
               stroke="currentColor" stroke-width="1.5"/>
@@ -1195,8 +1196,11 @@ function typeTag(r){
 /* ============================ Navigation ============================ */
 let view='dash';
 /* Every button that names a view, whether it sits in the tab strip or as an icon
-   in the top bar – the calendar is one of the latter. */
-document.querySelectorAll('[data-v]').forEach(b=> b.onclick=()=> show(b.dataset.v));
+   in the top bar – the calendar is one of the latter. An icon carrying data-back
+   works as a switch: pressed again while its view is open it returns there, so the
+   calendar does not depend on the tab strip to get out of it. */
+document.querySelectorAll('[data-v]').forEach(b=> b.onclick=()=>
+  show(b.dataset.back && view===b.dataset.v ? b.dataset.back : b.dataset.v));
 /* Which tab is highlighted belongs to show(), not to the click handler: the view
    is also switched from code – at startup straight to the import when nothing is
    stored yet – and the highlight used to stay behind on the tab last clicked. */
@@ -1929,6 +1933,10 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v32', d:'2026-08-14', items:[
+    {en:'The calendar icon works as a switch: pressed once it opens the calendar, pressed again it returns to the overview.',
+     de:'Das Kalendersymbol wirkt als Schalter: einmal gedrückt öffnet es den Kalender, noch einmal gedrückt führt es zurück zur Übersicht.'}
+  ]},
   {v:'v31', d:'2026-08-14', items:[
     {en:'The notes and calendar icons are now as tall as the language switch and the filter button next to them.',
      de:'Hinweis- und Kalendersymbol sind jetzt so hoch wie der Sprachschalter und der Filterknopf daneben.'},
