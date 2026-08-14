@@ -472,8 +472,13 @@ const UI = Object.assign({
   status:['Executed'],
   type:[],
   hideOrphan:0,
-  impStatus:['Executed','Pending','Cancelled'],
-  impSkipType:[]                           // types left out on import, empty = take everything
+  /* Both import filters name what is left out, never what is taken: a status or type
+     that only turns up in a later export is then imported instead of dropped without
+     a word. The two “unknown” switches decide that case explicitly. */
+  impSkipStatus:[],
+  impSkipType:[],
+  impSkipUnknownStatus:0,
+  impSkipUnknownType:0
 }, readJSON('dc_ui'));
 const saveUI = () => { try{ LS.set('dc_ui', JSON.stringify(UI)); }catch(e){} };
 
@@ -549,13 +554,14 @@ en:{
   'imp.drop':'or drag a CSV here · multiple files and partial exports are fine · duplicates are detected and skipped automatically',
   'imp.dropTouch':'Multiple files and partial exports are fine · duplicates are detected and skipped automatically',
   'imp.which':'Which statuses to import?',
-  'imp.whichNote':'Rows that are not selected are never stored in the first place. At Scalable, cancelled and pending orders carry no amounts – they only document the attempt. Rows already imported are kept; use “Remove cancelled” below to clean up.',
+  'imp.whichNote':'Unticked rows are never stored in the first place. At Scalable, cancelled and pending orders carry no amounts – they only document the attempt. The dashed box covers statuses this list does not name yet: ticked they are imported, unticked they are left out. Rows already imported are kept; use “Remove cancelled” below to clean up.',
   'imp.new':n=>`✔ ${n} new`,'imp.dup':n=>`${n} duplicates skipped`,'imp.upd':n=>`${n} updated`,
   'imp.skip':n=>`${n} left out by the import filters`,'imp.bad':n=>`${n} unreadable rows`,
-  'imp.done':'Import complete.','imp.take':s=>'The import will now take: '+s,
-  'imp.takeNone':'No status selected – the import takes all rows again.',
+  'imp.done':'Import complete.',
+  'imp.skipStatuses':s=>'The import will now leave out: '+s,
+  'imp.otherStatus':'other statuses','imp.otherType':'other types',
   'imp.whichType':'Which types to import?',
-  'imp.whichTypeNote':'Unticked types are never stored – useful for bookings that are of no interest in this depot, securities transfers say. A type that is not listed here yet is always imported, so nothing is dropped without a word. Already stored rows stay; “Remove type” below clears them out.',
+  'imp.whichTypeNote':'Unticked types are never stored – useful for bookings that are of no interest in this depot, securities transfers say. The dashed box covers types this list does not name yet; leave it ticked and a type from a future export comes in rather than being dropped without a word. Already stored rows stay; “Remove type” below clears them out.',
   'imp.skipTypes':s=>'The import will now leave out: '+s,
   'imp.skipNone':'Every type is imported again.',
   'data.title':'Stored data','data.save':'Save backup (JSON)','data.restore':'Restore backup',
@@ -677,13 +683,14 @@ de:{
   'imp.drop':'oder CSV hierher ziehen · mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen',
   'imp.dropTouch':'Mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen',
   'imp.which':'Welche Status übernehmen?',
-  'imp.whichNote':'Nicht gewählte Zeilen werden gar nicht erst gespeichert. Abgebrochene und offene Orders enthalten bei Scalable keine Beträge – sie dokumentieren nur den Versuch. Bereits importierte Zeilen bleiben erhalten; zum Aufräumen unten „Abgebrochene entfernen“ nutzen.',
+  'imp.whichNote':'Nicht angehakte Zeilen werden gar nicht erst gespeichert. Abgebrochene und offene Orders enthalten bei Scalable keine Beträge – sie dokumentieren nur den Versuch. Das gestrichelte Kästchen steht für Status, die diese Liste noch nicht kennt: angehakt werden sie übernommen, sonst ausgelassen. Bereits importierte Zeilen bleiben erhalten; zum Aufräumen unten „Abgebrochene entfernen“ nutzen.',
   'imp.new':n=>`✔ ${n} neu`,'imp.dup':n=>`${n} Duplikate übersprungen`,'imp.upd':n=>`${n} aktualisiert`,
   'imp.skip':n=>`${n} per Importfilter ausgelassen`,'imp.bad':n=>`${n} Zeilen unlesbar`,
-  'imp.done':'Import abgeschlossen.','imp.take':s=>'Import übernimmt künftig: '+s,
-  'imp.takeNone':'Kein Status gewählt – der Import übernimmt wieder alle Zeilen.',
+  'imp.done':'Import abgeschlossen.',
+  'imp.skipStatuses':s=>'Der Import lässt künftig aus: '+s,
+  'imp.otherStatus':'andere Status','imp.otherType':'andere Typen',
   'imp.whichType':'Welche Typen übernehmen?',
-  'imp.whichTypeNote':'Nicht angehakte Typen werden gar nicht erst gespeichert – praktisch für Buchungen, die in diesem Depot nicht interessieren, etwa Depotüberträge. Ein hier noch nicht aufgeführter Typ wird immer übernommen, damit nichts stillschweigend verloren geht. Bereits gespeicherte Zeilen bleiben; „Typ entfernen“ unten räumt sie weg.',
+  'imp.whichTypeNote':'Nicht angehakte Typen werden gar nicht erst gespeichert – praktisch für Buchungen, die in diesem Depot nicht interessieren, etwa Depotüberträge. Das gestrichelte Kästchen steht für Typen, die diese Liste noch nicht kennt; bleibt es angehakt, kommt ein Typ aus einem künftigen Export herein, statt stillschweigend verloren zu gehen. Bereits gespeicherte Zeilen bleiben; „Typ entfernen“ unten räumt sie weg.',
   'imp.skipTypes':s=>'Der Import lässt künftig aus: '+s,
   'imp.skipNone':'Alle Typen werden wieder übernommen.',
   'data.title':'Gespeicherte Daten','data.save':'Backup (JSON) sichern','data.restore':'Backup einspielen',
@@ -907,27 +914,44 @@ function parseCSV(text){
 
 function importRows(rows){
   let neu=0,dup=0,upd=0,skip=0;
+  const rowsNew=[], rowsDup=[], rowsUpd=[], rowsSkip=[];
+  const stListed=impStatusList(), tyListed=impTypeList();
   rows.forEach(r=>{
-    if(UI.impStatus.length && !UI.impStatus.includes(r.status)){ skip++; return; }
-    /* Kept as a list of what to leave out, not of what to take: a type that
-       turns up in a later export without being known here is imported rather
-       than dropped without a word. */
-    if(UI.impSkipType.includes(r.type)){ skip++; return; }
+    /* Both filters name what to leave out. A value the boxes do not offer yet counts
+       as “other” and follows its own switch, so nothing disappears unasked. */
+    const why = (UI.impSkipStatus.includes(r.status) ||
+                 (UI.impSkipUnknownStatus && !stListed.includes(r.status))) ? 'status'
+              : (UI.impSkipType.includes(r.type) ||
+                 (UI.impSkipUnknownType && !tyListed.includes(r.type))) ? 'type' : '';
+    if(why){ skip++; rowsSkip.push({r,why}); return; }
     const ex = DB.tx[r.id];
-    if(!ex) { DB.tx[r.id]=r; neu++; }
-    else if(JSON.stringify(ex)!==JSON.stringify(r)) { DB.tx[r.id]={...ex,...r}; upd++; }
-    else dup++;
+    if(!ex) { DB.tx[r.id]=r; neu++; rowsNew.push(r); }
+    else if(JSON.stringify(ex)!==JSON.stringify(r)) { DB.tx[r.id]={...ex,...r}; upd++; rowsUpd.push(r); }
+    else { dup++; rowsDup.push(r); }
   });
   save();
-  return {neu,dup,upd,skip};
+  /* The rows travel along so the report can show what was left out. They stay in
+     memory for as long as the report is on screen and are never written anywhere. */
+  return {neu,dup,upd,skip,rowsNew,rowsDup,rowsUpd,rowsSkip};
 }
 
 /* ============================ Derived data ============================ */
 const all = () => Object.values(DB.tx).sort((a,b)=> a.dt<b.dt?1:a.dt>b.dt?-1:0);
 const F = {year:'', month:''};
 const ST_KNOWN=['Executed','Pending','Cancelled'];
+/* Settings written before the status filter was turned around: it held the statuses to
+   take. Convert once into the list of statuses to leave out and drop the old key. */
+if(Array.isArray(UI.impStatus)){
+  UI.impSkipStatus=ST_KNOWN.filter(s=>!UI.impStatus.includes(s));
+  delete UI.impStatus; saveUI();
+}
 const stLabel=s=> tv('st.'+s)!==undefined ? t('st.'+s) : '';
 const stList=()=> [...new Set(ST_KNOWN.concat(Object.values(DB.tx).map(r=>r.status).filter(Boolean)))];
+/* What the import filters offer a box for: what the app knows, what is already stored and
+   what has explicitly been switched off. Everything else is “other” for the two switches. */
+const impStatusList=()=> [...new Set(stList().concat(UI.impSkipStatus))];
+const impTypeList=()=> [...new Set(Object.keys(TYPE_CLASS)
+  .concat(Object.values(DB.tx).map(r=>r.type).filter(Boolean)).concat(UI.impSkipType))];
 const typeList=()=> [...new Set(Object.values(DB.tx).map(r=>r.type).filter(Boolean))]
   .sort((a,b)=> typeName(a).localeCompare(typeName(b), UI.lang));
 /* empty selection = no restriction, so the view never stays empty without reason */
@@ -1684,14 +1708,24 @@ document.getElementById('jsonFile').onchange=e=>{
   }catch(err){ toast(t('data.badBackup')); } };
   rd.readAsText(e.target.files[0]);
 };
+/* The last box of both filters stands for everything the list does not name yet – a status
+   or type from a future export. Ticked it is imported, which is what happened silently
+   before; unticked it is left out on purpose and shows up in the import report. */
+const otherBox=(skip,label)=>`<label class="chk" style="border:1px dashed var(--line)">
+  <input type="checkbox" data-other="1" ${skip?'':'checked'}>
+  <span class="hint">${esc(label)}</span></label>`;
 function buildImportFilter(){
   const box=document.getElementById('impStatus');
-  box.innerHTML=ST_KNOWN.map(s=>`<label class="chk" style="border:1px solid var(--line)">
-    <input type="checkbox" value="${s}" ${UI.impStatus.includes(s)?'checked':''}>
-    <span class="st ${s}">${s}</span><span class="hint">${esc(stLabel(s))}</span></label>`).join('');
+  box.innerHTML=impStatusList().map(s=>`<label class="chk" style="border:1px solid var(--line)">
+    <input type="checkbox" value="${esc(s)}" ${UI.impSkipStatus.includes(s)?'':'checked'}>
+    <span class="st ${esc(s)}">${esc(s)}</span><span class="hint">${esc(stLabel(s))}</span></label>`).join('')
+    + otherBox(UI.impSkipUnknownStatus, t('imp.otherStatus'));
   box.querySelectorAll('input').forEach(i=> i.onchange=()=>{
-    UI.impStatus=[...box.querySelectorAll('input:checked')].map(x=>x.value); saveUI();
-    toast(UI.impStatus.length? t('imp.take',UI.impStatus.map(stLabel).join(', ')) : t('imp.takeNone'));
+    const off=[...box.querySelectorAll('input:not(:checked)')];
+    UI.impSkipUnknownStatus = off.some(x=>x.dataset.other) ? 1 : 0;
+    UI.impSkipStatus = off.filter(x=>!x.dataset.other).map(x=>x.value); saveUI();
+    const names=UI.impSkipStatus.map(stLabel).concat(UI.impSkipUnknownStatus?[t('imp.otherStatus')]:[]);
+    toast(names.length ? t('imp.skipStatuses',names.join(', ')) : t('imp.skipNone'));
   });
 }
 /* Which transaction types an import takes over. The list holds every type the app
@@ -1699,17 +1733,17 @@ function buildImportFilter(){
    switched off as soon as it has been seen once. */
 function buildImportTypeFilter(){
   const box=document.getElementById('impType');
-  const list=[...new Set(Object.keys(TYPE_CLASS)
-    .concat(Object.values(DB.tx).map(r=>r.type).filter(Boolean))
-    .concat(UI.impSkipType))].sort((a,b)=> typeName(a).localeCompare(typeName(b), UI.lang));
+  const list=impTypeList().sort((a,b)=> typeName(a).localeCompare(typeName(b), UI.lang));
   box.innerHTML=list.map(ty=>`<label class="chk" style="border:1px solid var(--line)">
     <input type="checkbox" value="${esc(ty)}" ${UI.impSkipType.includes(ty)?'':'checked'}>
-    ${typeTag({type:ty})}</label>`).join('');
+    ${typeTag({type:ty})}</label>`).join('')
+    + otherBox(UI.impSkipUnknownType, t('imp.otherType'));
   box.querySelectorAll('input').forEach(i=> i.onchange=()=>{
-    UI.impSkipType=[...box.querySelectorAll('input:not(:checked)')].map(x=>x.value); saveUI();
-    toast(UI.impSkipType.length
-      ? t('imp.skipTypes', UI.impSkipType.map(typeName).join(', '))
-      : t('imp.skipNone'));
+    const off=[...box.querySelectorAll('input:not(:checked)')];
+    UI.impSkipUnknownType = off.some(x=>x.dataset.other) ? 1 : 0;
+    UI.impSkipType = off.filter(x=>!x.dataset.other).map(x=>x.value); saveUI();
+    const names=UI.impSkipType.map(typeName).concat(UI.impSkipUnknownType?[t('imp.otherType')]:[]);
+    toast(names.length ? t('imp.skipTypes',names.join(', ')) : t('imp.skipNone'));
   });
 }
 /* Confirmation without confirm(): Safari suppresses system dialogs once the user has chosen
