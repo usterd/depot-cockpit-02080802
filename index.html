@@ -198,8 +198,11 @@ button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2)
 /* ---------- Touch and iPhone adjustments ---------- */
 @media (hover:none){
   tbody tr:hover{background:transparent}
-  nav button:hover{color:var(--mut);background:transparent}
-  nav button.on{color:#fff}
+  /* A tapped button keeps :hover until something else is touched, so the hover
+     reset must leave the open tab alone – it used to wash the pill of the tab
+     just tapped down to bare white text. */
+  nav button:hover:not(.on){color:var(--mut);background:transparent}
+  nav button.on{color:#fff;background:linear-gradient(90deg,var(--acc),var(--acc2))}
   .day:hover{border-color:var(--line)}
 }
 @media (max-width:820px){
@@ -1935,7 +1938,9 @@ if(!LS.ok){
 const CHANGELOG=[
   {v:'v32', d:'2026-08-14', items:[
     {en:'The calendar icon works as a switch: pressed once it opens the calendar, pressed again it returns to the overview.',
-     de:'Das Kalendersymbol wirkt als Schalter: einmal gedrückt öffnet es den Kalender, noch einmal gedrückt führt es zurück zur Übersicht.'}
+     de:'Das Kalendersymbol wirkt als Schalter: einmal gedrückt öffnet es den Kalender, noch einmal gedrückt führt es zurück zur Übersicht.'},
+    {en:'Fixed: on a touch screen the tab just tapped lost its coloured pill and was left as bare white text.',
+     de:'Behoben: Auf einem Touchscreen verlor der gerade angetippte Tab seine farbige Pille und blieb als blanke weiße Schrift zurück.'}
   ]},
   {v:'v31', d:'2026-08-14', items:[
     {en:'The notes and calendar icons are now as tall as the language switch and the filter button next to them.',
