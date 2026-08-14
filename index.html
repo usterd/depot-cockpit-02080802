@@ -245,7 +245,9 @@ button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2)
   .hd{gap:8px;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
   .logo{font-size:16px}
   .seg button{padding:0 9px}
-  button.btn#filtToggle{padding:0 9px}
+  /* Without a label the button is only the funnel – match it to the round icons
+     next to it instead of leaving it an oval sized by its old padding. */
+  button.btn#filtToggle{width:36px;padding:0;border-radius:50%}
   #filtToggle span{display:none}
   #filtToggle .fico{display:block;width:19px;height:19px}
   main{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
@@ -459,7 +461,10 @@ table.rsp td.mhead{display:none}
 </main>
 
 <div id="intro"><div id="introBox">
-  <h2>◆ Depot <span style="background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent">Cockpit</span></h2>
+  <div class="modal-hd">
+    <h2>◆ Depot <span style="background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent">Cockpit</span></h2>
+    <button class="btn ico" id="introClose" data-i18n-title="ver.close" data-i18n-aria="ver.close">✕</button>
+  </div>
 
   <div id="introBody"></div>
 
@@ -1926,7 +1931,11 @@ if(!LS.ok){
 const CHANGELOG=[
   {v:'v31', d:'2026-08-14', items:[
     {en:'The notes and calendar icons are now as tall as the language switch and the filter button next to them.',
-     de:'Hinweis- und Kalendersymbol sind jetzt so hoch wie der Sprachschalter und der Filterknopf daneben.'}
+     de:'Hinweis- und Kalendersymbol sind jetzt so hoch wie der Sprachschalter und der Filterknopf daneben.'},
+    {en:'On a narrow phone the filter button is a round icon, matching the notes and calendar buttons instead of an oval sized by leftover padding.',
+     de:'Auf einem schmalen Telefon ist der Filterknopf ein rundes Symbol, passend zu Hinweis- und Kalendersymbol, statt eines Ovals aus übrig gebliebenem Abstand.'},
+    {en:'The welcome notes now also close with an ✕ at the top, the same as the version history.',
+     de:'Die Begrüßungshinweise schließen jetzt auch oben über ein ✕, genau wie der Versionsverlauf.'}
   ]},
   {v:'v30', d:'2026-08-14', items:[
     {en:'The calendar left the tab strip: it opens from a calendar icon at the right end of the top bar, which lights up while it is showing.',
@@ -2014,6 +2023,7 @@ document.getElementById('chgOpen').onclick=()=>{
 const intro=document.getElementById('intro');
 const closeIntro=()=>{ intro.classList.remove('on'); UI.seenIntro=1; saveUI(); };
 document.getElementById('introOk').onclick=closeIntro;
+document.getElementById('introClose').onclick=closeIntro;
 intro.onclick=e=>{ if(e.target===intro) closeIntro(); };
 document.getElementById('introOpen').onclick=()=>intro.classList.add('on');
 
