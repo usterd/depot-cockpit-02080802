@@ -42,6 +42,10 @@ header{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.92);-webkit-ba
 button.btn.ico{width:34px;height:34px;min-height:34px;padding:0;border-radius:50%;flex:0 0 auto;
   display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
 button.btn.ico svg{width:19px;height:19px;display:block}
+/* An icon that stands for a view is lit like the tab it replaces */
+button.btn.ico.on{background:linear-gradient(90deg,var(--acc),var(--acc2));border-color:transparent;color:#fff}
+#calBtn{margin-left:auto}          /* pinned to the right end of the first header line */
+#filtToggle .fico{display:none}
 /* Language switch – two states side by side, the active one is highlighted */
 .seg{display:inline-flex;flex:0 0 auto;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--bg3)}
 .seg button{background:transparent;border:none;color:var(--mut);font:inherit;font-size:12px;font-weight:600;
@@ -231,14 +235,17 @@ button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2)
     padding:var(--mpy) var(--mpx) calc(16px + env(safe-area-inset-bottom))}
   .toast{left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));max-width:none}
 }
-/* On a phone the first header row has to hold name, notes, language and the
-   filter button. Trimmed like this they stay on one line down to about 380 px –
-   below that the button drops to a line of its own, which is still fine. */
+/* On a phone the first header row has to hold name, notes, language, the filter
+   button and the calendar. Trimmed like this – and with the filter button reduced
+   to its funnel – they stay on one line down to about 380 px; below that the last
+   item drops to a line of its own, which is still fine. */
 @media (max-width:480px){
   .hd{gap:8px;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
   .logo{font-size:16px}
   .seg button{padding:0 9px}
-  button.btn#filtToggle{padding:0 10px}
+  button.btn#filtToggle{padding:0 9px}
+  #filtToggle span{display:none}
+  #filtToggle .fico{display:block;width:19px;height:19px}
   main{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
 }
 /* Filters do nothing on these two views, so they do not take up room there either */
@@ -295,14 +302,33 @@ table.rsp td.mhead{display:none}
     <div class="seg" id="langSeg" data-i18n-title="hdr.lang">
       <button data-l="en">EN</button><button data-l="de">DE</button>
     </div>
-    <button class="btn" id="filtToggle" data-i18n="hdr.filtersBtn" aria-expanded="false">Filters ▾</button>
+    <button class="btn" id="filtToggle" aria-expanded="false"
+            data-i18n-title="hdr.filters" data-i18n-aria="hdr.filters">
+      <span data-i18n="hdr.filtersBtn">Filters ▾</span>
+      <!-- Shown instead of the label on a narrow phone, where the line has no room for words -->
+      <svg class="fico" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <path d="M3.4 5h13.2l-5.1 6v4.4l-3 1.3V11z" fill="none" stroke="currentColor"
+              stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+    </button>
     <nav>
       <button data-v="dash" class="on" data-i18n="nav.dash">Overview</button>
       <button data-v="pos" data-i18n="nav.pos">Positions</button>
       <button data-v="tx" data-i18n="nav.tx">Transactions</button>
-      <button data-v="cal" data-i18n="nav.cal">Calendar</button>
       <button data-v="imp" data-i18n="nav.imp">Import / Data</button>
     </nav>
+    <!-- The calendar is a view of its own rather than another list, so it sits as an icon
+         at the end of this line instead of taking a slot in the tab strip. -->
+    <button class="btn ico" id="calBtn" data-v="cal" data-i18n-title="nav.cal" data-i18n-aria="nav.cal">
+      <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <rect x="2.75" y="4.4" width="14.5" height="12.85" rx="2.4" fill="none"
+              stroke="currentColor" stroke-width="1.5"/>
+        <path d="M2.75 8.2h14.5M6.6 2.9v3M13.4 2.9v3" stroke="currentColor"
+              stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="7" cy="11.6" r="1.05" fill="currentColor"/>
+        <circle cx="11.4" cy="11.6" r="1.05" fill="currentColor"/>
+      </svg>
+    </button>
     <div class="filters">
       <select id="fYear"></select>
       <select id="fMonth"></select>
@@ -493,7 +519,7 @@ const saveUI = () => { try{ LS.set('dc_ui', JSON.stringify(UI)); }catch(e){} };
    The keys of the CSV (status, type, ISIN) are data and stay untranslated. */
 const L={
 en:{
-  'hdr.notes':'Notes','hdr.lang':'Language','hdr.numfmt':'Number format','hdr.filtersBtn':'Filters ▾',
+  'hdr.notes':'Notes','hdr.lang':'Language','hdr.numfmt':'Number format','hdr.filtersBtn':'Filters ▾','hdr.filters':'Filters',
   'nav.dash':'Overview','nav.pos':'Positions','nav.tx':'Transactions','nav.cal':'Calendar','nav.imp':'Import / Data',
   mon:['January','February','March','April','May','June','July','August','September','October','November','December'],
   dow:['Mo','Tu','We','Th','Fr','Sa','Su'],
@@ -628,7 +654,7 @@ en:{
     under <b>Import / Data → Save backup (JSON)</b>.</p>`
 },
 de:{
-  'hdr.notes':'Hinweise','hdr.lang':'Sprache','hdr.numfmt':'Zahlenformat','hdr.filtersBtn':'Filter ▾',
+  'hdr.notes':'Hinweise','hdr.lang':'Sprache','hdr.numfmt':'Zahlenformat','hdr.filtersBtn':'Filter ▾','hdr.filters':'Filter',
   'nav.dash':'Übersicht','nav.pos':'Positionen','nav.tx':'Transaktionen','nav.cal':'Kalender','nav.imp':'Import / Daten',
   mon:['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'],
   dow:['Mo','Di','Mi','Do','Fr','Sa','So'],
@@ -1161,12 +1187,14 @@ function typeTag(r){
 
 /* ============================ Navigation ============================ */
 let view='dash';
-document.querySelectorAll('nav button').forEach(b=> b.onclick=()=> show(b.dataset.v));
+/* Every button that names a view, whether it sits in the tab strip or as an icon
+   in the top bar – the calendar is one of the latter. */
+document.querySelectorAll('[data-v]').forEach(b=> b.onclick=()=> show(b.dataset.v));
 /* Which tab is highlighted belongs to show(), not to the click handler: the view
    is also switched from code – at startup straight to the import when nothing is
    stored yet – and the highlight used to stay behind on the tab last clicked. */
 function markTab(v){
-  document.querySelectorAll('nav button').forEach(x=> x.classList.toggle('on', x.dataset.v===v));
+  document.querySelectorAll('[data-v]').forEach(x=> x.classList.toggle('on', x.dataset.v===v));
 }
 /* The tab strip scrolls sideways on a phone – keep the open tab in view rather
    than leaving it half cut off at the edge. Only the strip moves, not the page. */
@@ -1894,6 +1922,10 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v30', d:'2026-08-14', items:[
+    {en:'The calendar left the tab strip: it opens from a calendar icon at the right end of the top bar, which lights up while it is showing.',
+     de:'Der Kalender hat die Tab-Leiste verlassen: Er öffnet über ein Kalendersymbol rechts in der Kopfzeile, das leuchtet, solange er zu sehen ist.'}
+  ]},
   {v:'v29', d:'2026-08-14', items:[
     {en:'Every figure of the import report opens the rows behind it – what was stored, what was already there, and above all what was left out or could not be read.',
      de:'Jede Zahl des Importberichts zeigt die Zeilen dahinter – was gespeichert wurde, was schon da war und vor allem, was ausgelassen oder nicht gelesen wurde.'},
