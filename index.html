@@ -49,7 +49,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.92);-webkit-ba
 .hd{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
   padding:12px max(20px,env(safe-area-inset-right)) 12px max(20px,env(safe-area-inset-left))}
 .logo{font-weight:700;font-size:var(--fs-17);letter-spacing:.3px}
-.logo span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+/* The name sits in .nm of its own so that fitHeader() can take it away and leave the
+   ◆ standing; .ac is the half that carries the gradient. */
+.logo .ac{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
 /* Round icon button in the top bar – the notes sit next to the app name.
    Declared after the .btn defaults further down would be cleaner, but the
    double class keeps it winning over them regardless of order. */
@@ -316,7 +318,7 @@ table.rsp td.mhead{display:none}
 <body>
 <header>
   <div class="hd">
-    <div class="logo">◆ Depot <span>Cockpit</span></div>
+    <div class="logo">◆ <span class="nm">Depot <span class="ac">Cockpit</span></span></div>
     <!-- Drawn rather than typed: the ℹ glyph is a serif italic in most fonts and
          looked nothing like the rest of the bar. -->
     <button class="btn ico" id="introOpen" data-i18n-title="hdr.notes" data-i18n-aria="hdr.notes">
@@ -1953,6 +1955,8 @@ function applyStatic(){
   document.querySelectorAll('#langSeg button').forEach(b=> b.classList.toggle('on', b.dataset.l===UI.lang));
   if(!LS.ok) document.getElementById('storageWarn').innerHTML=t('data.noStore');
   buildChangelog();
+  /* The other language writes wider labels into the top line – measure again */
+  fitHeader();
 }
 document.querySelectorAll('#langSeg button').forEach(b=> b.onclick=()=>{
   if(UI.lang===b.dataset.l) return;
@@ -1973,11 +1977,33 @@ function applyTextSize(){
      really is bigger – at step 0 the app looks exactly as it did before. */
   document.documentElement.classList.toggle('ts-up', px>0);
   document.querySelectorAll('#txtSeg button').forEach(b=> b.classList.toggle('on', +b.dataset.t===px));
+  fitHeader();
 }
 document.querySelectorAll('#txtSeg button').forEach(b=> b.onclick=()=>{
   UI.textsize=+b.dataset.t; saveUI(); applyTextSize();
 });
-applyTextSize();
+
+/* ============================ Header fit ============================ */
+/* The app name gives way before the top line breaks: on a narrow phone – and at a
+   larger text size on any phone – the calendar icon was pushed onto a row of its own.
+   No media query can decide this, because it depends on the width, on the text size
+   and on the language at once. So it is measured: the calendar button ends the first
+   line, and if its top has dropped past the bottom of the name, the line has wrapped.
+   The name is only kept hidden if that actually helped – between about 820 and 1000px
+   it is the tab strip that wraps, and taking the name away would change nothing. */
+function fitHeader(){
+  const logo=document.querySelector('.logo'), nm=logo.querySelector('.nm'), cal=document.getElementById('calBtn');
+  const wrapped=()=> cal.getBoundingClientRect().top >= logo.getBoundingClientRect().bottom;
+  nm.style.display='';
+  if(wrapped()){ nm.style.display='none'; if(wrapped()) nm.style.display=''; }
+}
+/* One measurement per frame is enough while a window is being dragged */
+let fitPending=0;
+addEventListener('resize', ()=>{
+  if(fitPending) return;
+  fitPending=requestAnimationFrame(()=>{ fitPending=0; fitHeader(); });
+});
+applyTextSize();   // sets the text size and takes the first measurement
 
 if(!LS.ok){
   document.getElementById('storageWarn').style.display='block';
@@ -1991,7 +2017,9 @@ if(!LS.ok){
 const CHANGELOG=[
   {v:'v33', d:'2026-08-15', items:[
     {en:'Import / Data has a switch for the text size: 0, +2, +4, +6 or +8 pixels are added to every text of the app, and the choice is kept on the device.',
-     de:'Import / Daten hat einen Schalter für die Schriftgröße: 0, +2, +4, +6 oder +8 Pixel kommen auf jeden Text der App, und die Wahl bleibt auf dem Gerät.'}
+     de:'Import / Daten hat einen Schalter für die Schriftgröße: 0, +2, +4, +6 oder +8 Pixel kommen auf jeden Text der App, und die Wahl bleibt auf dem Gerät.'},
+    {en:'Where the top line is too narrow for everything – a small screen, or a larger text size – the app name steps aside and leaves the ◆, instead of pushing the calendar onto a second row.',
+     de:'Wo die Kopfzeile zu schmal für alles ist – kleiner Bildschirm oder größere Schrift – tritt der App-Name zurück und lässt das ◆ stehen, statt den Kalender in eine zweite Zeile zu drängen.'}
   ]},
   {v:'v32', d:'2026-08-14', items:[
     {en:'The calendar icon works as a switch: pressed once it opens the calendar, pressed again it returns to the overview.',
