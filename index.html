@@ -39,9 +39,15 @@ header{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.92);-webkit-ba
 /* Round icon button in the top bar – the notes sit next to the app name.
    Declared after the .btn defaults further down would be cleaner, but the
    double class keeps it winning over them regardless of order. */
-button.btn.ico{width:34px;height:34px;min-height:34px;padding:0;border-radius:50%;flex:0 0 auto;
+/* 36px, the height of the language switch: its 34px buttons sit inside a border on
+   each side, and the filter pill was matched to it – the icons follow suit. */
+button.btn.ico{width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;flex:0 0 auto;
   display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
 button.btn.ico svg{width:19px;height:19px;display:block}
+/* An icon that stands for a view is lit like the tab it replaces */
+button.btn.ico.on{background:linear-gradient(90deg,var(--acc),var(--acc2));border-color:transparent;color:#fff}
+#calBtn{margin-left:auto}          /* pinned to the right end of the first header line */
+#filtToggle .fico{display:none}
 /* Language switch – two states side by side, the active one is highlighted */
 .seg{display:inline-flex;flex:0 0 auto;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--bg3)}
 .seg button{background:transparent;border:none;color:var(--mut);font:inherit;font-size:12px;font-weight:600;
@@ -159,7 +165,10 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .back{background:none;border:none;color:var(--acc);cursor:pointer;padding:0;margin-bottom:10px;font:inherit}
-.modal{position:fixed;inset:6% 0 auto 0;margin:0 auto;width:min(680px,92vw);z-index:150;max-height:84vh;overflow:auto;box-shadow:0 20px 60px #000a}
+.modal{--mpy:16px;--mpx:16px;
+  position:fixed;inset:6% 0 auto 0;margin:0 auto;width:min(680px,92vw);z-index:150;max-height:84vh;overflow:auto;box-shadow:0 20px 60px #000a}
+/* Holds a transaction table – give it the room a table needs */
+.modal.wide{width:min(1000px,94vw)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:12px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 .dd{position:relative}
@@ -189,8 +198,11 @@ button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2)
 /* ---------- Touch and iPhone adjustments ---------- */
 @media (hover:none){
   tbody tr:hover{background:transparent}
-  nav button:hover{color:var(--mut);background:transparent}
-  nav button.on{color:#fff}
+  /* A tapped button keeps :hover until something else is touched, so the hover
+     reset must leave the open tab alone – it used to wash the pill of the tab
+     just tapped down to bare white text. */
+  nav button:hover:not(.on){color:var(--mut);background:transparent}
+  nav button.on{color:#fff;background:linear-gradient(90deg,var(--acc),var(--acc2))}
   .day:hover{border-color:var(--line)}
 }
 @media (max-width:820px){
@@ -223,18 +235,24 @@ button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2)
   .day.has::after{content:'';display:block;width:5px;height:5px;border-radius:50%;
     background:var(--acc);margin:3px auto 0}
   .drop{padding:22px 14px}
-  .modal{inset:0;width:100%;max-height:100%;border-radius:0;
-    padding:calc(14px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))}
+  .modal,.modal.wide{--mpy:calc(14px + env(safe-area-inset-top));--mpx:16px;
+    inset:0;width:100%;max-height:100%;border-radius:0;
+    padding:var(--mpy) var(--mpx) calc(16px + env(safe-area-inset-bottom))}
   .toast{left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));max-width:none}
 }
-/* On a phone the first header row has to hold name, notes, language and the
-   filter button. Trimmed like this they stay on one line down to about 380 px –
-   below that the button drops to a line of its own, which is still fine. */
+/* On a phone the first header row has to hold name, notes, language, the filter
+   button and the calendar. Trimmed like this – and with the filter button reduced
+   to its funnel – they stay on one line down to about 380 px; below that the last
+   item drops to a line of its own, which is still fine. */
 @media (max-width:480px){
   .hd{gap:8px;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
   .logo{font-size:16px}
   .seg button{padding:0 9px}
-  button.btn#filtToggle{padding:0 10px}
+  /* Without a label the button is only the funnel – match it to the round icons
+     next to it instead of leaving it an oval sized by its old padding. */
+  button.btn#filtToggle{width:36px;padding:0;border-radius:50%}
+  #filtToggle span{display:none}
+  #filtToggle .fico{display:block;width:19px;height:19px}
   main{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
 }
 /* Filters do nothing on these two views, so they do not take up room there either */
@@ -291,14 +309,34 @@ table.rsp td.mhead{display:none}
     <div class="seg" id="langSeg" data-i18n-title="hdr.lang">
       <button data-l="en">EN</button><button data-l="de">DE</button>
     </div>
-    <button class="btn" id="filtToggle" data-i18n="hdr.filtersBtn" aria-expanded="false">Filters ▾</button>
+    <button class="btn" id="filtToggle" aria-expanded="false"
+            data-i18n-title="hdr.filters" data-i18n-aria="hdr.filters">
+      <span data-i18n="hdr.filtersBtn">Filters ▾</span>
+      <!-- Shown instead of the label on a narrow phone, where the line has no room for words -->
+      <svg class="fico" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <path d="M3.4 5h13.2l-5.1 6v4.4l-3 1.3V11z" fill="none" stroke="currentColor"
+              stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+    </button>
     <nav>
       <button data-v="dash" class="on" data-i18n="nav.dash">Overview</button>
       <button data-v="pos" data-i18n="nav.pos">Positions</button>
       <button data-v="tx" data-i18n="nav.tx">Transactions</button>
-      <button data-v="cal" data-i18n="nav.cal">Calendar</button>
       <button data-v="imp" data-i18n="nav.imp">Import / Data</button>
     </nav>
+    <!-- The calendar is a view of its own rather than another list, so it sits as an icon
+         at the end of this line instead of taking a slot in the tab strip. -->
+    <button class="btn ico" id="calBtn" data-v="cal" data-back="dash"
+            data-i18n-title="nav.cal" data-i18n-aria="nav.cal">
+      <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <rect x="2.75" y="4.4" width="14.5" height="12.85" rx="2.4" fill="none"
+              stroke="currentColor" stroke-width="1.5"/>
+        <path d="M2.75 8.2h14.5M6.6 2.9v3M13.4 2.9v3" stroke="currentColor"
+              stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="7" cy="11.6" r="1.05" fill="currentColor"/>
+        <circle cx="11.4" cy="11.6" r="1.05" fill="currentColor"/>
+      </svg>
+    </button>
     <div class="filters">
       <select id="fYear"></select>
       <select id="fMonth"></select>
@@ -427,7 +465,10 @@ table.rsp td.mhead{display:none}
 </main>
 
 <div id="intro"><div id="introBox">
-  <h2>◆ Depot <span style="background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent">Cockpit</span></h2>
+  <div class="modal-hd">
+    <h2>◆ Depot <span style="background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent">Cockpit</span></h2>
+    <button class="btn ico" id="introClose" data-i18n-title="ver.close" data-i18n-aria="ver.close">✕</button>
+  </div>
 
   <div id="introBody"></div>
 
@@ -472,8 +513,13 @@ const UI = Object.assign({
   status:['Executed'],
   type:[],
   hideOrphan:0,
-  impStatus:['Executed','Pending','Cancelled'],
-  impSkipType:[]                           // types left out on import, empty = take everything
+  /* Both import filters name what is left out, never what is taken: a status or type
+     that only turns up in a later export is then imported instead of dropped without
+     a word. The two “unknown” switches decide that case explicitly. */
+  impSkipStatus:[],
+  impSkipType:[],
+  impSkipUnknownStatus:0,
+  impSkipUnknownType:0
 }, readJSON('dc_ui'));
 const saveUI = () => { try{ LS.set('dc_ui', JSON.stringify(UI)); }catch(e){} };
 
@@ -484,7 +530,7 @@ const saveUI = () => { try{ LS.set('dc_ui', JSON.stringify(UI)); }catch(e){} };
    The keys of the CSV (status, type, ISIN) are data and stay untranslated. */
 const L={
 en:{
-  'hdr.notes':'Notes','hdr.lang':'Language','hdr.numfmt':'Number format','hdr.filtersBtn':'Filters ▾',
+  'hdr.notes':'Notes','hdr.lang':'Language','hdr.numfmt':'Number format','hdr.filtersBtn':'Filters ▾','hdr.filters':'Filters',
   'nav.dash':'Overview','nav.pos':'Positions','nav.tx':'Transactions','nav.cal':'Calendar','nav.imp':'Import / Data',
   mon:['January','February','March','April','May','June','July','August','September','October','November','December'],
   dow:['Mo','Tu','We','Th','Fr','Sa','Su'],
@@ -549,13 +595,20 @@ en:{
   'imp.drop':'or drag a CSV here · multiple files and partial exports are fine · duplicates are detected and skipped automatically',
   'imp.dropTouch':'Multiple files and partial exports are fine · duplicates are detected and skipped automatically',
   'imp.which':'Which statuses to import?',
-  'imp.whichNote':'Rows that are not selected are never stored in the first place. At Scalable, cancelled and pending orders carry no amounts – they only document the attempt. Rows already imported are kept; use “Remove cancelled” below to clean up.',
+  'imp.whichNote':'Unticked rows are never stored in the first place. At Scalable, cancelled and pending orders carry no amounts – they only document the attempt. The dashed box covers statuses this list does not name yet: ticked they are imported, unticked they are left out. Rows already imported are kept; use “Remove cancelled” below to clean up.',
   'imp.new':n=>`✔ ${n} new`,'imp.dup':n=>`${n} duplicates skipped`,'imp.upd':n=>`${n} updated`,
   'imp.skip':n=>`${n} left out by the import filters`,'imp.bad':n=>`${n} unreadable rows`,
-  'imp.done':'Import complete.','imp.take':s=>'The import will now take: '+s,
-  'imp.takeNone':'No status selected – the import takes all rows again.',
+  'imp.done':'Import complete.',
+  'imp.skipStatuses':s=>'The import will now leave out: '+s,
+  'imp.otherStatus':'other statuses','imp.otherType':'other types',
+  'imp.tapFigure':'Tap a figure to see the rows behind it.',
+  'imp.title.new':'Newly stored','imp.title.dup':'Already stored','imp.title.upd':'Updated',
+  'imp.title.skip':'Left out','imp.title.bad':'Not read',
+  'imp.reason.status':'Left out by the status filter','imp.reason.type':'Left out by the type filter',
+  'imp.badHint':'A line is read when it holds at least 11 fields separated by semicolons and starts with a date in the form yyyy-mm-dd. Header and blank lines are skipped on purpose and are not listed here.',
+  'imp.line':'Line','imp.text':'Content','imp.more':(a,b)=>`Showing the first ${a} of ${b} rows.`,
   'imp.whichType':'Which types to import?',
-  'imp.whichTypeNote':'Unticked types are never stored – useful for bookings that are of no interest in this depot, securities transfers say. A type that is not listed here yet is always imported, so nothing is dropped without a word. Already stored rows stay; “Remove type” below clears them out.',
+  'imp.whichTypeNote':'Unticked types are never stored – useful for bookings that are of no interest in this depot, securities transfers say. The dashed box covers types this list does not name yet; leave it ticked and a type from a future export comes in rather than being dropped without a word. Already stored rows stay; “Remove type” below clears them out.',
   'imp.skipTypes':s=>'The import will now leave out: '+s,
   'imp.skipNone':'Every type is imported again.',
   'data.title':'Stored data','data.save':'Save backup (JSON)','data.restore':'Restore backup',
@@ -612,7 +665,7 @@ en:{
     under <b>Import / Data → Save backup (JSON)</b>.</p>`
 },
 de:{
-  'hdr.notes':'Hinweise','hdr.lang':'Sprache','hdr.numfmt':'Zahlenformat','hdr.filtersBtn':'Filter ▾',
+  'hdr.notes':'Hinweise','hdr.lang':'Sprache','hdr.numfmt':'Zahlenformat','hdr.filtersBtn':'Filter ▾','hdr.filters':'Filter',
   'nav.dash':'Übersicht','nav.pos':'Positionen','nav.tx':'Transaktionen','nav.cal':'Kalender','nav.imp':'Import / Daten',
   mon:['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'],
   dow:['Mo','Di','Mi','Do','Fr','Sa','So'],
@@ -677,13 +730,20 @@ de:{
   'imp.drop':'oder CSV hierher ziehen · mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen',
   'imp.dropTouch':'Mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen',
   'imp.which':'Welche Status übernehmen?',
-  'imp.whichNote':'Nicht gewählte Zeilen werden gar nicht erst gespeichert. Abgebrochene und offene Orders enthalten bei Scalable keine Beträge – sie dokumentieren nur den Versuch. Bereits importierte Zeilen bleiben erhalten; zum Aufräumen unten „Abgebrochene entfernen“ nutzen.',
+  'imp.whichNote':'Nicht angehakte Zeilen werden gar nicht erst gespeichert. Abgebrochene und offene Orders enthalten bei Scalable keine Beträge – sie dokumentieren nur den Versuch. Das gestrichelte Kästchen steht für Status, die diese Liste noch nicht kennt: angehakt werden sie übernommen, sonst ausgelassen. Bereits importierte Zeilen bleiben erhalten; zum Aufräumen unten „Abgebrochene entfernen“ nutzen.',
   'imp.new':n=>`✔ ${n} neu`,'imp.dup':n=>`${n} Duplikate übersprungen`,'imp.upd':n=>`${n} aktualisiert`,
   'imp.skip':n=>`${n} per Importfilter ausgelassen`,'imp.bad':n=>`${n} Zeilen unlesbar`,
-  'imp.done':'Import abgeschlossen.','imp.take':s=>'Import übernimmt künftig: '+s,
-  'imp.takeNone':'Kein Status gewählt – der Import übernimmt wieder alle Zeilen.',
+  'imp.done':'Import abgeschlossen.',
+  'imp.skipStatuses':s=>'Der Import lässt künftig aus: '+s,
+  'imp.otherStatus':'andere Status','imp.otherType':'andere Typen',
+  'imp.tapFigure':'Auf eine Zahl tippen, um die Zeilen dahinter zu sehen.',
+  'imp.title.new':'Neu gespeichert','imp.title.dup':'Schon gespeichert','imp.title.upd':'Aktualisiert',
+  'imp.title.skip':'Ausgelassen','imp.title.bad':'Nicht gelesen',
+  'imp.reason.status':'Vom Statusfilter ausgelassen','imp.reason.type':'Vom Typfilter ausgelassen',
+  'imp.badHint':'Eine Zeile wird gelesen, wenn sie mindestens 11 durch Semikolon getrennte Felder enthält und mit einem Datum der Form jjjj-mm-tt beginnt. Kopf- und Leerzeilen werden bewusst übersprungen und stehen hier nicht.',
+  'imp.line':'Zeile','imp.text':'Inhalt','imp.more':(a,b)=>`Es werden die ersten ${a} von ${b} Zeilen gezeigt.`,
   'imp.whichType':'Welche Typen übernehmen?',
-  'imp.whichTypeNote':'Nicht angehakte Typen werden gar nicht erst gespeichert – praktisch für Buchungen, die in diesem Depot nicht interessieren, etwa Depotüberträge. Ein hier noch nicht aufgeführter Typ wird immer übernommen, damit nichts stillschweigend verloren geht. Bereits gespeicherte Zeilen bleiben; „Typ entfernen“ unten räumt sie weg.',
+  'imp.whichTypeNote':'Nicht angehakte Typen werden gar nicht erst gespeichert – praktisch für Buchungen, die in diesem Depot nicht interessieren, etwa Depotüberträge. Das gestrichelte Kästchen steht für Typen, die diese Liste noch nicht kennt; bleibt es angehakt, kommt ein Typ aus einem künftigen Export herein, statt stillschweigend verloren zu gehen. Bereits gespeicherte Zeilen bleiben; „Typ entfernen“ unten räumt sie weg.',
   'imp.skipTypes':s=>'Der Import lässt künftig aus: '+s,
   'imp.skipNone':'Alle Typen werden wieder übernommen.',
   'data.title':'Gespeicherte Daten','data.save':'Backup (JSON) sichern','data.restore':'Backup einspielen',
@@ -876,13 +936,14 @@ function migrateSigns(){
 
 function parseCSV(text){
   const out=[], bad=[], recs=[];
-  text.replace(/^\uFEFF/,'').split(/\r?\n/).forEach(raw=>{
+  text.replace(/^\uFEFF/,'').split(/\r?\n/).forEach((raw,i)=>{
     let line = raw.replace(/"/g,'').trim();
     if(!line) return;
     line = line.replace(/[,;\s]+$/,'');
     if(/^date;time;status/i.test(line)) return;
     const p = line.split(';');
-    if(p.length < 11 || !/^\d{4}-\d{2}-\d{2}$/.test(p[0])){ bad.push(raw); return; }
+    /* The line number travels with the text so the import report can point at it */
+    if(p.length < 11 || !/^\d{4}-\d{2}-\d{2}$/.test(p[0])){ bad.push({n:i+1, text:raw}); return; }
     const r={}; COLS.forEach((c,j)=> r[c]=(p[j]||'').trim());
     recs.push(r);
   });
@@ -907,27 +968,44 @@ function parseCSV(text){
 
 function importRows(rows){
   let neu=0,dup=0,upd=0,skip=0;
+  const rowsNew=[], rowsDup=[], rowsUpd=[], rowsSkip=[];
+  const stListed=impStatusList(), tyListed=impTypeList();
   rows.forEach(r=>{
-    if(UI.impStatus.length && !UI.impStatus.includes(r.status)){ skip++; return; }
-    /* Kept as a list of what to leave out, not of what to take: a type that
-       turns up in a later export without being known here is imported rather
-       than dropped without a word. */
-    if(UI.impSkipType.includes(r.type)){ skip++; return; }
+    /* Both filters name what to leave out. A value the boxes do not offer yet counts
+       as “other” and follows its own switch, so nothing disappears unasked. */
+    const why = (UI.impSkipStatus.includes(r.status) ||
+                 (UI.impSkipUnknownStatus && !stListed.includes(r.status))) ? 'status'
+              : (UI.impSkipType.includes(r.type) ||
+                 (UI.impSkipUnknownType && !tyListed.includes(r.type))) ? 'type' : '';
+    if(why){ skip++; rowsSkip.push({r,why}); return; }
     const ex = DB.tx[r.id];
-    if(!ex) { DB.tx[r.id]=r; neu++; }
-    else if(JSON.stringify(ex)!==JSON.stringify(r)) { DB.tx[r.id]={...ex,...r}; upd++; }
-    else dup++;
+    if(!ex) { DB.tx[r.id]=r; neu++; rowsNew.push(r); }
+    else if(JSON.stringify(ex)!==JSON.stringify(r)) { DB.tx[r.id]={...ex,...r}; upd++; rowsUpd.push(r); }
+    else { dup++; rowsDup.push(r); }
   });
   save();
-  return {neu,dup,upd,skip};
+  /* The rows travel along so the report can show what was left out. They stay in
+     memory for as long as the report is on screen and are never written anywhere. */
+  return {neu,dup,upd,skip,rowsNew,rowsDup,rowsUpd,rowsSkip};
 }
 
 /* ============================ Derived data ============================ */
 const all = () => Object.values(DB.tx).sort((a,b)=> a.dt<b.dt?1:a.dt>b.dt?-1:0);
 const F = {year:'', month:''};
 const ST_KNOWN=['Executed','Pending','Cancelled'];
+/* Settings written before the status filter was turned around: it held the statuses to
+   take. Convert once into the list of statuses to leave out and drop the old key. */
+if(Array.isArray(UI.impStatus)){
+  UI.impSkipStatus=ST_KNOWN.filter(s=>!UI.impStatus.includes(s));
+  delete UI.impStatus; saveUI();
+}
 const stLabel=s=> tv('st.'+s)!==undefined ? t('st.'+s) : '';
 const stList=()=> [...new Set(ST_KNOWN.concat(Object.values(DB.tx).map(r=>r.status).filter(Boolean)))];
+/* What the import filters offer a box for: what the app knows, what is already stored and
+   what has explicitly been switched off. Everything else is “other” for the two switches. */
+const impStatusList=()=> [...new Set(stList().concat(UI.impSkipStatus))];
+const impTypeList=()=> [...new Set(Object.keys(TYPE_CLASS)
+  .concat(Object.values(DB.tx).map(r=>r.type).filter(Boolean)).concat(UI.impSkipType))];
 const typeList=()=> [...new Set(Object.values(DB.tx).map(r=>r.type).filter(Boolean))]
   .sort((a,b)=> typeName(a).localeCompare(typeName(b), UI.lang));
 /* empty selection = no restriction, so the view never stays empty without reason */
@@ -1120,12 +1198,17 @@ function typeTag(r){
 
 /* ============================ Navigation ============================ */
 let view='dash';
-document.querySelectorAll('nav button').forEach(b=> b.onclick=()=> show(b.dataset.v));
+/* Every button that names a view, whether it sits in the tab strip or as an icon
+   in the top bar – the calendar is one of the latter. An icon carrying data-back
+   works as a switch: pressed again while its view is open it returns there, so the
+   calendar does not depend on the tab strip to get out of it. */
+document.querySelectorAll('[data-v]').forEach(b=> b.onclick=()=>
+  show(b.dataset.back && view===b.dataset.v ? b.dataset.back : b.dataset.v));
 /* Which tab is highlighted belongs to show(), not to the click handler: the view
    is also switched from code – at startup straight to the import when nothing is
    stored yet – and the highlight used to stay behind on the tab last clicked. */
 function markTab(v){
-  document.querySelectorAll('nav button').forEach(x=> x.classList.toggle('on', x.dataset.v===v));
+  document.querySelectorAll('[data-v]').forEach(x=> x.classList.toggle('on', x.dataset.v===v));
 }
 /* The tab strip scrolls sideways on a phone – keep the open tab in view rather
    than leaving it half cut off at the edge. Only the strip moves, not the page. */
@@ -1427,8 +1510,10 @@ function orphanMark(r){
     (UI.hideOrphan ? t('tx.markOn',eur(orphanCut(r))) : t('tx.markOff',eur(orphanCut(r))));
   return ` <span class="neg" title="${esc(msg)}">⚠</span>`;
 }
-function txTableHtml(rows){
-  const cols=tv('tx.cols');
+/* notes=false leaves the note column out: rows that were never stored have nothing to
+   attach a note to, and the button would look up a transaction that does not exist. */
+function txTableHtml(rows, notes=true){
+  const cols=tv('tx.cols').slice(0, notes?13:12);
   const nums=[5,6,7,8,9,10];
   const head='<thead><tr>'+cols.map((c,i)=>`<th class="${nums.includes(i)?'num':''}" style="cursor:default">${c}</th>`).join('')+'</tr></thead>';
   /* data-l feeds the column name into the card layout on a narrow screen.
@@ -1455,7 +1540,7 @@ function txTableHtml(rows){
       <td class="num mut" ${l(9)}>${r.feeN?fmt(r.feeN):''}</td>
       <td class="num mut" ${l(10)}>${r.taxN?fmt(r.taxN):''}</td>
       <td class="mut" style="font-size:11px" ${l(11)}>${esc(r.reference).slice(0,22)}</td>
-      <td ${l(12)}><button class="btn note" onclick="txNote(this.dataset.id)" data-id="${esc(r.id)}">💬${c?' '+c:''}</button></td>
+      ${notes?`<td ${l(12)}><button class="btn note" onclick="txNote(this.dataset.id)" data-id="${esc(r.id)}">💬${c?' '+c:''}</button></td>`:''}
     </tr>`}).join('')+'</tbody>';
   return '<table class="rsp">'+head+body+'</table>';
 }
@@ -1620,22 +1705,66 @@ fileInp.onchange=()=>handle(fileInp.files);
 ['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('hot')}));
 ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('hot')}));
 drop.addEventListener('drop',ev=>handle(ev.dataTransfer.files));
+/* What the last import did, kept so every figure in the report can show the rows
+   behind it. Lives in memory only, for as long as the report is on screen. */
+let LAST_IMPORT=[];
 function handle(files){
   const rep=document.getElementById('report'); let done=0, log=[];
   if(!files.length) return;
+  LAST_IMPORT=[];
   [...files].forEach(f=>{
     const rd=new FileReader();
     rd.onload=()=>{
       const {rows,bad}=parseCSV(rd.result);
       const r=importRows(rows);
+      /* Card and record are pushed together, so the index in the onclick always
+         points at the file the figures belong to – the files finish in any order. */
+      const i=LAST_IMPORT.push({name:f.name, res:r, bad})-1;
+      const fig=(kind,n,cls)=> !n ? '' :
+        `<span class="clickable ${cls}" onclick="importDetail(${i},'${kind}')">${t('imp.'+kind,n)}</span>`;
       log.push(`<div class="card" style="margin-top:12px">
         <b>${esc(f.name)}</b><br>
-        <span class="pos">${t('imp.new',r.neu)}</span> · <span class="mut">${t('imp.dup',r.dup)}</span>
-        · <span class="pos">${t('imp.upd',r.upd)}</span>${r.skip?` · <span class="mut">${t('imp.skip',r.skip)}</span>`:''}${bad.length?` · <span class="neg">${t('imp.bad',bad.length)}</span>`:''}</div>`);
+        ${[fig('new',r.neu,'pos'), fig('dup',r.dup,'mut'), fig('upd',r.upd,'pos'),
+           fig('skip',r.skip,'mut'), fig('bad',bad.length,'neg')].filter(Boolean).join(' · ')}
+        <br><span class="hint">${t('imp.tapFigure')}</span></div>`);
       if(++done===files.length){ rep.innerHTML=log.join(''); render(); toast(t('imp.done')); }
     };
     rd.readAsText(f,'utf-8');
   });
+}
+/* The figures of the import report, opened as a list. Rows that were left out or not
+   read never reach the database, so this is the only place they can be looked at. */
+const IMP_MAX=300;
+function importDetail(i,kind){
+  const e=LAST_IMPORT[i]; if(!e) return;
+  const r=e.res;
+  let body='';
+  if(kind==='bad'){
+    const rows=e.bad.slice(0,IMP_MAX);
+    body=`<p class="hint">${t('imp.badHint')}</p><div class="scroll"><table class="rsp"><thead><tr>
+        <th>${t('imp.line')}</th><th>${t('imp.text')}</th></tr></thead><tbody>`+
+      rows.map(b=>`<tr><td class="mut" data-l="${esc(t('imp.line'))}">${b.n}</td>
+        <td class="mfirst" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px">${esc(b.text)||'—'}</td></tr>`).join('')+
+      `</tbody></table></div>${e.bad.length>IMP_MAX?`<p class="hint">${t('imp.more',IMP_MAX,e.bad.length)}</p>`:''}`;
+  } else if(kind==='skip'){
+    /* Grouped by the reason, so it is plain which filter dropped what */
+    body=['status','type'].map(why=>{
+      const rows=r.rowsSkip.filter(x=>x.why===why).map(x=>x.r);
+      if(!rows.length) return '';
+      return `<h3>${t('imp.reason.'+why)} (${rows.length})</h3>`+
+        `<div class="scroll">${txTableHtml(rows.slice(0,IMP_MAX),false)}</div>`+
+        (rows.length>IMP_MAX?`<p class="hint">${t('imp.more',IMP_MAX,rows.length)}</p>`:'');
+    }).join('');
+  } else {
+    const rows={new:r.rowsNew, dup:r.rowsDup, upd:r.rowsUpd}[kind]||[];
+    body=`<div class="scroll">${txTableHtml(rows.slice(0,IMP_MAX),false)}</div>`+
+      (rows.length>IMP_MAX?`<p class="hint">${t('imp.more',IMP_MAX,rows.length)}</p>`:'');
+  }
+  const box=document.createElement('div');
+  box.className='panel modal wide';
+  box.innerHTML=`<div class="modal-hd"><h2>${t('imp.title.'+kind)} <span class="hint">${esc(e.name)}</span></h2>
+      <button class="btn ico" onclick="this.closest('.panel').remove()">✕</button></div>${body}`;
+  document.body.appendChild(box);
 }
 document.getElementById('expJson').onclick=()=>{
   saveFile('depot_backup_'+isoToday()+'.json', JSON.stringify(DB), 'application/json');
@@ -1687,14 +1816,24 @@ document.getElementById('jsonFile').onchange=e=>{
   }catch(err){ toast(t('data.badBackup')); } };
   rd.readAsText(e.target.files[0]);
 };
+/* The last box of both filters stands for everything the list does not name yet – a status
+   or type from a future export. Ticked it is imported, which is what happened silently
+   before; unticked it is left out on purpose and shows up in the import report. */
+const otherBox=(skip,label)=>`<label class="chk" style="border:1px dashed var(--line)">
+  <input type="checkbox" data-other="1" ${skip?'':'checked'}>
+  <span class="hint">${esc(label)}</span></label>`;
 function buildImportFilter(){
   const box=document.getElementById('impStatus');
-  box.innerHTML=ST_KNOWN.map(s=>`<label class="chk" style="border:1px solid var(--line)">
-    <input type="checkbox" value="${s}" ${UI.impStatus.includes(s)?'checked':''}>
-    <span class="st ${s}">${s}</span><span class="hint">${esc(stLabel(s))}</span></label>`).join('');
+  box.innerHTML=impStatusList().map(s=>`<label class="chk" style="border:1px solid var(--line)">
+    <input type="checkbox" value="${esc(s)}" ${UI.impSkipStatus.includes(s)?'':'checked'}>
+    <span class="st ${esc(s)}">${esc(s)}</span><span class="hint">${esc(stLabel(s))}</span></label>`).join('')
+    + otherBox(UI.impSkipUnknownStatus, t('imp.otherStatus'));
   box.querySelectorAll('input').forEach(i=> i.onchange=()=>{
-    UI.impStatus=[...box.querySelectorAll('input:checked')].map(x=>x.value); saveUI();
-    toast(UI.impStatus.length? t('imp.take',UI.impStatus.map(stLabel).join(', ')) : t('imp.takeNone'));
+    const off=[...box.querySelectorAll('input:not(:checked)')];
+    UI.impSkipUnknownStatus = off.some(x=>x.dataset.other) ? 1 : 0;
+    UI.impSkipStatus = off.filter(x=>!x.dataset.other).map(x=>x.value); saveUI();
+    const names=UI.impSkipStatus.map(stLabel).concat(UI.impSkipUnknownStatus?[t('imp.otherStatus')]:[]);
+    toast(names.length ? t('imp.skipStatuses',names.join(', ')) : t('imp.skipNone'));
   });
 }
 /* Which transaction types an import takes over. The list holds every type the app
@@ -1702,17 +1841,17 @@ function buildImportFilter(){
    switched off as soon as it has been seen once. */
 function buildImportTypeFilter(){
   const box=document.getElementById('impType');
-  const list=[...new Set(Object.keys(TYPE_CLASS)
-    .concat(Object.values(DB.tx).map(r=>r.type).filter(Boolean))
-    .concat(UI.impSkipType))].sort((a,b)=> typeName(a).localeCompare(typeName(b), UI.lang));
+  const list=impTypeList().sort((a,b)=> typeName(a).localeCompare(typeName(b), UI.lang));
   box.innerHTML=list.map(ty=>`<label class="chk" style="border:1px solid var(--line)">
     <input type="checkbox" value="${esc(ty)}" ${UI.impSkipType.includes(ty)?'':'checked'}>
-    ${typeTag({type:ty})}</label>`).join('');
+    ${typeTag({type:ty})}</label>`).join('')
+    + otherBox(UI.impSkipUnknownType, t('imp.otherType'));
   box.querySelectorAll('input').forEach(i=> i.onchange=()=>{
-    UI.impSkipType=[...box.querySelectorAll('input:not(:checked)')].map(x=>x.value); saveUI();
-    toast(UI.impSkipType.length
-      ? t('imp.skipTypes', UI.impSkipType.map(typeName).join(', '))
-      : t('imp.skipNone'));
+    const off=[...box.querySelectorAll('input:not(:checked)')];
+    UI.impSkipUnknownType = off.some(x=>x.dataset.other) ? 1 : 0;
+    UI.impSkipType = off.filter(x=>!x.dataset.other).map(x=>x.value); saveUI();
+    const names=UI.impSkipType.map(typeName).concat(UI.impSkipUnknownType?[t('imp.otherType')]:[]);
+    toast(names.length ? t('imp.skipTypes',names.join(', ')) : t('imp.skipNone'));
   });
 }
 /* Confirmation without confirm(): Safari suppresses system dialogs once the user has chosen
@@ -1787,7 +1926,7 @@ document.querySelectorAll('#langSeg button').forEach(b=> b.onclick=()=>{
   if(UI.lang===b.dataset.l) return;
   UI.lang=b.dataset.l; saveUI();
   /* The import report of the previous language would stay behind untranslated */
-  document.getElementById('report').innerHTML='';
+  document.getElementById('report').innerHTML=''; LAST_IMPORT=[];
   applyStatic(); render();
 });
 if(!LS.ok){
@@ -1800,6 +1939,30 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v32', d:'2026-08-14', items:[
+    {en:'The calendar icon works as a switch: pressed once it opens the calendar, pressed again it returns to the overview.',
+     de:'Das Kalendersymbol wirkt als Schalter: einmal gedrückt öffnet es den Kalender, noch einmal gedrückt führt es zurück zur Übersicht.'},
+    {en:'Fixed: on a touch screen the tab just tapped lost its coloured pill and was left as bare white text.',
+     de:'Behoben: Auf einem Touchscreen verlor der gerade angetippte Tab seine farbige Pille und blieb als blanke weiße Schrift zurück.'}
+  ]},
+  {v:'v31', d:'2026-08-14', items:[
+    {en:'The notes and calendar icons are now as tall as the language switch and the filter button next to them.',
+     de:'Hinweis- und Kalendersymbol sind jetzt so hoch wie der Sprachschalter und der Filterknopf daneben.'},
+    {en:'On a narrow phone the filter button is a round icon, matching the notes and calendar buttons instead of an oval sized by leftover padding.',
+     de:'Auf einem schmalen Telefon ist der Filterknopf ein rundes Symbol, passend zu Hinweis- und Kalendersymbol, statt eines Ovals aus übrig gebliebenem Abstand.'},
+    {en:'The welcome notes now also close with an ✕ at the top, the same as the version history.',
+     de:'Die Begrüßungshinweise schließen jetzt auch oben über ein ✕, genau wie der Versionsverlauf.'}
+  ]},
+  {v:'v30', d:'2026-08-14', items:[
+    {en:'The calendar left the tab strip: it opens from a calendar icon at the right end of the top bar, which lights up while it is showing.',
+     de:'Der Kalender hat die Tab-Leiste verlassen: Er öffnet über ein Kalendersymbol rechts in der Kopfzeile, das leuchtet, solange er zu sehen ist.'}
+  ]},
+  {v:'v29', d:'2026-08-14', items:[
+    {en:'Every figure of the import report opens the rows behind it – what was stored, what was already there, and above all what was left out or could not be read.',
+     de:'Jede Zahl des Importberichts zeigt die Zeilen dahinter – was gespeichert wurde, was schon da war und vor allem, was ausgelassen oder nicht gelesen wurde.'},
+    {en:'A status the app does not know is imported instead of being dropped in silence; both import filters end with a box that decides this case explicitly.',
+     de:'Ein unbekannter Status wird übernommen statt stillschweigend verworfen; beide Importfilter enden mit einem Kästchen, das diesen Fall ausdrücklich entscheidet.'}
+  ]},
   {v:'v28', d:'2026-08-13', items:[
     {en:'Fixed: the open tab kept its highlight only after a click of your own – starting on the import or opening a position left the bar unmarked.',
      de:'Behoben: Der offene Tab war erst nach einem eigenen Klick markiert – beim Start im Import oder in einer Position blieb die Leiste ohne Markierung.'},
@@ -1876,6 +2039,7 @@ document.getElementById('chgOpen').onclick=()=>{
 const intro=document.getElementById('intro');
 const closeIntro=()=>{ intro.classList.remove('on'); UI.seenIntro=1; saveUI(); };
 document.getElementById('introOk').onclick=closeIntro;
+document.getElementById('introClose').onclick=closeIntro;
 intro.onclick=e=>{ if(e.target===intro) closeIntro(); };
 document.getElementById('introOpen').onclick=()=>intro.classList.add('on');
 
