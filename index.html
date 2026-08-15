@@ -25,16 +25,30 @@
   --fg:#e6edf3; --mut:#8b949e; --acc:#4f9cf9; --acc2:#7c5cff;
   --pos:#3fb950; --neg:#f85149; --warn:#d29922;
   --r:12px;
+  /* ---------- Type sizes ----------
+     Every text of the app takes its size from one of these steps. The switch under
+     Import / Data sets --tsz, and each step grows by that same number of pixels:
+     the order of the sizes therefore never changes, while the smallest labels gain
+     the most in relation to themselves – 11px reads 19px at +8, the 22px figure 30px. */
+  --tsz:0px;
+  --fs-10:calc(10px + var(--tsz)); --fs-11:calc(11px + var(--tsz));
+  --fs-12:calc(12px + var(--tsz)); --fs-13:calc(13px + var(--tsz));
+  --fs-14:calc(14px + var(--tsz)); --fs-15:calc(15px + var(--tsz));
+  --fs-16:calc(16px + var(--tsz)); --fs-17:calc(17px + var(--tsz));
+  --fs-19:calc(19px + var(--tsz)); --fs-22:calc(22px + var(--tsz));
 }
 *{box-sizing:border-box}
-body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);
+/* Split out of the font shorthand: a calc() in front of the /line-height is not
+   read reliably by older Safari. */
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:var(--fs-14);line-height:1.5;background:var(--bg);color:var(--fg);
   -webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:contain}
 a{color:var(--acc)}
 header{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
   border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
 .hd{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
   padding:12px max(20px,env(safe-area-inset-right)) 12px max(20px,env(safe-area-inset-left))}
-.logo{font-weight:700;font-size:17px;letter-spacing:.3px}
+.logo{font-weight:700;font-size:var(--fs-17);letter-spacing:.3px}
 .logo span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
 /* Round icon button in the top bar – the notes sit next to the app name.
    Declared after the .btn defaults further down would be cleaner, but the
@@ -42,7 +56,7 @@ header{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.92);-webkit-ba
 /* 36px, the height of the language switch: its 34px buttons sit inside a border on
    each side, and the filter pill was matched to it – the icons follow suit. */
 button.btn.ico{width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;flex:0 0 auto;
-  display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
+  display:inline-flex;align-items:center;justify-content:center;font-size:var(--fs-15);line-height:1}
 button.btn.ico svg{width:19px;height:19px;display:block}
 /* An icon that stands for a view is lit like the tab it replaces */
 button.btn.ico.on{background:linear-gradient(90deg,var(--acc),var(--acc2));border-color:transparent;color:#fff}
@@ -50,17 +64,17 @@ button.btn.ico.on{background:linear-gradient(90deg,var(--acc),var(--acc2));borde
 #filtToggle .fico{display:none}
 /* Language switch – two states side by side, the active one is highlighted */
 .seg{display:inline-flex;flex:0 0 auto;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--bg3)}
-.seg button{background:transparent;border:none;color:var(--mut);font:inherit;font-size:12px;font-weight:600;
+.seg button{background:transparent;border:none;color:var(--mut);font:inherit;font-size:var(--fs-12);font-weight:600;
   padding:0 11px;min-height:34px;cursor:pointer;letter-spacing:.4px}
 .seg button.on{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#fff}
 nav{display:flex;gap:4px;flex-wrap:wrap}
-nav button{background:transparent;border:1px solid transparent;color:var(--mut);padding:7px 14px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:500;min-height:36px}
+nav button{background:transparent;border:1px solid transparent;color:var(--mut);padding:7px 14px;border-radius:999px;cursor:pointer;font-size:var(--fs-13);font-weight:500;min-height:36px}
 nav button:hover{color:var(--fg);background:var(--bg3)}
 nav button.on{color:#fff;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 .filters{margin-left:auto;display:flex;gap:8px;align-items:center}
 /* 16px stops Safari on the iPhone from zooming in when a field is tapped */
 select,input,textarea,button.btn{background:var(--bg3);border:1px solid var(--line);color:var(--fg);padding:7px 10px;border-radius:8px;
-  font:inherit;font-size:16px;outline:none;-webkit-appearance:none;appearance:none;max-width:100%}
+  font:inherit;font-size:var(--fs-16);outline:none;-webkit-appearance:none;appearance:none;max-width:100%}
 select{padding-right:26px;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);
   background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
 input[type=checkbox]{-webkit-appearance:checkbox;appearance:checkbox;width:18px;height:18px}
@@ -72,28 +86,30 @@ button.pri{background:linear-gradient(90deg,var(--acc),var(--acc2));border:none;
 main{max-width:1600px;margin:0 auto;
   padding:20px max(20px,env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
 .view{display:none}.view.on{display:block}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px}
+/* The column grows with the type: at the largest step a figure like 69'843.20 €
+   no longer fits the narrow track and would break across two lines. */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(190px + 8*var(--tsz)),1fr));gap:12px;margin-bottom:20px}
 .card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
-.card .k{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.7px}
-.card .v{font-size:22px;font-weight:650;margin-top:4px;font-variant-numeric:tabular-nums}
+.card .k{color:var(--mut);font-size:var(--fs-11);text-transform:uppercase;letter-spacing:.7px}
+.card .v{font-size:var(--fs-22);font-weight:650;margin-top:4px;font-variant-numeric:tabular-nums}
 .panel{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:16px}
-.panel h2{margin:0 0 12px;font-size:15px;font-weight:650}
-.panel h3{margin:16px 0 8px;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+.panel h2{margin:0 0 12px;font-size:var(--fs-15);font-weight:650}
+.panel h3{margin:16px 0 8px;font-size:var(--fs-13);color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none;background:var(--bg2);position:sticky;top:0}
+thead th{text-align:left;font-size:var(--fs-11);text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none;background:var(--bg2);position:sticky;top:0}
 thead th.num{text-align:right}
 td{padding:9px 10px;border-bottom:1px solid #1e242c;white-space:nowrap}
 tbody tr:hover{background:#1a2029}
 .num{text-align:right}
 .pos{color:var(--pos)}.neg{color:var(--neg)}.mut{color:var(--mut)}
-.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:var(--fs-11);font-weight:600;border:1px solid}
 .t-Buy{color:#79c0ff;border-color:#1f6feb55;background:#1f6feb18}
 .t-Sell{color:#ffa657;border-color:#bb800955;background:#bb800918}
 .t-Sparplan{color:#a5d6ff;border-color:#388bfd55;background:#388bfd18}
 .t-Dividende{color:var(--pos);border-color:#3fb95055;background:#3fb95018}
 .t-Cash{color:#d2a8ff;border-color:#8957e555;background:#8957e518}
 .t-Sonst{color:var(--mut);border-color:var(--line);background:#ffffff08}
-.st{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}
+.st{font-size:var(--fs-11);padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}
 .st.Executed{color:var(--pos);border-color:#3fb95055}
 .st.Pending{color:var(--warn);border-color:#d2992255}
 .st.Cancelled{color:var(--neg);border-color:#f8514955;text-decoration:line-through}
@@ -102,13 +118,17 @@ tbody tr:hover{background:#1a2029}
 .drop{border:2px dashed var(--line);border-radius:var(--r);padding:34px;text-align:center;color:var(--mut);transition:.15s}
 .drop.hot{border-color:var(--acc);background:#4f9cf912;color:var(--fg)}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-.cal .dow{color:var(--mut);font-size:11px;text-transform:uppercase;text-align:center;padding:4px 0}
-.day{background:var(--bg3);border:1px solid var(--line);border-radius:8px;min-height:96px;padding:5px;font-size:11px;overflow:hidden;cursor:pointer}
+.cal .dow{color:var(--mut);font-size:var(--fs-11);text-transform:uppercase;text-align:center;padding:4px 0}
+.day{background:var(--bg3);border:1px solid var(--line);border-radius:8px;min-height:calc(96px + 6*var(--tsz));padding:5px;font-size:var(--fs-11);overflow:hidden;cursor:pointer}
 .day:hover{border-color:var(--acc)}
 .day.empty{background:transparent;border-color:transparent;cursor:default}
 .day.today{outline:1px solid var(--acc);outline-offset:-1px}
 .day .d{color:var(--mut);font-weight:600;margin-bottom:3px;display:flex;justify-content:space-between;align-items:baseline;gap:4px}
-.day .pnl{font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
+/* Date and day result sit side by side. Enlarged, the pair no longer fits the ~45px
+   of a phone column, so the figure moves to its own line instead of being cut off at
+   the border of the box. Only above the first step – at 0 the row stays as it was. */
+html.ts-up .day .d{flex-wrap:wrap}
+.day .pnl{font-size:var(--fs-10);font-weight:700;font-variant-numeric:tabular-nums}
 .day.win{border-color:#3fb95055;background:linear-gradient(180deg,#3fb95012,transparent)}
 .day.loss{border-color:#f8514955;background:linear-gradient(180deg,#f8514912,transparent)}
 #calTitle{min-width:200px;line-height:1.25;text-align:center}
@@ -116,15 +136,15 @@ tbody tr:hover{background:#1a2029}
 .bar{height:8px;border-radius:4px;background:var(--bg3);overflow:hidden}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 .cmt{background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
-.cmt .meta{font-size:11px;color:var(--mut);margin-bottom:6px;display:flex;gap:8px;align-items:center}
-.cmt .meta button{margin-left:auto;background:none;border:none;color:var(--neg);cursor:pointer;font-size:11px}
+.cmt .meta{font-size:var(--fs-11);color:var(--mut);margin-bottom:6px;display:flex;gap:8px;align-items:center}
+.cmt .meta button{margin-left:auto;background:none;border:none;color:var(--neg);cursor:pointer;font-size:var(--fs-11)}
 .cmt img{max-width:100%;border-radius:8px;margin-top:8px;border:1px solid var(--line);cursor:zoom-in}
 .shots{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .shots .th{position:relative}
 .shots img{height:56px;border-radius:6px;border:1px solid var(--line)}
-.shots .x{position:absolute;top:-6px;right:-6px;background:var(--neg);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:1}
+.shots .x{position:absolute;top:-6px;right:-6px;background:var(--neg);border:none;color:#fff;border-radius:50%;width:calc(18px + var(--tsz));height:calc(18px + var(--tsz));cursor:pointer;font-size:var(--fs-11);line-height:1}
 textarea{width:100%;min-height:70px;resize:vertical}
-.hint{font-size:12px;color:var(--mut)}
+.hint{font-size:var(--fs-12);color:var(--mut)}
 #lightbox{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;z-index:200}
 #lightbox img{max-width:92vw;max-height:92vh;border-radius:10px}
 /* Welcome screen on first start, version history */
@@ -134,13 +154,13 @@ textarea{width:100%;min-height:70px;resize:vertical}
 #introBox,#chgBox{--mpy:22px;--mpx:24px;
   background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
   width:min(600px,100%);max-height:88vh;overflow:auto;padding:var(--mpy) var(--mpx);box-shadow:0 24px 70px #000c}
-#introBox h2,#chgBox h2{margin:0 0 4px;font-size:19px}
-#introBox h3{margin:18px 0 6px;font-size:12px;color:var(--acc);text-transform:uppercase;letter-spacing:.8px}
+#introBox h2,#chgBox h2{margin:0 0 4px;font-size:var(--fs-19)}
+#introBox h3{margin:18px 0 6px;font-size:var(--fs-12);color:var(--acc);text-transform:uppercase;letter-spacing:.8px}
 #introBox p,#chgBox p{margin:0 0 8px;color:var(--fg)}
 #introBox ol,#chgBox ul{margin:0;padding-left:20px}
 #introBox li,#chgBox li{margin-bottom:4px}
-#introBox .small,#chgBox .small{color:var(--mut);font-size:13px}
-#introOk{width:100%;margin-top:22px;padding:12px;font-size:15px;min-height:48px}
+#introBox .small,#chgBox .small{color:var(--mut);font-size:var(--fs-13)}
+#introOk{width:100%;margin-top:22px;padding:12px;font-size:var(--fs-15);min-height:48px}
 /* Title row of a modal: the close button sits at the top right, within reach
    without scrolling to the end of a long list, and stays there while it scrolls.
    The negative margins pull the row across the box padding, which is why that
@@ -149,12 +169,12 @@ textarea{width:100%;min-height:70px;resize:vertical}
   top:calc(var(--mpy) * -1);background:var(--bg2);
   margin:calc(var(--mpy) * -1) calc(var(--mpx) * -1) 4px;padding:var(--mpy) var(--mpx) 8px}
 .modal-hd h2{flex:1;margin:0}
-.modal-hd .btn.ico{font-size:13px}
+.modal-hd .btn.ico{font-size:var(--fs-13)}
 /* One block per version: heading line with number, date and marker */
 .chg-v{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:18px 0 6px;
   padding-top:12px;border-top:1px solid var(--line)}
 .chg-v:first-child{margin-top:10px;padding-top:0;border-top:none}
-.chg-v b{font-size:14px;color:var(--acc)}
+.chg-v b{font-size:var(--fs-14);color:var(--acc)}
 @media (max-width:820px){
   #intro,#chg{padding:0;align-items:stretch}
   #introBox,#chgBox{--mpy:calc(20px + env(safe-area-inset-top));--mpx:18px;
@@ -169,25 +189,25 @@ textarea{width:100%;min-height:70px;resize:vertical}
   position:fixed;inset:6% 0 auto 0;margin:0 auto;width:min(680px,92vw);z-index:150;max-height:84vh;overflow:auto;box-shadow:0 20px 60px #000a}
 /* Holds a transaction table – give it the room a table needs */
 .modal.wide{width:min(1000px,94vw)}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:12px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:var(--fs-11);color:var(--mut);margin-top:12px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 .dd{position:relative}
 .dd>button{white-space:nowrap}
 .dd .pop{position:absolute;right:0;top:calc(100% + 6px);min-width:210px;background:var(--bg2);border:1px solid var(--line);
   border-radius:10px;padding:8px;z-index:80;display:none;box-shadow:0 14px 40px #000a}
 .dd.open .pop{display:block}
-.chk{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;white-space:nowrap;font-size:13px}
+.chk{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;white-space:nowrap;font-size:var(--fs-13)}
 .chk:hover{background:var(--bg3)}
 .chk input{margin:0}
-.chk .cnt{margin-left:auto;color:var(--mut);font-size:11px;font-variant-numeric:tabular-nums}
+.chk .cnt{margin-left:auto;color:var(--mut);font-size:var(--fs-11);font-variant-numeric:tabular-nums}
 .dd .pop hr{border:none;border-top:1px solid var(--line);margin:6px 0}
-.dd .pop .row button{font-size:12px;padding:4px 9px}
-.btn.note{padding:3px 10px;font-size:12px;min-height:30px}
+.dd .pop .row button{font-size:var(--fs-12);padding:4px 9px}
+.btn.note{padding:3px 10px;font-size:var(--fs-12);min-height:30px}
 /* Same shape as the language switch next to it: pill, one line high, small
    capitals – the two sit side by side and would otherwise not look related. */
 button.btn#filtToggle{display:none;position:relative;white-space:nowrap;
   height:36px;min-height:36px;padding:0 12px;border-radius:999px;background:var(--bg3);
-  font-size:12px;font-weight:600;letter-spacing:.4px;color:var(--mut);
+  font-size:var(--fs-12);font-weight:600;letter-spacing:.4px;color:var(--mut);
   align-items:center;justify-content:center}
 button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2));border-color:transparent;color:#fff}
 /* A dot on the button when a filter is narrowing what is shown – otherwise a
@@ -220,15 +240,15 @@ button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2)
   .dd .pop{left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));top:auto}
   main{padding-top:14px}
   .panel{padding:12px}
-  .cards{grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px}
+  .cards{grid-template-columns:repeat(auto-fit,minmax(calc(148px + 8*var(--tsz)),1fr));gap:9px}
   .card{padding:11px 12px}
-  .card .v{font-size:19px}
-  td,thead th{padding:8px 7px;font-size:13px}
+  .card .v{font-size:var(--fs-19)}
+  td,thead th{padding:8px 7px;font-size:var(--fs-13)}
   .btn.note{min-height:38px;min-width:44px}
   .cal{gap:4px}
-  .day{min-height:58px;padding:4px}
+  .day{min-height:calc(58px + 3*var(--tsz));padding:4px}
   .day .ev,.day .hint{display:none}
-  .day .d{font-size:12px}
+  .day .d{font-size:var(--fs-12)}
   /* A day box is barely 50 px wide here – the currency sign would wrap the figure */
   .day .pnl .cur{display:none}
   /* Events are hidden at this width – a dot keeps days with bookings visible */
@@ -246,7 +266,7 @@ button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2)
    item drops to a line of its own, which is still fine. */
 @media (max-width:480px){
   .hd{gap:8px;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
-  .logo{font-size:16px}
+  .logo{font-size:var(--fs-16)}
   .seg button{padding:0 9px}
   /* Without a label the button is only the funnel – match it to the round icons
      next to it instead of leaving it an oval sized by its old padding. */
@@ -275,15 +295,15 @@ table.rsp td.mhead{display:none}
     padding:8px 11px;margin-bottom:9px}
   table.rsp tr:hover{background:var(--bg3)}
   table.rsp td{border:none;padding:4px 0;white-space:normal;text-align:right;
-    display:flex;gap:12px;align-items:baseline;justify-content:space-between;font-size:13px}
-  table.rsp td::before{content:attr(data-l);text-align:left;color:var(--mut);font-size:11px;
+    display:flex;gap:12px;align-items:baseline;justify-content:space-between;font-size:var(--fs-13)}
+  table.rsp td::before{content:attr(data-l);text-align:left;color:var(--mut);font-size:var(--fs-11);
     text-transform:uppercase;letter-spacing:.6px;flex:0 0 auto}
   table.rsp td:empty{display:none}
   /* Card headline: the name, no label in front of it */
   table.rsp td.mhead,table.rsp td.mfirst{display:block;text-align:left;padding:0 0 6px;
-    margin-bottom:5px;border-bottom:1px solid var(--line);font-size:14px}
+    margin-bottom:5px;border-bottom:1px solid var(--line);font-size:var(--fs-14)}
   table.rsp td.mhead::before,table.rsp td.mfirst::before{content:none}
-  table.rsp td.mhead .hint,table.rsp td.mfirst .hint{display:block;font-size:11px}
+  table.rsp td.mhead .hint,table.rsp td.mfirst .hint{display:block;font-size:var(--fs-11)}
   /* Whatever the headline already says, and every field the row does not have,
      needs no line of its own */
   table.rsp td.mhide,table.rsp td.mdash{display:none}
@@ -455,6 +475,13 @@ table.rsp td.mhead{display:none}
       <p class="hint" id="storageWarn" style="display:none"></p>
     </div>
     <div class="panel">
+      <h2 data-i18n="txt.title">Text size</h2>
+      <div class="seg" id="txtSeg" data-i18n-title="txt.title">
+        <button data-t="0">0</button><button data-t="2">+2</button><button data-t="4">+4</button><button data-t="6">+6</button><button data-t="8">+8</button>
+      </div>
+      <p class="hint" data-i18n="txt.note" style="margin:10px 0 0"></p>
+    </div>
+    <div class="panel">
       <div class="row">
         <h2 style="margin:0" data-i18n="ver.title">Version</h2>
         <span class="hint" id="verNow"></span>
@@ -509,6 +536,7 @@ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().c
 const UI = Object.assign({
   numfmt:'apo',
   lang: /^de/i.test(navigator.language||'') ? 'de' : 'en',
+  textsize:0,                       /* pixels added to every type size, see applyTextSize() */
   seenIntro:0,
   status:['Executed'],
   type:[],
@@ -631,6 +659,8 @@ en:{
   'data.full':'⚠️ Browser storage is full. Please save a backup and remove screenshots – otherwise new entries will be lost on reload.',
   'data.noStore':'<span class="neg">⚠ This browser is not storing anything right now.</span> Safari blocks storage when the file is opened directly from “Files” or a private window is active. The app works, but everything is gone after a reload. Please open the page via a web address (https://…).',
   'data.noStoreToast':'⚠️ No storage available – data will be lost on reload. Details under “Import / Data”.',
+  'txt.title':'Text size',
+  'txt.note':'Adds the chosen number of pixels to every text of the app, from the smallest label to the largest figure. The setting stays on this device.',
   'ver.title':'Version','ver.history':'Version history','ver.close':'Close','ver.current':'current',
   'ver.now':(v,d)=>`Running version ${v} · ${d}`,
   'ver.intro':'What each version of Depot Cockpit brought. Your stored data is never touched by an update.',
@@ -765,6 +795,8 @@ de:{
   'data.full':'⚠️ Der Browserspeicher ist voll. Bitte ein Backup sichern und Screenshots entfernen – neue Eingaben gehen sonst beim Neuladen verloren.',
   'data.noStore':'<span class="neg">⚠ Dieser Browser speichert gerade nichts.</span> Safari sperrt den Speicher, wenn die Datei direkt aus „Dateien“ geöffnet wird oder ein privates Fenster aktiv ist. Die App funktioniert, aber alles ist nach dem Neuladen weg. Bitte die Seite über eine Web-Adresse (https://…) öffnen.',
   'data.noStoreToast':'⚠️ Kein Speicher verfügbar – Daten gehen beim Neuladen verloren. Details unter „Import / Daten“.',
+  'txt.title':'Schriftgröße',
+  'txt.note':'Legt die gewählte Anzahl Pixel auf jeden Text der App, von der kleinsten Beschriftung bis zur größten Zahl. Die Einstellung bleibt auf diesem Gerät.',
   'ver.title':'Version','ver.history':'Versionsverlauf','ver.close':'Schließen','ver.current':'aktuell',
   'ver.now':(v,d)=>`Laufende Version ${v} · ${d}`,
   'ver.intro':'Was jede Version von Depot Cockpit gebracht hat. Deine gespeicherten Daten bleiben von einer Aktualisierung unberührt.',
@@ -1395,7 +1427,7 @@ function dash(){
   const top=RK.filter(p=>p.n).slice(0,12), max=Math.max(...top.map(p=>Math.abs(p.total)),1);
   document.getElementById('rank').innerHTML = top.map(p=>`
     <div style="margin-bottom:9px">
-      <div class="row" style="justify-content:space-between;font-size:13px">
+      <div class="row" style="justify-content:space-between;font-size:var(--fs-13)">
         <span class="clickable" onclick="detail('${js(p.isin)}')">${esc(p.name||p.isin)}</span>${sign(p.total)}
       </div>
       <div class="bar"><i style="width:${Math.abs(p.total)/max*100}%;${p.total<0?'background:var(--neg)':''}"></i></div>
@@ -1409,7 +1441,7 @@ function dash(){
     const lmax=Math.max(...losses.map(p=>Math.abs(p.total)),1);
     document.getElementById('rankLoss').innerHTML = losses.map(p=>`
       <div style="margin-bottom:9px">
-        <div class="row" style="justify-content:space-between;font-size:13px">
+        <div class="row" style="justify-content:space-between;font-size:var(--fs-13)">
           <span class="clickable" onclick="detail('${js(p.isin)}')">${esc(p.name||p.isin)}</span>${sign(p.total)}
         </div>
         <div class="bar"><i style="width:${Math.abs(p.total)/lmax*100}%;background:var(--neg)"></i></div>
@@ -1489,7 +1521,7 @@ function detail(isin){
     <button class="back" onclick="document.querySelector('nav button[data-v=pos]').click()">${t('det.back')}</button>
     <div class="panel"><h2>${esc(p.name||p.isin)} <span class="hint">${p.isin}</span></h2>
       ${p.orphan?`<p class="hint neg">${t('det.orphan',qty(p.orphan))}${UI.hideOrphan?t('det.orphanOn'):t('det.orphanOff')}</p>`:''}
-      <div class="cards">${stat.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:17px">${v}</div></div>`).join('')}</div>
+      <div class="cards">${stat.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:var(--fs-17)">${v}</div></div>`).join('')}</div>
     </div>
     <div class="panel"><h2>${t('det.all',rows.length)}</h2><div class="scroll">${txTableHtml(rows)}</div></div>
     <div class="panel"><h2>${t('det.notes')}</h2>${commentHtml('isin:'+isin)}</div>`;
@@ -1539,7 +1571,7 @@ function txTableHtml(rows, notes=true){
       <td class="num${md(RPL[r.id]!==undefined)}" ${l(8)}>${RPL[r.id]!==undefined?`<b>${sign(RPL[r.id])}</b>${orphanMark(r)}`:'<span class="mut">–</span>'}</td>
       <td class="num mut" ${l(9)}>${r.feeN?fmt(r.feeN):''}</td>
       <td class="num mut" ${l(10)}>${r.taxN?fmt(r.taxN):''}</td>
-      <td class="mut" style="font-size:11px" ${l(11)}>${esc(r.reference).slice(0,22)}</td>
+      <td class="mut" style="font-size:var(--fs-11)" ${l(11)}>${esc(r.reference).slice(0,22)}</td>
       ${notes?`<td ${l(12)}><button class="btn note" onclick="txNote(this.dataset.id)" data-id="${esc(r.id)}">💬${c?' '+c:''}</button></td>`:''}
     </tr>`}).join('')+'</tbody>';
   return '<table class="rsp">'+head+body+'</table>';
@@ -1630,7 +1662,7 @@ function calYearBox(y){
       best&&best[1]>0.004 ? t('cal.best',dt(best[0]),eur(best[1])) : ''],
     [t('cal.worst'), worst&&worst[1]<-0.004 ? sign(worst[1]) : '<span class="mut">–</span>',
       worst&&worst[1]<-0.004 ? dt(worst[0]) : '']
-  ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:19px">${v}</div><div class="hint">${h}</div></div>`).join('');
+  ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:var(--fs-19)">${v}</div><div class="hint">${h}</div></div>`).join('');
 }
 function calDay(iso){
   const rows=all().filter(r=>r.date===iso&&statusOK(r)&&typeOK(r));
@@ -1744,7 +1776,7 @@ function importDetail(i,kind){
     body=`<p class="hint">${t('imp.badHint')}</p><div class="scroll"><table class="rsp"><thead><tr>
         <th>${t('imp.line')}</th><th>${t('imp.text')}</th></tr></thead><tbody>`+
       rows.map(b=>`<tr><td class="mut" data-l="${esc(t('imp.line'))}">${b.n}</td>
-        <td class="mfirst" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px">${esc(b.text)||'—'}</td></tr>`).join('')+
+        <td class="mfirst" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-12)">${esc(b.text)||'—'}</td></tr>`).join('')+
       `</tbody></table></div>${e.bad.length>IMP_MAX?`<p class="hint">${t('imp.more',IMP_MAX,e.bad.length)}</p>`:''}`;
   } else if(kind==='skip'){
     /* Grouped by the reason, so it is plain which filter dropped what */
@@ -1929,6 +1961,24 @@ document.querySelectorAll('#langSeg button').forEach(b=> b.onclick=()=>{
   document.getElementById('report').innerHTML=''; LAST_IMPORT=[];
   applyStatic(); render();
 });
+
+/* ============================ Text size ============================ */
+/* Every type size of the stylesheet is a step plus --tsz, so writing one pixel
+   value here moves all of them at once – nothing has to be drawn again. */
+const TEXT_STEPS=[0,2,4,6,8];
+function applyTextSize(){
+  const px = TEXT_STEPS.includes(+UI.textsize) ? +UI.textsize : 0;
+  document.documentElement.style.setProperty('--tsz', px+'px');
+  /* A few boxes are laid out for the original size and only give way once the text
+     really is bigger – at step 0 the app looks exactly as it did before. */
+  document.documentElement.classList.toggle('ts-up', px>0);
+  document.querySelectorAll('#txtSeg button').forEach(b=> b.classList.toggle('on', +b.dataset.t===px));
+}
+document.querySelectorAll('#txtSeg button').forEach(b=> b.onclick=()=>{
+  UI.textsize=+b.dataset.t; saveUI(); applyTextSize();
+});
+applyTextSize();
+
 if(!LS.ok){
   document.getElementById('storageWarn').style.display='block';
   toast(t('data.noStoreToast'));
@@ -1939,6 +1989,10 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v33', d:'2026-08-15', items:[
+    {en:'Import / Data has a switch for the text size: 0, +2, +4, +6 or +8 pixels are added to every text of the app, and the choice is kept on the device.',
+     de:'Import / Daten hat einen Schalter für die Schriftgröße: 0, +2, +4, +6 oder +8 Pixel kommen auf jeden Text der App, und die Wahl bleibt auf dem Gerät.'}
+  ]},
   {v:'v32', d:'2026-08-14', items:[
     {en:'The calendar icon works as a switch: pressed once it opens the calendar, pressed again it returns to the overview.',
      de:'Das Kalendersymbol wirkt als Schalter: einmal gedrückt öffnet es den Kalender, noch einmal gedrückt führt es zurück zur Übersicht.'},
