@@ -25,24 +25,42 @@
   --fg:#e6edf3; --mut:#8b949e; --acc:#4f9cf9; --acc2:#7c5cff;
   --pos:#3fb950; --neg:#f85149; --warn:#d29922;
   --r:12px;
+  /* ---------- Type sizes ----------
+     Every text of the app takes its size from one of these steps. The switch under
+     Settings sets --tsz, and each step grows by that same number of pixels:
+     the order of the sizes therefore never changes, while the smallest labels gain
+     the most in relation to themselves – 11px reads 19px at +8, the 22px figure 30px. */
+  --tsz:0px;
+  --fs-10:calc(10px + var(--tsz)); --fs-11:calc(11px + var(--tsz));
+  --fs-12:calc(12px + var(--tsz)); --fs-13:calc(13px + var(--tsz));
+  --fs-14:calc(14px + var(--tsz)); --fs-15:calc(15px + var(--tsz));
+  --fs-16:calc(16px + var(--tsz)); --fs-17:calc(17px + var(--tsz));
+  --fs-19:calc(19px + var(--tsz)); --fs-22:calc(22px + var(--tsz));
 }
 *{box-sizing:border-box}
-body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);
+/* Split out of the font shorthand: a calc() in front of the /line-height is not
+   read reliably by older Safari. */
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:var(--fs-14);line-height:1.5;background:var(--bg);color:var(--fg);
   -webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:contain}
 a{color:var(--acc)}
 header{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
   border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
 .hd{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
   padding:12px max(20px,env(safe-area-inset-right)) 12px max(20px,env(safe-area-inset-left))}
+/* The one text that does not follow the size switch: the name is a mark, not something
+   to read, and it is the widest thing on a line that has to hold five controls. */
 .logo{font-weight:700;font-size:17px;letter-spacing:.3px}
-.logo span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+/* The name sits in .nm of its own so that fitHeader() can take it away and leave the
+   ◆ standing; .ac is the half that carries the gradient. */
+.logo .ac{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
 /* Round icon button in the top bar – the notes sit next to the app name.
    Declared after the .btn defaults further down would be cleaner, but the
    double class keeps it winning over them regardless of order. */
 /* 36px, the height of the language switch: its 34px buttons sit inside a border on
    each side, and the filter pill was matched to it – the icons follow suit. */
 button.btn.ico{width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;flex:0 0 auto;
-  display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
+  display:inline-flex;align-items:center;justify-content:center;font-size:var(--fs-15);line-height:1}
 button.btn.ico svg{width:19px;height:19px;display:block}
 /* An icon that stands for a view is lit like the tab it replaces */
 button.btn.ico.on{background:linear-gradient(90deg,var(--acc),var(--acc2));border-color:transparent;color:#fff}
@@ -50,17 +68,17 @@ button.btn.ico.on{background:linear-gradient(90deg,var(--acc),var(--acc2));borde
 #filtToggle .fico{display:none}
 /* Language switch – two states side by side, the active one is highlighted */
 .seg{display:inline-flex;flex:0 0 auto;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--bg3)}
-.seg button{background:transparent;border:none;color:var(--mut);font:inherit;font-size:12px;font-weight:600;
+.seg button{background:transparent;border:none;color:var(--mut);font:inherit;font-size:var(--fs-12);font-weight:600;
   padding:0 11px;min-height:34px;cursor:pointer;letter-spacing:.4px}
 .seg button.on{background:linear-gradient(90deg,var(--acc),var(--acc2));color:#fff}
 nav{display:flex;gap:4px;flex-wrap:wrap}
-nav button{background:transparent;border:1px solid transparent;color:var(--mut);padding:7px 14px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:500;min-height:36px}
+nav button{background:transparent;border:1px solid transparent;color:var(--mut);padding:7px 14px;border-radius:999px;cursor:pointer;font-size:var(--fs-13);font-weight:500;min-height:36px}
 nav button:hover{color:var(--fg);background:var(--bg3)}
 nav button.on{color:#fff;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 .filters{margin-left:auto;display:flex;gap:8px;align-items:center}
 /* 16px stops Safari on the iPhone from zooming in when a field is tapped */
 select,input,textarea,button.btn{background:var(--bg3);border:1px solid var(--line);color:var(--fg);padding:7px 10px;border-radius:8px;
-  font:inherit;font-size:16px;outline:none;-webkit-appearance:none;appearance:none;max-width:100%}
+  font:inherit;font-size:var(--fs-16);outline:none;-webkit-appearance:none;appearance:none;max-width:100%}
 select{padding-right:26px;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);
   background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
 input[type=checkbox]{-webkit-appearance:checkbox;appearance:checkbox;width:18px;height:18px}
@@ -69,31 +87,37 @@ select:focus,input:focus,textarea:focus{border-color:var(--acc)}
 button.btn{cursor:pointer}
 button.btn:hover{border-color:var(--acc)}
 button.pri{background:linear-gradient(90deg,var(--acc),var(--acc2));border:none;color:#fff;font-weight:600}
+/* Same shape as the tabs and the language switch – the two lower panels of the
+   settings tab read as rows of pills instead of a mix of pills and boxes. Only the
+   corners change: “Delete everything” keeps the red border and label it carries. */
+#dataPanel .btn,#verPanel .btn{border-radius:999px}
 main{max-width:1600px;margin:0 auto;
   padding:20px max(20px,env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
 .view{display:none}.view.on{display:block}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px}
+/* The column grows with the type: at the largest step a figure like 69'843.20 €
+   no longer fits the narrow track and would break across two lines. */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(190px + 8*var(--tsz)),1fr));gap:12px;margin-bottom:20px}
 .card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
-.card .k{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.7px}
-.card .v{font-size:22px;font-weight:650;margin-top:4px;font-variant-numeric:tabular-nums}
+.card .k{color:var(--mut);font-size:var(--fs-11);text-transform:uppercase;letter-spacing:.7px}
+.card .v{font-size:var(--fs-22);font-weight:650;margin-top:4px;font-variant-numeric:tabular-nums}
 .panel{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:16px}
-.panel h2{margin:0 0 12px;font-size:15px;font-weight:650}
-.panel h3{margin:16px 0 8px;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+.panel h2{margin:0 0 12px;font-size:var(--fs-15);font-weight:650}
+.panel h3{margin:16px 0 8px;font-size:var(--fs-13);color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none;background:var(--bg2);position:sticky;top:0}
+thead th{text-align:left;font-size:var(--fs-11);text-transform:uppercase;letter-spacing:.6px;color:var(--mut);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none;background:var(--bg2);position:sticky;top:0}
 thead th.num{text-align:right}
 td{padding:9px 10px;border-bottom:1px solid #1e242c;white-space:nowrap}
 tbody tr:hover{background:#1a2029}
 .num{text-align:right}
 .pos{color:var(--pos)}.neg{color:var(--neg)}.mut{color:var(--mut)}
-.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:var(--fs-11);font-weight:600;border:1px solid}
 .t-Buy{color:#79c0ff;border-color:#1f6feb55;background:#1f6feb18}
 .t-Sell{color:#ffa657;border-color:#bb800955;background:#bb800918}
 .t-Sparplan{color:#a5d6ff;border-color:#388bfd55;background:#388bfd18}
 .t-Dividende{color:var(--pos);border-color:#3fb95055;background:#3fb95018}
 .t-Cash{color:#d2a8ff;border-color:#8957e555;background:#8957e518}
 .t-Sonst{color:var(--mut);border-color:var(--line);background:#ffffff08}
-.st{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}
+.st{font-size:var(--fs-11);padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}
 .st.Executed{color:var(--pos);border-color:#3fb95055}
 .st.Pending{color:var(--warn);border-color:#d2992255}
 .st.Cancelled{color:var(--neg);border-color:#f8514955;text-decoration:line-through}
@@ -102,13 +126,17 @@ tbody tr:hover{background:#1a2029}
 .drop{border:2px dashed var(--line);border-radius:var(--r);padding:34px;text-align:center;color:var(--mut);transition:.15s}
 .drop.hot{border-color:var(--acc);background:#4f9cf912;color:var(--fg)}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-.cal .dow{color:var(--mut);font-size:11px;text-transform:uppercase;text-align:center;padding:4px 0}
-.day{background:var(--bg3);border:1px solid var(--line);border-radius:8px;min-height:96px;padding:5px;font-size:11px;overflow:hidden;cursor:pointer}
+.cal .dow{color:var(--mut);font-size:var(--fs-11);text-transform:uppercase;text-align:center;padding:4px 0}
+.day{background:var(--bg3);border:1px solid var(--line);border-radius:8px;min-height:calc(96px + 6*var(--tsz));padding:5px;font-size:var(--fs-11);overflow:hidden;cursor:pointer}
 .day:hover{border-color:var(--acc)}
 .day.empty{background:transparent;border-color:transparent;cursor:default}
 .day.today{outline:1px solid var(--acc);outline-offset:-1px}
 .day .d{color:var(--mut);font-weight:600;margin-bottom:3px;display:flex;justify-content:space-between;align-items:baseline;gap:4px}
-.day .pnl{font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
+/* Date and day result sit side by side. Enlarged, the pair no longer fits the ~45px
+   of a phone column, so the figure moves to its own line instead of being cut off at
+   the border of the box. Only above the first step – at 0 the row stays as it was. */
+html.ts-up .day .d{flex-wrap:wrap}
+.day .pnl{font-size:var(--fs-10);font-weight:700;font-variant-numeric:tabular-nums}
 .day.win{border-color:#3fb95055;background:linear-gradient(180deg,#3fb95012,transparent)}
 .day.loss{border-color:#f8514955;background:linear-gradient(180deg,#f8514912,transparent)}
 #calTitle{min-width:200px;line-height:1.25;text-align:center}
@@ -116,15 +144,15 @@ tbody tr:hover{background:#1a2029}
 .bar{height:8px;border-radius:4px;background:var(--bg3);overflow:hidden}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 .cmt{background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
-.cmt .meta{font-size:11px;color:var(--mut);margin-bottom:6px;display:flex;gap:8px;align-items:center}
-.cmt .meta button{margin-left:auto;background:none;border:none;color:var(--neg);cursor:pointer;font-size:11px}
+.cmt .meta{font-size:var(--fs-11);color:var(--mut);margin-bottom:6px;display:flex;gap:8px;align-items:center}
+.cmt .meta button{margin-left:auto;background:none;border:none;color:var(--neg);cursor:pointer;font-size:var(--fs-11)}
 .cmt img{max-width:100%;border-radius:8px;margin-top:8px;border:1px solid var(--line);cursor:zoom-in}
 .shots{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .shots .th{position:relative}
 .shots img{height:56px;border-radius:6px;border:1px solid var(--line)}
-.shots .x{position:absolute;top:-6px;right:-6px;background:var(--neg);border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:11px;line-height:1}
+.shots .x{position:absolute;top:-6px;right:-6px;background:var(--neg);border:none;color:#fff;border-radius:50%;width:calc(18px + var(--tsz));height:calc(18px + var(--tsz));cursor:pointer;font-size:var(--fs-11);line-height:1}
 textarea{width:100%;min-height:70px;resize:vertical}
-.hint{font-size:12px;color:var(--mut)}
+.hint{font-size:var(--fs-12);color:var(--mut)}
 #lightbox{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;z-index:200}
 #lightbox img{max-width:92vw;max-height:92vh;border-radius:10px}
 /* Welcome screen on first start, version history */
@@ -134,13 +162,13 @@ textarea{width:100%;min-height:70px;resize:vertical}
 #introBox,#chgBox{--mpy:22px;--mpx:24px;
   background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
   width:min(600px,100%);max-height:88vh;overflow:auto;padding:var(--mpy) var(--mpx);box-shadow:0 24px 70px #000c}
-#introBox h2,#chgBox h2{margin:0 0 4px;font-size:19px}
-#introBox h3{margin:18px 0 6px;font-size:12px;color:var(--acc);text-transform:uppercase;letter-spacing:.8px}
+#introBox h2,#chgBox h2{margin:0 0 4px;font-size:var(--fs-19)}
+#introBox h3{margin:18px 0 6px;font-size:var(--fs-12);color:var(--acc);text-transform:uppercase;letter-spacing:.8px}
 #introBox p,#chgBox p{margin:0 0 8px;color:var(--fg)}
 #introBox ol,#chgBox ul{margin:0;padding-left:20px}
 #introBox li,#chgBox li{margin-bottom:4px}
-#introBox .small,#chgBox .small{color:var(--mut);font-size:13px}
-#introOk{width:100%;margin-top:22px;padding:12px;font-size:15px;min-height:48px}
+#introBox .small,#chgBox .small{color:var(--mut);font-size:var(--fs-13)}
+#introOk{width:100%;margin-top:22px;padding:12px;font-size:var(--fs-15);min-height:48px}
 /* Title row of a modal: the close button sits at the top right, within reach
    without scrolling to the end of a long list, and stays there while it scrolls.
    The negative margins pull the row across the box padding, which is why that
@@ -149,12 +177,12 @@ textarea{width:100%;min-height:70px;resize:vertical}
   top:calc(var(--mpy) * -1);background:var(--bg2);
   margin:calc(var(--mpy) * -1) calc(var(--mpx) * -1) 4px;padding:var(--mpy) var(--mpx) 8px}
 .modal-hd h2{flex:1;margin:0}
-.modal-hd .btn.ico{font-size:13px}
+.modal-hd .btn.ico{font-size:var(--fs-13)}
 /* One block per version: heading line with number, date and marker */
 .chg-v{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:18px 0 6px;
   padding-top:12px;border-top:1px solid var(--line)}
 .chg-v:first-child{margin-top:10px;padding-top:0;border-top:none}
-.chg-v b{font-size:14px;color:var(--acc)}
+.chg-v b{font-size:var(--fs-14);color:var(--acc)}
 @media (max-width:820px){
   #intro,#chg{padding:0;align-items:stretch}
   #introBox,#chgBox{--mpy:calc(20px + env(safe-area-inset-top));--mpx:18px;
@@ -169,25 +197,25 @@ textarea{width:100%;min-height:70px;resize:vertical}
   position:fixed;inset:6% 0 auto 0;margin:0 auto;width:min(680px,92vw);z-index:150;max-height:84vh;overflow:auto;box-shadow:0 20px 60px #000a}
 /* Holds a transaction table – give it the room a table needs */
 .modal.wide{width:min(1000px,94vw)}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:12px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:var(--fs-11);color:var(--mut);margin-top:12px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 .dd{position:relative}
 .dd>button{white-space:nowrap}
 .dd .pop{position:absolute;right:0;top:calc(100% + 6px);min-width:210px;background:var(--bg2);border:1px solid var(--line);
   border-radius:10px;padding:8px;z-index:80;display:none;box-shadow:0 14px 40px #000a}
 .dd.open .pop{display:block}
-.chk{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;white-space:nowrap;font-size:13px}
+.chk{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;white-space:nowrap;font-size:var(--fs-13)}
 .chk:hover{background:var(--bg3)}
 .chk input{margin:0}
-.chk .cnt{margin-left:auto;color:var(--mut);font-size:11px;font-variant-numeric:tabular-nums}
+.chk .cnt{margin-left:auto;color:var(--mut);font-size:var(--fs-11);font-variant-numeric:tabular-nums}
 .dd .pop hr{border:none;border-top:1px solid var(--line);margin:6px 0}
-.dd .pop .row button{font-size:12px;padding:4px 9px}
-.btn.note{padding:3px 10px;font-size:12px;min-height:30px}
+.dd .pop .row button{font-size:var(--fs-12);padding:4px 9px}
+.btn.note{padding:3px 10px;font-size:var(--fs-12);min-height:30px}
 /* Same shape as the language switch next to it: pill, one line high, small
    capitals – the two sit side by side and would otherwise not look related. */
 button.btn#filtToggle{display:none;position:relative;white-space:nowrap;
   height:36px;min-height:36px;padding:0 12px;border-radius:999px;background:var(--bg3);
-  font-size:12px;font-weight:600;letter-spacing:.4px;color:var(--mut);
+  font-size:var(--fs-12);font-weight:600;letter-spacing:.4px;color:var(--mut);
   align-items:center;justify-content:center}
 button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2));border-color:transparent;color:#fff}
 /* A dot on the button when a filter is narrowing what is shown – otherwise a
@@ -220,15 +248,15 @@ button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2)
   .dd .pop{left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));top:auto}
   main{padding-top:14px}
   .panel{padding:12px}
-  .cards{grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px}
+  .cards{grid-template-columns:repeat(auto-fit,minmax(calc(148px + 8*var(--tsz)),1fr));gap:9px}
   .card{padding:11px 12px}
-  .card .v{font-size:19px}
-  td,thead th{padding:8px 7px;font-size:13px}
+  .card .v{font-size:var(--fs-19)}
+  td,thead th{padding:8px 7px;font-size:var(--fs-13)}
   .btn.note{min-height:38px;min-width:44px}
   .cal{gap:4px}
-  .day{min-height:58px;padding:4px}
+  .day{min-height:calc(58px + 3*var(--tsz));padding:4px}
   .day .ev,.day .hint{display:none}
-  .day .d{font-size:12px}
+  .day .d{font-size:var(--fs-12)}
   /* A day box is barely 50 px wide here – the currency sign would wrap the figure */
   .day .pnl .cur{display:none}
   /* Events are hidden at this width – a dot keeps days with bookings visible */
@@ -275,15 +303,15 @@ table.rsp td.mhead{display:none}
     padding:8px 11px;margin-bottom:9px}
   table.rsp tr:hover{background:var(--bg3)}
   table.rsp td{border:none;padding:4px 0;white-space:normal;text-align:right;
-    display:flex;gap:12px;align-items:baseline;justify-content:space-between;font-size:13px}
-  table.rsp td::before{content:attr(data-l);text-align:left;color:var(--mut);font-size:11px;
+    display:flex;gap:12px;align-items:baseline;justify-content:space-between;font-size:var(--fs-13)}
+  table.rsp td::before{content:attr(data-l);text-align:left;color:var(--mut);font-size:var(--fs-11);
     text-transform:uppercase;letter-spacing:.6px;flex:0 0 auto}
   table.rsp td:empty{display:none}
   /* Card headline: the name, no label in front of it */
   table.rsp td.mhead,table.rsp td.mfirst{display:block;text-align:left;padding:0 0 6px;
-    margin-bottom:5px;border-bottom:1px solid var(--line);font-size:14px}
+    margin-bottom:5px;border-bottom:1px solid var(--line);font-size:var(--fs-14)}
   table.rsp td.mhead::before,table.rsp td.mfirst::before{content:none}
-  table.rsp td.mhead .hint,table.rsp td.mfirst .hint{display:block;font-size:11px}
+  table.rsp td.mhead .hint,table.rsp td.mfirst .hint{display:block;font-size:var(--fs-11)}
   /* Whatever the headline already says, and every field the row does not have,
      needs no line of its own */
   table.rsp td.mhide,table.rsp td.mdash{display:none}
@@ -296,7 +324,7 @@ table.rsp td.mhead{display:none}
 <body>
 <header>
   <div class="hd">
-    <div class="logo">◆ Depot <span>Cockpit</span></div>
+    <div class="logo">◆ <span class="nm">Depot <span class="ac">Cockpit</span></span></div>
     <!-- Drawn rather than typed: the ℹ glyph is a serif italic in most fonts and
          looked nothing like the rest of the bar. -->
     <button class="btn ico" id="introOpen" data-i18n-title="hdr.notes" data-i18n-aria="hdr.notes">
@@ -322,7 +350,7 @@ table.rsp td.mhead{display:none}
       <button data-v="dash" class="on" data-i18n="nav.dash">Overview</button>
       <button data-v="pos" data-i18n="nav.pos">Positions</button>
       <button data-v="tx" data-i18n="nav.tx">Transactions</button>
-      <button data-v="imp" data-i18n="nav.imp">Import / Data</button>
+      <button data-v="imp" data-i18n="nav.imp">Settings</button>
     </nav>
     <!-- The calendar is a view of its own rather than another list, so it sits as an icon
          at the end of this line instead of taking a slot in the tab strip. -->
@@ -390,7 +418,6 @@ table.rsp td.mhead{display:none}
     <div class="panel">
       <div class="row" style="margin-bottom:10px">
         <input id="txSearch" data-i18n-ph="tx.search" style="flex:1;min-width:220px">
-        <button class="btn" id="expCsv" data-i18n="tx.export">Export CSV</button>
       </div>
       <div class="scroll" id="txWrap"></div>
     </div>
@@ -434,13 +461,19 @@ table.rsp td.mhead{display:none}
       <p class="hint" data-i18n="imp.whichTypeNote"></p>
       <div id="report"></div>
     </div>
-    <div class="panel">
+    <div class="panel" id="dataPanel">
       <h2 data-i18n="data.title">Stored data</h2>
       <p id="dbInfo" class="hint" style="margin:0 0 12px"></p>
       <div class="row" style="margin-bottom:10px">
         <button class="btn" id="expJson" data-i18n="data.save">Save backup (JSON)</button>
         <button class="btn" id="impJson" data-i18n="data.restore">Restore backup</button>
       </div>
+      <div class="row" style="margin-bottom:6px">
+        <button class="btn" id="expCsv" data-i18n="tx.export">Export CSV</button>
+      </div>
+      <!-- The filters of the top bar are out of sight on this tab, so the CSV says
+           for itself how much of the stored data it is about to write. -->
+      <p id="csvInfo" class="hint" style="margin:0 0 12px"></p>
       <div class="row" style="margin-bottom:10px">
         <select id="dropTypeSel"></select>
         <button class="btn" id="dropType" data-i18n="data.dropType">Remove type</button>
@@ -455,11 +488,18 @@ table.rsp td.mhead{display:none}
       <p class="hint" id="storageWarn" style="display:none"></p>
     </div>
     <div class="panel">
+      <h2 data-i18n="txt.title">Text size</h2>
+      <div class="seg" id="txtSeg" data-i18n-title="txt.title">
+        <button data-t="0">0</button><button data-t="2">+2</button><button data-t="4">+4</button><button data-t="6">+6</button><button data-t="8">+8</button>
+      </div>
+      <p class="hint" data-i18n="txt.note" style="margin:10px 0 0"></p>
+    </div>
+    <div class="panel" id="verPanel">
       <div class="row">
         <h2 style="margin:0" data-i18n="ver.title">Version</h2>
         <span class="hint" id="verNow"></span>
-        <button class="btn" id="chgOpen" data-i18n="ver.history" style="margin-left:auto">Version history</button>
       </div>
+      <button class="btn" id="chgOpen" data-i18n="ver.history" style="display:block;margin:12px auto 0">Version history</button>
     </div>
   </section>
 </main>
@@ -509,6 +549,7 @@ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().c
 const UI = Object.assign({
   numfmt:'apo',
   lang: /^de/i.test(navigator.language||'') ? 'de' : 'en',
+  textsize:0,                       /* pixels added to every type size, see applyTextSize() */
   seenIntro:0,
   status:['Executed'],
   type:[],
@@ -531,7 +572,7 @@ const saveUI = () => { try{ LS.set('dc_ui', JSON.stringify(UI)); }catch(e){} };
 const L={
 en:{
   'hdr.notes':'Notes','hdr.lang':'Language','hdr.numfmt':'Number format','hdr.filtersBtn':'Filters ▾','hdr.filters':'Filters',
-  'nav.dash':'Overview','nav.pos':'Positions','nav.tx':'Transactions','nav.cal':'Calendar','nav.imp':'Import / Data',
+  'nav.dash':'Overview','nav.pos':'Positions','nav.tx':'Transactions','nav.cal':'Calendar','nav.imp':'Settings',
   mon:['January','February','March','April','May','June','July','August','September','October','November','December'],
   dow:['Mo','Tu','We','Th','Fr','Sa','Su'],
   locale:'sv-SE',
@@ -595,7 +636,7 @@ en:{
   'imp.drop':'or drag a CSV here · multiple files and partial exports are fine · duplicates are detected and skipped automatically',
   'imp.dropTouch':'Multiple files and partial exports are fine · duplicates are detected and skipped automatically',
   'imp.which':'Which statuses to import?',
-  'imp.whichNote':'Unticked rows are never stored in the first place. At Scalable, cancelled and pending orders carry no amounts – they only document the attempt. The dashed box covers statuses this list does not name yet: ticked they are imported, unticked they are left out. Rows already imported are kept; use “Remove cancelled” below to clean up.',
+  'imp.whichNote':'The dashed box covers statuses this list does not name yet: ticked they are imported, unticked they are left out. Rows already imported are kept; use “Remove cancelled” below to clean up.',
   'imp.new':n=>`✔ ${n} new`,'imp.dup':n=>`${n} duplicates skipped`,'imp.upd':n=>`${n} updated`,
   'imp.skip':n=>`${n} left out by the import filters`,'imp.bad':n=>`${n} unreadable rows`,
   'imp.done':'Import complete.',
@@ -608,10 +649,11 @@ en:{
   'imp.badHint':'A line is read when it holds at least 11 fields separated by semicolons and starts with a date in the form yyyy-mm-dd. Header and blank lines are skipped on purpose and are not listed here.',
   'imp.line':'Line','imp.text':'Content','imp.more':(a,b)=>`Showing the first ${a} of ${b} rows.`,
   'imp.whichType':'Which types to import?',
-  'imp.whichTypeNote':'Unticked types are never stored – useful for bookings that are of no interest in this depot, securities transfers say. The dashed box covers types this list does not name yet; leave it ticked and a type from a future export comes in rather than being dropped without a word. Already stored rows stay; “Remove type” below clears them out.',
+  'imp.whichTypeNote':'The dashed box covers types this list does not name yet: ticked they are imported, unticked they are left out. Rows already imported are kept; use “Remove type” below to clean up.',
   'imp.skipTypes':s=>'The import will now leave out: '+s,
   'imp.skipNone':'Every type is imported again.',
   'data.title':'Stored data','data.save':'Save backup (JSON)','data.restore':'Restore backup',
+  'data.csvNote':(n,all)=>`The CSV holds the current selection of the top bar: ${n} of ${all} ${all===1?'transaction':'transactions'}.`,
   'data.dropCancelled':'Remove cancelled','data.wipe':'Delete everything',
   'data.dropType':'Remove type','data.typeSelNone':'no types stored',
   'data.typeHint':'removes every stored transaction of that type, e.g. security transfers',
@@ -630,7 +672,9 @@ en:{
   'data.badBackup':'Invalid backup file.',
   'data.full':'⚠️ Browser storage is full. Please save a backup and remove screenshots – otherwise new entries will be lost on reload.',
   'data.noStore':'<span class="neg">⚠ This browser is not storing anything right now.</span> Safari blocks storage when the file is opened directly from “Files” or a private window is active. The app works, but everything is gone after a reload. Please open the page via a web address (https://…).',
-  'data.noStoreToast':'⚠️ No storage available – data will be lost on reload. Details under “Import / Data”.',
+  'data.noStoreToast':'⚠️ No storage available – data will be lost on reload. Details under “Settings”.',
+  'txt.title':'Text size',
+  'txt.note':'Adds the chosen number of pixels to every text of the app, from the smallest label to the largest figure. The setting stays on this device.',
   'ver.title':'Version','ver.history':'Version history','ver.close':'Close','ver.current':'current',
   'ver.now':(v,d)=>`Running version ${v} · ${d}`,
   'ver.intro':'What each version of Depot Cockpit brought. Your stored data is never touched by an update.',
@@ -647,7 +691,7 @@ en:{
   <p>The transaction export from Scalable Capital as a CSV file.<br>
     In the broker under <b>Account → Transactions → Export</b>, pick a period and save the file.</p>
   <p class="small">Multiple files and partial periods are no problem: the app detects duplicate rows
-    itself and skips them. Import under <b>Import / Data</b>.</p>
+    itself and skips them. Import under <b>Settings</b>.</p>
 
   <h3>As an app on your iPhone</h3>
   <ol>
@@ -662,11 +706,11 @@ en:{
     There is no server, no account, no background analysis.</p>
   <p>Nothing leaves unless you trigger it yourself – a CSV export or a backup via the share menu.</p>
   <p class="small"><b>Important:</b> browser storage is not permanent. Save a backup regularly
-    under <b>Import / Data → Save backup (JSON)</b>.</p>`
+    under <b>Settings → Save backup (JSON)</b>.</p>`
 },
 de:{
   'hdr.notes':'Hinweise','hdr.lang':'Sprache','hdr.numfmt':'Zahlenformat','hdr.filtersBtn':'Filter ▾','hdr.filters':'Filter',
-  'nav.dash':'Übersicht','nav.pos':'Positionen','nav.tx':'Transaktionen','nav.cal':'Kalender','nav.imp':'Import / Daten',
+  'nav.dash':'Übersicht','nav.pos':'Positionen','nav.tx':'Transaktionen','nav.cal':'Kalender','nav.imp':'Einstellungen',
   mon:['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'],
   dow:['Mo','Di','Mi','Do','Fr','Sa','So'],
   locale:'de-DE',
@@ -730,7 +774,7 @@ de:{
   'imp.drop':'oder CSV hierher ziehen · mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen',
   'imp.dropTouch':'Mehrere Dateien und Teil-Exporte möglich · Duplikate werden automatisch erkannt und übersprungen',
   'imp.which':'Welche Status übernehmen?',
-  'imp.whichNote':'Nicht angehakte Zeilen werden gar nicht erst gespeichert. Abgebrochene und offene Orders enthalten bei Scalable keine Beträge – sie dokumentieren nur den Versuch. Das gestrichelte Kästchen steht für Status, die diese Liste noch nicht kennt: angehakt werden sie übernommen, sonst ausgelassen. Bereits importierte Zeilen bleiben erhalten; zum Aufräumen unten „Abgebrochene entfernen“ nutzen.',
+  'imp.whichNote':'Das gestrichelte Kästchen steht für Status, die diese Liste noch nicht kennt: angehakt werden sie übernommen, sonst ausgelassen. Bereits importierte Zeilen bleiben erhalten; zum Aufräumen unten „Abgebrochene entfernen“ nutzen.',
   'imp.new':n=>`✔ ${n} neu`,'imp.dup':n=>`${n} Duplikate übersprungen`,'imp.upd':n=>`${n} aktualisiert`,
   'imp.skip':n=>`${n} per Importfilter ausgelassen`,'imp.bad':n=>`${n} Zeilen unlesbar`,
   'imp.done':'Import abgeschlossen.',
@@ -743,10 +787,11 @@ de:{
   'imp.badHint':'Eine Zeile wird gelesen, wenn sie mindestens 11 durch Semikolon getrennte Felder enthält und mit einem Datum der Form jjjj-mm-tt beginnt. Kopf- und Leerzeilen werden bewusst übersprungen und stehen hier nicht.',
   'imp.line':'Zeile','imp.text':'Inhalt','imp.more':(a,b)=>`Es werden die ersten ${a} von ${b} Zeilen gezeigt.`,
   'imp.whichType':'Welche Typen übernehmen?',
-  'imp.whichTypeNote':'Nicht angehakte Typen werden gar nicht erst gespeichert – praktisch für Buchungen, die in diesem Depot nicht interessieren, etwa Depotüberträge. Das gestrichelte Kästchen steht für Typen, die diese Liste noch nicht kennt; bleibt es angehakt, kommt ein Typ aus einem künftigen Export herein, statt stillschweigend verloren zu gehen. Bereits gespeicherte Zeilen bleiben; „Typ entfernen“ unten räumt sie weg.',
+  'imp.whichTypeNote':'Das gestrichelte Kästchen steht für Typen, die diese Liste noch nicht kennt: angehakt werden sie übernommen, sonst ausgelassen. Bereits importierte Zeilen bleiben erhalten; zum Aufräumen unten „Typ entfernen“ nutzen.',
   'imp.skipTypes':s=>'Der Import lässt künftig aus: '+s,
   'imp.skipNone':'Alle Typen werden wieder übernommen.',
   'data.title':'Gespeicherte Daten','data.save':'Backup (JSON) sichern','data.restore':'Backup einspielen',
+  'data.csvNote':(n,all)=>`Die CSV enthält die aktuelle Auswahl der Kopfzeile: ${n} von ${all} ${all===1?'Transaktion':'Transaktionen'}.`,
   'data.dropCancelled':'Abgebrochene entfernen','data.wipe':'Alles löschen',
   'data.dropType':'Typ entfernen','data.typeSelNone':'keine Typen gespeichert',
   'data.typeHint':'entfernt alle gespeicherten Vorgänge dieses Typs, etwa Depotüberträge',
@@ -764,7 +809,9 @@ de:{
   'data.badBackup':'Ungültige Backup-Datei.',
   'data.full':'⚠️ Der Browserspeicher ist voll. Bitte ein Backup sichern und Screenshots entfernen – neue Eingaben gehen sonst beim Neuladen verloren.',
   'data.noStore':'<span class="neg">⚠ Dieser Browser speichert gerade nichts.</span> Safari sperrt den Speicher, wenn die Datei direkt aus „Dateien“ geöffnet wird oder ein privates Fenster aktiv ist. Die App funktioniert, aber alles ist nach dem Neuladen weg. Bitte die Seite über eine Web-Adresse (https://…) öffnen.',
-  'data.noStoreToast':'⚠️ Kein Speicher verfügbar – Daten gehen beim Neuladen verloren. Details unter „Import / Daten“.',
+  'data.noStoreToast':'⚠️ Kein Speicher verfügbar – Daten gehen beim Neuladen verloren. Details unter „Einstellungen“.',
+  'txt.title':'Schriftgröße',
+  'txt.note':'Legt die gewählte Anzahl Pixel auf jeden Text der App, von der kleinsten Beschriftung bis zur größten Zahl. Die Einstellung bleibt auf diesem Gerät.',
   'ver.title':'Version','ver.history':'Versionsverlauf','ver.close':'Schließen','ver.current':'aktuell',
   'ver.now':(v,d)=>`Laufende Version ${v} · ${d}`,
   'ver.intro':'Was jede Version von Depot Cockpit gebracht hat. Deine gespeicherten Daten bleiben von einer Aktualisierung unberührt.',
@@ -781,7 +828,7 @@ de:{
   <p>Den Transaktionsexport von Scalable Capital als CSV-Datei.<br>
     Im Broker unter <b>Konto → Transaktionen → Export</b>, Zeitraum wählen, Datei sichern.</p>
   <p class="small">Mehrere Dateien und Teilzeiträume sind kein Problem: doppelte Zeilen erkennt die App
-    selbst und überspringt sie. Import unter <b>Import / Daten</b>.</p>
+    selbst und überspringt sie. Import unter <b>Einstellungen</b>.</p>
 
   <h3>Als App aufs iPhone</h3>
   <ol>
@@ -796,7 +843,7 @@ de:{
     Es gibt keinen Server, kein Konto, keine Auswertung im Hintergrund.</p>
   <p>Nach außen geht etwas nur, wenn du es selbst auslöst – CSV-Export oder Backup über das Teilen-Menü.</p>
   <p class="small"><b>Wichtig:</b> Der Browserspeicher ist nicht dauerhaft. Sichere regelmäßig ein Backup
-    unter <b>Import / Daten → Backup (JSON) sichern</b>.</p>`
+    unter <b>Einstellungen → Backup (JSON) sichern</b>.</p>`
 }};
 /* Fall back to English for anything a translation is missing */
 const tv = k => { const v=(L[UI.lang]||L.en)[k]; return v===undefined ? L.en[k] : v; };
@@ -1224,6 +1271,9 @@ function show(v){
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
   document.getElementById('v-'+v).classList.add('on');
   render();
+  /* The filter button is only out on some views, so the top line changes width with
+     the view – what fitted a moment ago may push the calendar into a second row. */
+  fitHeader();
   scrollNavIntoView();
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -1265,7 +1315,7 @@ function buildStatusFilter(){
   Object.values(DB.tx).forEach(r=>cnt[r.status]=(cnt[r.status]||0)+1);
   document.getElementById('ddStatusPop').innerHTML=
     list.map(s=>`<label class="chk"><input type="checkbox" value="${esc(s)}" ${UI.status.includes(s)?'checked':''}>
-      <span class="st ${esc(s)}">${esc(s)}</span> <span>${esc(stLabel(s))}</span>
+      <span class="st ${esc(s)}">${esc(s)}</span>
       <span class="cnt">${cnt[s]||0}</span></label>`).join('')+
     `<hr><div class="row"><button class="btn" data-p="all">${t('f.all')}</button>
       <button class="btn" data-p="exec">${t('f.execOnly')}</button></div>`;
@@ -1337,6 +1387,8 @@ function render(){
   buildOrphanFilter();
   document.getElementById('dbInfo').textContent = t('data.info',
     Object.keys(DB.tx).length, Object.keys(DB.cmt).length, (JSON.stringify(DB).length/1024).toFixed(0));
+  document.getElementById('csvInfo').textContent = t('data.csvNote',
+    filtered().length, Object.keys(DB.tx).length);
   if(view==='dash') dash();
   if(view==='pos')  posView();
   if(view==='tx')   txView();
@@ -1395,7 +1447,7 @@ function dash(){
   const top=RK.filter(p=>p.n).slice(0,12), max=Math.max(...top.map(p=>Math.abs(p.total)),1);
   document.getElementById('rank').innerHTML = top.map(p=>`
     <div style="margin-bottom:9px">
-      <div class="row" style="justify-content:space-between;font-size:13px">
+      <div class="row" style="justify-content:space-between;font-size:var(--fs-13)">
         <span class="clickable" onclick="detail('${js(p.isin)}')">${esc(p.name||p.isin)}</span>${sign(p.total)}
       </div>
       <div class="bar"><i style="width:${Math.abs(p.total)/max*100}%;${p.total<0?'background:var(--neg)':''}"></i></div>
@@ -1409,7 +1461,7 @@ function dash(){
     const lmax=Math.max(...losses.map(p=>Math.abs(p.total)),1);
     document.getElementById('rankLoss').innerHTML = losses.map(p=>`
       <div style="margin-bottom:9px">
-        <div class="row" style="justify-content:space-between;font-size:13px">
+        <div class="row" style="justify-content:space-between;font-size:var(--fs-13)">
           <span class="clickable" onclick="detail('${js(p.isin)}')">${esc(p.name||p.isin)}</span>${sign(p.total)}
         </div>
         <div class="bar"><i style="width:${Math.abs(p.total)/lmax*100}%;background:var(--neg)"></i></div>
@@ -1489,7 +1541,7 @@ function detail(isin){
     <button class="back" onclick="document.querySelector('nav button[data-v=pos]').click()">${t('det.back')}</button>
     <div class="panel"><h2>${esc(p.name||p.isin)} <span class="hint">${p.isin}</span></h2>
       ${p.orphan?`<p class="hint neg">${t('det.orphan',qty(p.orphan))}${UI.hideOrphan?t('det.orphanOn'):t('det.orphanOff')}</p>`:''}
-      <div class="cards">${stat.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:17px">${v}</div></div>`).join('')}</div>
+      <div class="cards">${stat.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:var(--fs-17)">${v}</div></div>`).join('')}</div>
     </div>
     <div class="panel"><h2>${t('det.all',rows.length)}</h2><div class="scroll">${txTableHtml(rows)}</div></div>
     <div class="panel"><h2>${t('det.notes')}</h2>${commentHtml('isin:'+isin)}</div>`;
@@ -1539,7 +1591,7 @@ function txTableHtml(rows, notes=true){
       <td class="num${md(RPL[r.id]!==undefined)}" ${l(8)}>${RPL[r.id]!==undefined?`<b>${sign(RPL[r.id])}</b>${orphanMark(r)}`:'<span class="mut">–</span>'}</td>
       <td class="num mut" ${l(9)}>${r.feeN?fmt(r.feeN):''}</td>
       <td class="num mut" ${l(10)}>${r.taxN?fmt(r.taxN):''}</td>
-      <td class="mut" style="font-size:11px" ${l(11)}>${esc(r.reference).slice(0,22)}</td>
+      <td class="mut" style="font-size:var(--fs-11)" ${l(11)}>${esc(r.reference).slice(0,22)}</td>
       ${notes?`<td ${l(12)}><button class="btn note" onclick="txNote(this.dataset.id)" data-id="${esc(r.id)}">💬${c?' '+c:''}</button></td>`:''}
     </tr>`}).join('')+'</tbody>';
   return '<table class="rsp">'+head+body+'</table>';
@@ -1630,7 +1682,7 @@ function calYearBox(y){
       best&&best[1]>0.004 ? t('cal.best',dt(best[0]),eur(best[1])) : ''],
     [t('cal.worst'), worst&&worst[1]<-0.004 ? sign(worst[1]) : '<span class="mut">–</span>',
       worst&&worst[1]<-0.004 ? dt(worst[0]) : '']
-  ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:19px">${v}</div><div class="hint">${h}</div></div>`).join('');
+  ].map(([k,v,h])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:var(--fs-19)">${v}</div><div class="hint">${h}</div></div>`).join('');
 }
 function calDay(iso){
   const rows=all().filter(r=>r.date===iso&&statusOK(r)&&typeOK(r));
@@ -1744,7 +1796,7 @@ function importDetail(i,kind){
     body=`<p class="hint">${t('imp.badHint')}</p><div class="scroll"><table class="rsp"><thead><tr>
         <th>${t('imp.line')}</th><th>${t('imp.text')}</th></tr></thead><tbody>`+
       rows.map(b=>`<tr><td class="mut" data-l="${esc(t('imp.line'))}">${b.n}</td>
-        <td class="mfirst" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px">${esc(b.text)||'—'}</td></tr>`).join('')+
+        <td class="mfirst" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-12)">${esc(b.text)||'—'}</td></tr>`).join('')+
       `</tbody></table></div>${e.bad.length>IMP_MAX?`<p class="hint">${t('imp.more',IMP_MAX,e.bad.length)}</p>`:''}`;
   } else if(kind==='skip'){
     /* Grouped by the reason, so it is plain which filter dropped what */
@@ -1824,9 +1876,11 @@ const otherBox=(skip,label)=>`<label class="chk" style="border:1px dashed var(--
   <span class="hint">${esc(label)}</span></label>`;
 function buildImportFilter(){
   const box=document.getElementById('impStatus');
+  /* The status name of the CSV speaks for itself – printing its translation next to it
+     only read as “Executed executed”. stLabel() still names the status in the toasts. */
   box.innerHTML=impStatusList().map(s=>`<label class="chk" style="border:1px solid var(--line)">
     <input type="checkbox" value="${esc(s)}" ${UI.impSkipStatus.includes(s)?'':'checked'}>
-    <span class="st ${esc(s)}">${esc(s)}</span><span class="hint">${esc(stLabel(s))}</span></label>`).join('')
+    <span class="st ${esc(s)}">${esc(s)}</span></label>`).join('')
     + otherBox(UI.impSkipUnknownStatus, t('imp.otherStatus'));
   box.querySelectorAll('input').forEach(i=> i.onchange=()=>{
     const off=[...box.querySelectorAll('input:not(:checked)')];
@@ -1921,6 +1975,8 @@ function applyStatic(){
   document.querySelectorAll('#langSeg button').forEach(b=> b.classList.toggle('on', b.dataset.l===UI.lang));
   if(!LS.ok) document.getElementById('storageWarn').innerHTML=t('data.noStore');
   buildChangelog();
+  /* The other language writes wider labels into the top line – measure again */
+  fitHeader();
 }
 document.querySelectorAll('#langSeg button').forEach(b=> b.onclick=()=>{
   if(UI.lang===b.dataset.l) return;
@@ -1929,6 +1985,48 @@ document.querySelectorAll('#langSeg button').forEach(b=> b.onclick=()=>{
   document.getElementById('report').innerHTML=''; LAST_IMPORT=[];
   applyStatic(); render();
 });
+
+/* ============================ Text size ============================ */
+/* Every type size of the stylesheet is a step plus --tsz, so writing one pixel
+   value here moves all of them at once – nothing has to be drawn again. */
+const TEXT_STEPS=[0,2,4,6,8];
+function applyTextSize(){
+  const px = TEXT_STEPS.includes(+UI.textsize) ? +UI.textsize : 0;
+  document.documentElement.style.setProperty('--tsz', px+'px');
+  /* A few boxes are laid out for the original size and only give way once the text
+     really is bigger – at step 0 the app looks exactly as it did before. */
+  document.documentElement.classList.toggle('ts-up', px>0);
+  document.querySelectorAll('#txtSeg button').forEach(b=> b.classList.toggle('on', +b.dataset.t===px));
+  fitHeader();
+}
+document.querySelectorAll('#txtSeg button').forEach(b=> b.onclick=()=>{
+  UI.textsize=+b.dataset.t; saveUI(); applyTextSize();
+});
+
+/* ============================ Header fit ============================ */
+/* The app name gives way before the top line breaks: on a narrow phone – and at a
+   larger text size on any phone – the calendar icon was pushed onto a row of its own.
+   No media query can decide this, because it depends on the width, on the text size,
+   on the language and on the view all at once (the filter button is only out on some
+   of them). So it is measured, on the one number that says everything: the height of
+   the bar. If dropping the name makes the bar shorter, a row has been saved and the
+   name stays away; if it changes nothing – above 820px it is the tab strip that
+   wraps, not the name – the name is put back. */
+function fitHeader(){
+  const hd=document.querySelector('.hd'), nm=document.querySelector('.logo .nm');
+  nm.style.display='';
+  const tall=hd.getBoundingClientRect().height;
+  nm.style.display='none';
+  if(hd.getBoundingClientRect().height >= tall) nm.style.display='';
+}
+/* One measurement per frame is enough while a window is being dragged */
+let fitPending=0;
+addEventListener('resize', ()=>{
+  if(fitPending) return;
+  fitPending=requestAnimationFrame(()=>{ fitPending=0; fitHeader(); });
+});
+applyTextSize();   // sets the text size and takes the first measurement
+
 if(!LS.ok){
   document.getElementById('storageWarn').style.display='block';
   toast(t('data.noStoreToast'));
@@ -1939,6 +2037,22 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v34', d:'2026-08-16', items:[
+    {en:'“Import / Data” is now called Settings – it holds the import filters, the stored data, the text size and the version.',
+     de:'„Import / Daten“ heißt jetzt Einstellungen – dort liegen Importfilter, gespeicherte Daten, Schriftgröße und Version.'},
+    {en:'The CSV export has moved from Transactions to Settings, under the two backup buttons, and says how many of the stored transactions the filters of the top bar let through.',
+     de:'Der CSV-Export ist von den Transaktionen zu den Einstellungen unter die beiden Backup-Knöpfe gewandert und nennt, wie viele der gespeicherten Vorgänge die Filter der Kopfzeile durchlassen.'},
+    {en:'The status boxes of the import no longer print the same word twice, and the notes above both import filters are down to what they have to say.',
+     de:'Die Status-Kästchen des Imports schreiben dasselbe Wort nicht mehr doppelt, und die Hinweise über beiden Importfiltern sagen nur noch das Nötige.'},
+    {en:'Stored data and Version are rows of pills now, like the tabs above them; “Delete everything” keeps its red, and the version history sits centred under its title.',
+     de:'Gespeicherte Daten und Version sind jetzt Reihen von Pillen wie die Tabs darüber; „Alles löschen“ behält sein Rot, und der Versionsverlauf sitzt mittig unter seinem Titel.'}
+  ]},
+  {v:'v33', d:'2026-08-16', items:[
+    {en:'Import / Data has a switch for the text size: 0, +2, +4, +6 or +8 pixels are added to every text of the app, and the choice is kept on the device.',
+     de:'Import / Daten hat einen Schalter für die Schriftgröße: 0, +2, +4, +6 oder +8 Pixel kommen auf jeden Text der App, und die Wahl bleibt auf dem Gerät.'},
+    {en:'The app name keeps its size whatever the switch says, and where the top line is still too narrow for everything it steps aside and leaves the ◆, instead of pushing the calendar onto a second row.',
+     de:'Der App-Name behält seine Größe, was der Schalter auch sagt, und wo die Kopfzeile trotzdem zu schmal für alles ist, tritt er zurück und lässt das ◆ stehen, statt den Kalender in eine zweite Zeile zu drängen.'}
+  ]},
   {v:'v32', d:'2026-08-14', items:[
     {en:'The calendar icon works as a switch: pressed once it opens the calendar, pressed again it returns to the overview.',
      de:'Das Kalendersymbol wirkt als Schalter: einmal gedrückt öffnet es den Kalender, noch einmal gedrückt führt es zurück zur Übersicht.'},
