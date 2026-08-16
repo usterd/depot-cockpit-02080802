@@ -77,6 +77,20 @@ WebSocket, no beacons, no external scripts, fonts or CDNs. Your transaction data
 only ever leaves the device when *you* trigger an export or backup and pick a
 destination in the iOS share sheet.
 
+This still holds with the price charts of version 35, and that is why they are
+built the way they are. For a sale the app **composes** a Yahoo address and shows
+it with a copy button; *you* open it in a browser tab, save the JSON and import it
+again. The app never sends the request, so `connect-src 'self'` stays untouched —
+had a price server been whitelisted instead, injected code could have used that
+same channel to push your transaction data out of the device. There is deliberately
+no outbound link in the app either, only an address to copy.
+
+What this does *not* hide: when you open that address, Yahoo sees your IP and which
+security you looked up. That is a browsing step you take knowingly, and it carries
+no portfolio data — only the ticker and the date range. Everything that comes back
+is checked field by field before it is stored (`cleanSeries()`), exactly like a
+backup file.
+
 Hardening applied:
 
 - **Content-Security-Policy** (`<meta>` tag in the head). `connect-src 'self'`,
@@ -105,3 +119,10 @@ for a long stretch, and it is wiped if you delete the home-screen icon and
 Safari data. Use **Settings → Save backup (JSON)** regularly and save
 the file to iCloud Drive or Files. That backup is also how you move to a new
 device.
+
+The app writes four keys: `dc_tx` (transactions), `dc_cmt` (notes and
+screenshots), `dc_px` (imported daily prices, one merged series per ticker) and
+`dc_sym` (ISIN → Xetra ticker). All four are in the backup and all four come back
+on restore. A price series costs roughly 35 bytes per trading day — about 18 KB
+for two years of one ticker — and **Settings → Delete price data** removes them
+all again without touching the transactions.
