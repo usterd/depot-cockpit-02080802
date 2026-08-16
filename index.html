@@ -48,7 +48,9 @@ header{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.92);-webkit-ba
   border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
 .hd{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
   padding:12px max(20px,env(safe-area-inset-right)) 12px max(20px,env(safe-area-inset-left))}
-.logo{font-weight:700;font-size:var(--fs-17);letter-spacing:.3px}
+/* The one text that does not follow the size switch: the name is a mark, not something
+   to read, and it is the widest thing on a line that has to hold five controls. */
+.logo{font-weight:700;font-size:17px;letter-spacing:.3px}
 /* The name sits in .nm of its own so that fitHeader() can take it away and leave the
    ◆ standing; .ac is the half that carries the gradient. */
 .logo .ac{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -272,7 +274,7 @@ button.btn#filtToggle.on{background:linear-gradient(90deg,var(--acc),var(--acc2)
    item drops to a line of its own, which is still fine. */
 @media (max-width:480px){
   .hd{gap:8px;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
-  .logo{font-size:var(--fs-16)}
+  .logo{font-size:16px}
   .seg button{padding:0 9px}
   /* Without a label the button is only the funnel – match it to the round icons
      next to it instead of leaving it an oval sized by its old padding. */
@@ -462,10 +464,12 @@ table.rsp td.mhead{display:none}
     <div class="panel" id="dataPanel">
       <h2 data-i18n="data.title">Stored data</h2>
       <p id="dbInfo" class="hint" style="margin:0 0 12px"></p>
-      <div class="row" style="margin-bottom:6px">
-        <button class="btn" id="expCsv" data-i18n="tx.export">Export CSV</button>
+      <div class="row" style="margin-bottom:10px">
         <button class="btn" id="expJson" data-i18n="data.save">Save backup (JSON)</button>
         <button class="btn" id="impJson" data-i18n="data.restore">Restore backup</button>
+      </div>
+      <div class="row" style="margin-bottom:6px">
+        <button class="btn" id="expCsv" data-i18n="tx.export">Export CSV</button>
       </div>
       <!-- The filters of the top bar are out of sight on this tab, so the CSV says
            for itself how much of the stored data it is about to write. -->
@@ -1267,6 +1271,9 @@ function show(v){
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
   document.getElementById('v-'+v).classList.add('on');
   render();
+  /* The filter button is only out on some views, so the top line changes width with
+     the view – what fitted a moment ago may push the calendar into a second row. */
+  fitHeader();
   scrollNavIntoView();
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -1999,16 +2006,18 @@ document.querySelectorAll('#txtSeg button').forEach(b=> b.onclick=()=>{
 /* ============================ Header fit ============================ */
 /* The app name gives way before the top line breaks: on a narrow phone – and at a
    larger text size on any phone – the calendar icon was pushed onto a row of its own.
-   No media query can decide this, because it depends on the width, on the text size
-   and on the language at once. So it is measured: the calendar button ends the first
-   line, and if its top has dropped past the bottom of the name, the line has wrapped.
-   The name is only kept hidden if that actually helped – between about 820 and 1000px
-   it is the tab strip that wraps, and taking the name away would change nothing. */
+   No media query can decide this, because it depends on the width, on the text size,
+   on the language and on the view all at once (the filter button is only out on some
+   of them). So it is measured, on the one number that says everything: the height of
+   the bar. If dropping the name makes the bar shorter, a row has been saved and the
+   name stays away; if it changes nothing – above 820px it is the tab strip that
+   wraps, not the name – the name is put back. */
 function fitHeader(){
-  const logo=document.querySelector('.logo'), nm=logo.querySelector('.nm'), cal=document.getElementById('calBtn');
-  const wrapped=()=> cal.getBoundingClientRect().top >= logo.getBoundingClientRect().bottom;
+  const hd=document.querySelector('.hd'), nm=document.querySelector('.logo .nm');
   nm.style.display='';
-  if(wrapped()){ nm.style.display='none'; if(wrapped()) nm.style.display=''; }
+  const tall=hd.getBoundingClientRect().height;
+  nm.style.display='none';
+  if(hd.getBoundingClientRect().height >= tall) nm.style.display='';
 }
 /* One measurement per frame is enough while a window is being dragged */
 let fitPending=0;
@@ -2041,8 +2050,8 @@ const CHANGELOG=[
   {v:'v33', d:'2026-08-15', items:[
     {en:'Import / Data has a switch for the text size: 0, +2, +4, +6 or +8 pixels are added to every text of the app, and the choice is kept on the device.',
      de:'Import / Daten hat einen Schalter für die Schriftgröße: 0, +2, +4, +6 oder +8 Pixel kommen auf jeden Text der App, und die Wahl bleibt auf dem Gerät.'},
-    {en:'Where the top line is too narrow for everything – a small screen, or a larger text size – the app name steps aside and leaves the ◆, instead of pushing the calendar onto a second row.',
-     de:'Wo die Kopfzeile zu schmal für alles ist – kleiner Bildschirm oder größere Schrift – tritt der App-Name zurück und lässt das ◆ stehen, statt den Kalender in eine zweite Zeile zu drängen.'}
+    {en:'The app name keeps its size whatever the switch says, and where the top line is still too narrow for everything it steps aside and leaves the ◆, instead of pushing the calendar onto a second row.',
+     de:'Der App-Name behält seine Größe, was der Schalter auch sagt, und wo die Kopfzeile trotzdem zu schmal für alles ist, tritt er zurück und lässt das ◆ stehen, statt den Kalender in eine zweite Zeile zu drängen.'}
   ]},
   {v:'v32', d:'2026-08-14', items:[
     {en:'The calendar icon works as a switch: pressed once it opens the calendar, pressed again it returns to the overview.',
