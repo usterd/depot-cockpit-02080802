@@ -154,9 +154,22 @@ html.ts-up .day .d{flex-wrap:wrap}
 .cs-buy{stroke:var(--acc);fill:var(--acc)}
 .cs-sell{stroke:var(--acc2);fill:var(--acc2)}
 .cs-mark{stroke-dasharray:3 3;opacity:.7;stroke-width:1}
+/* Volume keeps classes of its own: the candles are counted by .cs-up/.cs-dn elsewhere,
+   and a bar sharing those names would quietly be counted as a candle. */
+.cs-vup{fill:var(--pos);opacity:.42}
+.cs-vdn{fill:var(--neg);opacity:.42}
+.cs-ma{fill:none;stroke:var(--acc);stroke-width:1.3;opacity:.85}
+.cs-ma2{fill:none;stroke:var(--mut);stroke-width:1.3;opacity:.7}
+.cs-base{stroke:var(--warn);stroke-width:1.2;stroke-dasharray:6 4}
+.cs-div{stroke:var(--warn);fill:var(--warn)}
+.cs-cross{stroke:var(--fg);stroke-width:1;opacity:.45;pointer-events:none}
 .px-sale{border-top:1px solid var(--line);padding-top:12px;margin-top:14px}
 .px-chart{margin-top:8px}
 .px-seg{margin:8px 0}
+/* Scale switch and the overlay boxes share one line and wrap together on a phone */
+.px-opt{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.px-read{font-size:var(--fs-11);color:var(--mut);margin:6px 0 0;min-height:1.5em;
+  font-variant-numeric:tabular-nums}
 /* The address is long and is meant to be copied, not read – it stays on one line */
 .pxurl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .pxurl-in{flex:1 1 200px;min-width:0;font-size:var(--fs-11);
@@ -590,7 +603,13 @@ const UI = Object.assign({
   impSkipStatus:[],
   impSkipType:[],
   impSkipUnknownStatus:0,
-  impSkipUnknownType:0
+  impSkipUnknownType:0,
+  /* How the price charts are drawn. One setting for all of them, like the number format:
+     a scale chosen on one sale is the scale the next one opens with. */
+  pxScale:'lin',                    /* 'lin' | 'log' | 'pct' */
+  pxBase:1,                         /* break-even line of the sale */
+  pxVol:1,                          /* volume strip under the candles */
+  pxMa:0                            /* moving averages */
 }, readJSON('dc_ui'));
 const saveUI = () => { try{ LS.set('dc_ui', JSON.stringify(UI)); }catch(e){} };
 
@@ -719,6 +738,18 @@ en:{
   'px.noLots':'No purchase of this position could be matched to this sale – the chart begins at the first booking of the position instead.',
   'px.noData':'No prices for this period yet. Copy the address above, open it in a browser and import the JSON file.',
   'px.legend':(n,a,b)=>`${n} trading days · ${a} to ${b} · <span style="color:var(--acc)">▌purchase</span> · <span style="color:var(--acc2)">▌sale</span>`,
+  'px.legendW':(n,a,b)=>`${n} weekly candles · ${a} to ${b} · <span style="color:var(--acc)">▌purchase</span> · <span style="color:var(--acc2)">▌sale</span>`,
+  'px.scaleLin':'Price','px.scaleLog':'Log','px.scalePct':'%',
+  'px.scaleTitle':{lin:'Linear price axis',log:'Logarithmic axis – equal percentage moves are equally tall',
+                   pct:'Percent from the start of the period'},
+  'px.optBase':'Break-even','px.optVol':'Volume','px.optMa':'Averages',
+  'px.optBaseHint':'The price at which this sale would have come out at zero – purchase cost of the shares sold plus the fee and tax of the sale.',
+  'px.read':(d,o,h,l,c)=>`${d} · O ${o} · H ${h} · L ${l} · C ${c}`,
+  'px.readVol':v=>` · Vol ${v}`,
+  'px.readPct':p=>` · ${p>=0?'+':''}${fmt(p,1)}%`,
+  'px.readDiv':a=>` · <span class="pos">Distribution ${a}</span>`,
+  'px.readHint':'Tap a candle to read its values.',
+  'px.baseLbl':'break-even','px.maLbl':n=>`SMA ${n}`,
   'px.info':(n,r,kb)=>`${n} price series · ${r} trading days · ${kb} KB`,
   'px.wipe':'Delete price data','px.noneStored':'No price data is stored.',
   'px.wiped':n=>`Price data of ${n} ${n===1?'ticker':'tickers'} deleted.`,
@@ -889,6 +920,18 @@ de:{
   'px.noLots':'Zu diesem Verkauf ließ sich kein Kauf dieser Position zuordnen – der Chart beginnt stattdessen bei der ersten Buchung der Position.',
   'px.noData':'Für diesen Zeitraum liegen noch keine Kurse vor. Adresse oben kopieren, im Browser öffnen und die JSON-Datei einlesen.',
   'px.legend':(n,a,b)=>`${n} Handelstage · ${a} bis ${b} · <span style="color:var(--acc)">▌Kauf</span> · <span style="color:var(--acc2)">▌Verkauf</span>`,
+  'px.legendW':(n,a,b)=>`${n} Wochenkerzen · ${a} bis ${b} · <span style="color:var(--acc)">▌Kauf</span> · <span style="color:var(--acc2)">▌Verkauf</span>`,
+  'px.scaleLin':'Kurs','px.scaleLog':'Log','px.scalePct':'%',
+  'px.scaleTitle':{lin:'Lineare Kursachse',log:'Logarithmische Achse – gleiche prozentuale Bewegungen sind gleich hoch',
+                   pct:'Prozent seit dem Beginn des Zeitraums'},
+  'px.optBase':'Nulllinie','px.optVol':'Umsatz','px.optMa':'Durchschnitte',
+  'px.optBaseHint':'Der Kurs, bei dem dieser Verkauf auf null herausgekommen wäre – Kaufkosten der verkauften Stücke plus Gebühr und Steuer des Verkaufs.',
+  'px.read':(d,o,h,l,c)=>`${d} · E ${o} · H ${h} · T ${l} · S ${c}`,
+  'px.readVol':v=>` · Umsatz ${v}`,
+  'px.readPct':p=>` · ${p>=0?'+':''}${fmt(p,1)}%`,
+  'px.readDiv':a=>` · <span class="pos">Ausschüttung ${a}</span>`,
+  'px.readHint':'Auf eine Kerze tippen, um ihre Werte zu lesen.',
+  'px.baseLbl':'Nulllinie','px.maLbl':n=>`SMA ${n}`,
   'px.info':(n,r,kb)=>`${n} Kursreihen · ${r} Handelstage · ${kb} KB`,
   'px.wipe':'Kursdaten löschen','px.noneStored':'Es sind keine Kursdaten gespeichert.',
   'px.wiped':n=>`Kursdaten von ${n} ${n===1?'Kürzel':'Kürzeln'} gelöscht.`,
@@ -1218,7 +1261,12 @@ function positions(){
         }
         if(l.sh<=1e-9) p.lots.shift();
       }
-      if(mFirst) RBUY[r.id]={first:mFirst, last:mLast, marks};
+      /* The price at which this sale would have come out at exactly zero: what the shares
+         sold had cost, plus the fee and tax of the sale itself. Sold at that price, the
+         realized result below would be 0 – it is the same arithmetic read backwards. */
+      const covShares = r.sharesN - rest;
+      if(mFirst) RBUY[r.id]={first:mFirst, last:mLast, marks,
+                             basisPS: covShares>1e-9 ? (basis + r.feeN + r.taxN)/covShares : 0};
       if(rest>1e-9){ p.orphan+=rest; ROR[r.id]=rest; }
       /* For shares without a matching purchase no cost basis is known – their proceeds would
          count as gain in full. If UI.hideOrphan is set, only the proceeds of covered shares
@@ -1501,34 +1549,66 @@ const sliceRows=(sym,w)=>{
    and label sizes come from the same variables as the rest of the app, so the chart
    follows the text-size switch. Drawn at the measured pixel width of its box, so the
    labels keep their real size instead of being scaled down with the picture. */
-function candleSvg(rows, marks, wid){
+/* Two geometries, three sets of labels. Percent is an affine transform of the price, so it
+   puts every candle exactly where the linear axis does and only the labels change; the
+   logarithmic axis is the one that actually moves things, and it makes equal percentage
+   moves equally tall. Its padding has to be a ratio – subtracting a span from a low price
+   could push the bottom to zero or below, where the logarithm has nothing to say. */
+const pctLbl = v => (v>=0?'+':'')+fmt(v, Math.abs(v)<10?1:0)+'%';
+function pxScaleOf(lo, hi, mode, base){
+  const log = mode==='log';
+  if(log){ lo/=1.03; hi*=1.03; if(!(lo>0)) lo=Math.max(1e-6, hi/1000); }
+  else { const pad=(hi-lo)*0.06 || Math.max(0.01, Math.abs(hi)*0.01); lo-=pad; hi+=pad; }
+  const m = v => log ? Math.log(Math.max(v,1e-9)) : v;
+  const a = m(lo), span = (m(hi)-a) || 1;
+  return {
+    lo, hi, log,
+    frac: p => (m(p)-a)/span,
+    ticks: [0,1,2,3,4].map(k=> log ? Math.exp(a+span*k/4) : lo+(hi-lo)*k/4),
+    label: p => mode==='pct' ? pctLbl((p/(base||1)-1)*100) : fmt(p)
+  };
+}
+function candleSvg(rows, marks, wid, o){
+  o = o || {};
   const n=rows.length, MINCW=1.8;
+  const showVol = !!(o.vol && rows.some(r=> r[5]>0));
   let lo=Infinity, hi=-Infinity;
-  rows.forEach(r=>{ if(r[3]<lo)lo=r[3]; if(r[2]>hi)hi=r[2]; });
-  marks.forEach(m=>{ if(m.price>0){ if(m.price<lo)lo=m.price; if(m.price>hi)hi=m.price; } });
+  const span=v=>{ if(v>0){ if(v<lo)lo=v; if(v>hi)hi=v; } };
+  rows.forEach(r=>{ span(r[3]); span(r[2]); });
+  marks.forEach(m=> span(m.price));
+  span(o.basePS);
+  /* The averages are part of the picture, so the axis has to hold them too – otherwise the
+     line leaves the panel wherever it runs above or below the candles. */
+  (o.ma||[]).forEach(s=> s.vals.forEach(span));
   if(!isFinite(lo) || !isFinite(hi)) return '';
-  if(hi-lo < 1e-9){ hi=lo+Math.max(0.01, lo*0.01); lo=lo-Math.max(0.01, lo*0.01); }
-  const padv=(hi-lo)*0.06; lo-=padv; hi+=padv;
+  if(hi-lo < 1e-9){ const d=Math.max(0.01, lo*0.01); hi=lo+d; lo=Math.max(1e-6, lo-d); }
+  const S=pxScaleOf(lo, hi, o.scale||'lin', o.base||rows[0][4]);
+
   /* The labels grow with the text-size switch, so the margins that hold them are measured
      from the same number of pixels instead of being fixed – otherwise a wide price or a
      larger type size runs off the edge. */
   const fsz=10+(+UI.textsize||0), cwc=fsz*0.62;
-  const price=k=> fmt(lo+(hi-lo)*k/4);
-  const PADR=Math.round(8+Math.max(...[0,1,2,3,4].map(k=>price(k).length))*cwc);
-  const PADL=6, PADT=Math.round(fsz+8), PADB=Math.round(fsz+14), H=Math.round(300+fsz*2);
+  const PADR=Math.round(8+Math.max(...S.ticks.map(p=>S.label(p).length))*cwc);
+  const PADL=6, PADT=Math.round(fsz+8), PADB=Math.round(fsz+14);
+  const H=Math.round((showVol?344:300)+fsz*2);
   let W=Math.max(280, Math.round(wid));
   if(n*MINCW > W-PADL-PADR) W=Math.min(9000, Math.ceil(n*MINCW)+PADL+PADR);
   const x0=PADL, x1=W-PADR, y0=PADT, y1=H-PADB, pw=x1-x0, ph=y1-y0;
+  /* With the volume strip the candles keep the upper three quarters and the bars sit below
+     a gap; without it the price uses the whole box. */
+  const yp1 = showVol ? Math.round(y0+ph*0.74) : y1;
+  const yv0 = showVol ? Math.round(y0+ph*0.82) : y1;
   const cw=pw/n, bw=Math.max(1, Math.min(9, cw*0.68));
-  const X=i=> Math.round((x0+(i+0.5)*cw)*10)/10;
-  const Y=p=> Math.round((y1-(p-lo)/(hi-lo)*ph)*10)/10;
+  const rd=v=> Math.round(v*10)/10;
+  const X=i=> rd(x0+(i+0.5)*cw);
+  const Y=p=> rd(yp1-S.frac(p)*(yp1-y0));
 
   let out='';
-  for(let k=0;k<=4;k++){
-    const p=lo+(hi-lo)*k/4, y=Y(p);
+  S.ticks.forEach(p=>{
+    const y=Y(p);
     out+=`<line class="cs-grid" x1="${x0}" y1="${y}" x2="${x1}" y2="${y}"/>`
-       + `<text class="cs-lbl" x="${x1+5}" y="${Math.round((y+fsz*0.35)*10)/10}">${esc(price(k))}</text>`;
-  }
+       + `<text class="cs-lbl" x="${x1+5}" y="${rd(y+fsz*0.35)}">${esc(S.label(p))}</text>`;
+  });
   let lastX=-1e9;
   rows.forEach((r,i)=>{
     if(i && r[0].slice(0,7)===rows[i-1][0].slice(0,7)) return;
@@ -1540,16 +1620,40 @@ function candleSvg(rows, marks, wid){
     out+=`<line class="cs-grid" x1="${x}" y1="${y0}" x2="${x}" y2="${y1}"/>`
        + `<text class="cs-lbl" x="${at.x}" y="${H-4}" text-anchor="${at.a}">${esc(lbl)}</text>`;
   });
+  if(showVol){
+    const vmax=Math.max(...rows.map(r=>r[5]||0), 1), vh=y1-yv0;
+    rows.forEach((r,i)=>{
+      const h=Math.max(0.6, (r[5]||0)/vmax*vh), x=X(i);
+      out+=`<rect class="${r[4]>=r[1]?'cs-vup':'cs-vdn'}" x="${rd(x-bw/2)}" y="${rd(y1-h)}" `
+         + `width="${rd(bw)}" height="${rd(h)}"/>`;
+    });
+  }
   rows.forEach((r,i)=>{
     const x=X(i), cls=r[4]>=r[1]?'cs-up':'cs-dn';
     const ya=Y(Math.max(r[1],r[4])), yb=Y(Math.min(r[1],r[4]));
     out+=`<line class="${cls}" x1="${x}" y1="${Y(r[2])}" x2="${x}" y2="${Y(r[3])}" stroke-width="1"/>`
-       + `<rect class="${cls}" x="${Math.round((x-bw/2)*10)/10}" y="${ya}" `
-       + `width="${Math.round(bw*10)/10}" height="${Math.max(1, Math.round((yb-ya)*10)/10)}"/>`;
+       + `<rect class="${cls}" x="${rd(x-bw/2)}" y="${ya}" `
+       + `width="${rd(bw)}" height="${Math.max(1, rd(yb-ya))}"/>`;
   });
+  (o.ma||[]).forEach(s=>{
+    const pts=[];
+    s.vals.forEach((v,i)=>{ if(v>0) pts.push(X(i)+','+Y(v)); });
+    if(pts.length>1) out+=`<polyline class="${s.cls}" points="${pts.join(' ')}"/>`;
+  });
+  if(o.basePS>0){
+    const y=Y(o.basePS);
+    /* Labelled through the scale, not as a raw price: on the percent axis the break-even
+       belongs in percent too, or the one number in the panel would be in other units. */
+    out+=`<line class="cs-base" x1="${x0}" y1="${y}" x2="${x1}" y2="${y}"/>`
+       + `<text class="cs-lbl" x="${x0+3}" y="${rd(y-3)}">${esc(t('px.baseLbl')+' '+S.label(o.basePS))}</text>`;
+  }
   /* A purchase or sale rarely falls on a trading day inside the window exactly – the
      marker goes to the first day that is not before it. */
   const idxOf=d=>{ for(let i=0;i<n;i++) if(rows[i][0]>=d) return i; return n-1; };
+  (o.divs||[]).forEach(d=>{
+    const x=X(idxOf(d.date));
+    out+=`<polygon class="cs-div" points="${x},${y1-5} ${x+4},${y1} ${x},${y1+5} ${x-4},${y1}"/>`;
+  });
   marks.forEach(m=>{
     const x=X(idxOf(m.date)), cls=m.kind==='sell'?'cs-sell':'cs-buy';
     out+=`<line class="${cls} cs-mark" x1="${x}" y1="${y0}" x2="${x}" y2="${y1}"/>`
@@ -1559,7 +1663,40 @@ function candleSvg(rows, marks, wid){
          + `<circle class="${cls}" cx="${x}" cy="${y}" r="2.6"/>`;
     }
   });
-  return `<svg class="cs" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t('px.title'))}">${out}</svg>`;
+  out+=`<line class="cs-cross" x1="0" y1="${y0}" x2="0" y2="${y1}" style="display:none"/>`;
+  /* The reader needs the geometry back to turn a touch into a candle */
+  return `<svg class="cs" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img"`
+    + ` data-n="${n}" data-x0="${x0}" data-cw="${rd(cw)}"`
+    + ` aria-label="${esc(t('px.title'))}"><title>${esc(t('px.readHint'))}</title>${out}</svg>`;
+}
+/* Beyond this many bars a window is aggregated to weeks – ten years of daily candles are
+   4000 pixels of scrolling and nothing can be seen in them anyway. */
+const PX_WEEKLY=400;
+function toWeekly(rows){
+  const out=[];
+  let cur=null, key='';
+  rows.forEach(r=>{
+    const d=new Date(r[0]+'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));      // back to Monday
+    const k=d.toISOString().slice(0,10);
+    if(k!==key){ key=k; cur=[r[0],r[1],r[2],r[3],r[4],r[5]||0]; out.push(cur); return; }
+    if(r[2]>cur[2]) cur[2]=r[2];                              // high
+    if(r[3]<cur[3]) cur[3]=r[3];                              // low
+    cur[4]=r[4];                                              // close of the last day
+    cur[5]+=r[5]||0;
+  });
+  return out;
+}
+/* The average is computed on the whole stored series, not on the window: cut to the window
+   first, a 50-day line would only begin fifty candles in and say nothing about the start. */
+function smaByDate(series, period){
+  const out={}; let sum=0;
+  for(let i=0;i<series.length;i++){
+    sum+=series[i][4];
+    if(i>=period) sum-=series[i-period][4];
+    if(i>=period-1) out[series[i][0]]=sum/period;
+  }
+  return out;
 }
 function drawPxCharts(root){
   (root||document).querySelectorAll('.px-chart').forEach(el=>{
@@ -1567,8 +1704,11 @@ function drawPxCharts(root){
     if(!r){ el.innerHTML=''; return; }
     const p=POSBY[r.isin], sm=DB.sym[r.isin]||{}, mode=PXMODE[r.id]||'lots';
     const w=sellWindow(r,mode,p);
-    const rows=sm.sym ? sliceRows(sm.sym,w) : [];
-    if(rows.length<2){ el.innerHTML=`<p class="hint">${t('px.noData')}</p>`; return; }
+    const daily=sm.sym ? sliceRows(sm.sym,w) : [];
+    if(daily.length<2){ el.innerHTML=`<p class="hint">${t('px.noData')}</p>`; return; }
+    const weekly=daily.length>PX_WEEKLY;
+    const rows=weekly ? toWeekly(daily) : daily;
+
     const marks=[{date:r.date, price:r.priceN||0, kind:'sell'}];
     if(mode==='pos'){
       all().filter(x=> x.isin===r.isin && isBuy(x) && x.status==='Executed' && x.date<=r.date)
@@ -1576,10 +1716,62 @@ function drawPxCharts(root){
     } else {
       ((RBUY[r.id]||{}).marks||[]).forEach(m=> marks.push({date:m.date, price:m.price, kind:'buy'}));
     }
+    /* Distributions booked for this security inside the window – what the holding paid out
+       while it was held belongs in the same picture. */
+    const divs=all().filter(x=> x.isin===r.isin && isDiv(x) && x.status==='Executed'
+                             && x.date>=rows[0][0] && x.date<=w.to)
+                    .map(x=>({date:x.date, amount:x.amountN}));
+    const ma=[];
+    if(UI.pxMa && DB.px[sm.sym]){
+      const full=DB.px[sm.sym].rows;
+      const m50=smaByDate(full,50), v50=rows.map(x=>m50[x[0]]||0);
+      if(v50.some(v=>v>0)) ma.push({cls:'cs-ma', period:50, vals:v50});
+      const m200=smaByDate(full,200), v200=rows.map(x=>m200[x[0]]||0);
+      if(v200.filter(v=>v>0).length >= rows.length/2)
+        ma.push({cls:'cs-ma2', period:200, vals:v200});
+    }
+    const opt={ scale:UI.pxScale, base:rows[0][4], vol:UI.pxVol, ma, divs,
+                basePS: UI.pxBase ? ((RBUY[r.id]||{}).basisPS||0) : 0 };
     const wid=el.clientWidth || (el.parentElement && el.parentElement.clientWidth) || 320;
-    el.innerHTML=`<div class="scroll">${candleSvg(rows,marks,wid)}</div>`
-      + `<p class="hint">${t('px.legend',rows.length,dt(rows[0][0]),dt(rows[rows.length-1][0]))}</p>`;
+    const legend=t(weekly?'px.legendW':'px.legend',
+                   rows.length, dt(rows[0][0]), dt(rows[rows.length-1][0]));
+    el.innerHTML=`<div class="scroll">${candleSvg(rows,marks,wid,opt)}</div>`
+      + `<p class="px-read"></p>`
+      + `<p class="hint">${legend}${ma.map(s=>' · '+t('px.maLbl',s.period)).join('')}</p>`;
+    bindCross(el, rows, opt, divs);
   });
+}
+/* Reading values off the chart. On a touch screen only a tap reports – a moving finger is
+   how the container is scrolled sideways, and taking that over would trap the chart. */
+function bindCross(el, rows, opt, divs){
+  const svg=el.querySelector('svg.cs'), out=el.querySelector('.px-read');
+  if(!svg || !out) return;
+  const cross=svg.querySelector('.cs-cross');
+  const n=+svg.dataset.n, x0=+svg.dataset.x0, cw=+svg.dataset.cw;
+  const dv={}; (divs||[]).forEach(d=> dv[d.date]=(dv[d.date]||0)+d.amount);
+  const line=i=>{
+    const r=rows[i];
+    let s=t('px.read', dt(r[0]), fmt(r[1]), fmt(r[2]), fmt(r[3]), fmt(r[4]));
+    if(opt.scale==='pct' && opt.base) s+=t('px.readPct', (r[4]/opt.base-1)*100);
+    if(r[5]) s+=t('px.readVol', fmt(r[5],0));
+    if(dv[r[0]]) s+=t('px.readDiv', eur(dv[r[0]]));
+    return s;
+  };
+  const rest=()=>{ cross.style.display='none'; out.innerHTML=line(rows.length-1); };
+  const at=e=>{
+    const rc=svg.getBoundingClientRect();
+    const sc=(rc.width/(+svg.getAttribute('width'))) || 1;
+    const i=Math.max(0, Math.min(n-1, Math.round(((e.clientX-rc.left)/sc - x0)/cw - 0.5)));
+    const x=x0+(i+0.5)*cw;
+    cross.setAttribute('x1',x); cross.setAttribute('x2',x); cross.style.display='';
+    out.innerHTML=line(i);
+  };
+  svg.addEventListener('pointerdown', at);
+  if(!TOUCH){
+    svg.addEventListener('pointermove', at);
+    svg.addEventListener('pointerleave', rest);
+  }
+  rest();
 }
 
 /* ---------- The panel ---------- */
@@ -1597,8 +1789,38 @@ function pxSaleHtml(r){
       <button data-m="pos"${on('pos')} onclick="pxMode('${js(r.id)}','pos')">${t('px.modePos')}</button>
     </div>
     ${b?'':`<p class="hint neg">${t('px.noLots')}</p>`}
+    ${pxOptHtml(b)}
     <div class="px-chart" data-id="${esc(r.id)}"></div>
   </div>`;
+}
+/* How the chart is drawn. The switch sits on every sale, but the choice is one setting for
+   the whole app – like the number format, a scale chosen here is the scale the next chart
+   opens with. */
+function pxOptHtml(hasLots){
+  const sc=t('px.scaleTitle');
+  const seg=['lin','log','pct'].map(m=>
+    `<button data-s="${m}"${UI.pxScale===m?' class="on"':''} title="${esc(sc[m]||'')}"
+      onclick="pxOpt('pxScale','${m}')">${t('px.scale'+m[0].toUpperCase()+m.slice(1))}</button>`).join('');
+  const box=(k,lbl,title)=>`<label class="chk" title="${esc(title||'')}">
+    <input type="checkbox" ${UI[k]?'checked':''} onchange="pxOpt('${k}', this.checked?1:0)">
+    <span>${lbl}</span></label>`;
+  return `<div class="px-opt"><div class="seg">${seg}</div>
+    ${hasLots?box('pxBase',t('px.optBase'),t('px.optBaseHint')):''}
+    ${box('pxVol',t('px.optVol'))}
+    ${box('pxMa',t('px.optMa'))}</div>`;
+}
+/* Only the charts are redrawn, never the whole view: a full render would send the page
+   back to the top on every tick, the same reason pxMode() redraws in place. */
+function pxOpt(key, val){
+  UI[key]=val; saveUI();
+  document.querySelectorAll('.px-opt').forEach(row=>{
+    row.querySelectorAll('.seg button').forEach(b=> b.classList.toggle('on', b.dataset.s===UI.pxScale));
+    row.querySelectorAll('input[type=checkbox]').forEach(i=>{
+      const m=/pxOpt\('(\w+)'/.exec(i.getAttribute('onchange')||'');
+      if(m) i.checked=!!UI[m[1]];
+    });
+  });
+  drawPxCharts();
 }
 function pxPanelHtml(isin, p){
   const ss=sellsOf(isin);
@@ -2561,6 +2783,18 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v36', d:'2026-08-17', items:[
+    {en:'The price chart has a scale switch: the price as it is, logarithmic so that equal percentage moves are equally tall, or as percent since the start of the period.',
+     de:'Der Kurschart hat einen Achsenschalter: der Kurs wie er ist, logarithmisch, damit gleiche prozentuale Bewegungen gleich hoch sind, oder als Prozent seit dem Beginn des Zeitraums.'},
+    {en:'A dashed line marks the break-even price of the sale – purchase cost of the shares sold plus the fee and tax of the sale, the price at which it would have come out at zero.',
+     de:'Eine gestrichelte Linie markiert die Nulllinie des Verkaufs – Kaufkosten der verkauften Stücke plus Gebühr und Steuer des Verkaufs, der Kurs, bei dem er auf null herausgekommen wäre.'},
+    {en:'Tapping a candle reads out its day: date, open, high, low, close, turnover, and a distribution if one was booked that day.',
+     de:'Ein Tippen auf eine Kerze liest ihren Tag vor: Datum, Eröffnung, Hoch, Tief, Schluss, Umsatz und eine Ausschüttung, falls an dem Tag eine gebucht wurde.'},
+    {en:'Turnover is drawn as a strip under the candles, distributions as diamonds on the date axis, and moving averages can be switched on.',
+     de:'Der Umsatz steht als Streifen unter den Kerzen, Ausschüttungen als Rauten auf der Datumsachse, und gleitende Durchschnitte lassen sich zuschalten.'},
+    {en:'A period longer than 400 trading days is drawn as weekly candles, and the line under the chart says so.',
+     de:'Ein Zeitraum von mehr als 400 Handelstagen wird als Wochenkerzen gezeichnet, und die Zeile unter dem Chart sagt es.'}
+  ]},
   {v:'v35', d:'2026-08-16', items:[
     {en:'A sold position now carries a candlestick chart of the daily Xetra prices over the period it was held, with the purchases and the sale marked in it.',
      de:'Eine verkaufte Position trägt jetzt einen Kerzenchart der täglichen Xetra-Kurse über ihre Haltedauer, mit Käufen und Verkauf darin markiert.'},
