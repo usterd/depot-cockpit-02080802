@@ -1467,7 +1467,9 @@ function parseYahoo(text){
     rows.push([new Date((Number(ts)+off)*1000).toISOString().slice(0,10),
                v[0], v[1], v[2], v[3], (q.volume && q.volume[i]) || 0]);
   });
-  return cleanSeries({sym:m.symbol, cur:m.currency, exch:m.exchangeName||m.fullExchangeName, rows});
+  /* fullExchangeName is the readable one – for the Xetra listing exchangeName is only
+     the code "GER", which says far less about whether the ticker is the right one. */
+  return cleanSeries({sym:m.symbol, cur:m.currency, exch:m.fullExchangeName||m.exchangeName, rows});
 }
 /* A second file for the same ticker does not replace the first: both are merged, so a
    window fetched later extends the series instead of cutting the older part away. */

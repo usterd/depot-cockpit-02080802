@@ -123,6 +123,6 @@ device.
 The app writes four keys: `dc_tx` (transactions), `dc_cmt` (notes and
 screenshots), `dc_px` (imported daily prices, one merged series per ticker) and
 `dc_sym` (ISIN → Xetra ticker). All four are in the backup and all four come back
-on restore. A price series costs roughly 35 bytes per trading day — about 18 KB
-for two years of one ticker — and **Settings → Delete price data** removes them
-all again without touching the transactions.
+on restore. A price series costs roughly 50 bytes per trading day — measured at
+17.5 KB for 359 days of `SAP.DE` — and **Settings → Delete price data** removes
+them all again without touching the transactions.
