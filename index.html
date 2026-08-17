@@ -161,6 +161,9 @@ html.ts-up .day .d{flex-wrap:wrap}
 .cs-ma{fill:none;stroke:var(--acc);stroke-width:1.3;opacity:.85}
 .cs-ma2{fill:none;stroke:var(--mut);stroke-width:1.3;opacity:.7}
 .cs-base{stroke:var(--warn);stroke-width:1.2;stroke-dasharray:6 4}
+/* The zero of the percent axis – brighter than a gridline, so the centring is visible
+   even when the dashed break-even line is switched off */
+.cs-zero{stroke:var(--mut);stroke-width:1.2;opacity:.8}
 .cs-div{stroke:var(--warn);fill:var(--warn)}
 .cs-cross{stroke:var(--fg);stroke-width:1;opacity:.45;pointer-events:none}
 .px-sale{border-top:1px solid var(--line);padding-top:12px;margin-top:14px}
@@ -748,6 +751,9 @@ en:{
   'px.readVol':v=>` · Vol ${v}`,
   'px.readPct':p=>` · ${p>=0?'+':''}${fmt(p,1)}%`,
   'px.readDiv':a=>` · <span class="pos">Distribution ${a}</span>`,
+  'px.readBuy':(sh,p)=>` · <span style="color:var(--acc)">Buy ${sh}${sh&&p?' @ ':''}${p}</span>`,
+  'px.readSell':(sh,p)=>` · <span style="color:var(--acc2)">Sell ${sh}${sh&&p?' @ ':''}${p}</span>`,
+  'px.pctFromBE':'% from break-even','px.pctFromStart':'% from the start of the period',
   'px.readHint':'Tap a candle to read its values.',
   'px.baseLbl':'break-even','px.maLbl':n=>`SMA ${n}`,
   'px.info':(n,r,kb)=>`${n} price series · ${r} trading days · ${kb} KB`,
@@ -930,6 +936,9 @@ de:{
   'px.readVol':v=>` · Umsatz ${v}`,
   'px.readPct':p=>` · ${p>=0?'+':''}${fmt(p,1)}%`,
   'px.readDiv':a=>` · <span class="pos">Ausschüttung ${a}</span>`,
+  'px.readBuy':(sh,p)=>` · <span style="color:var(--acc)">Kauf ${sh}${sh&&p?' @ ':''}${p}</span>`,
+  'px.readSell':(sh,p)=>` · <span style="color:var(--acc2)">Verkauf ${sh}${sh&&p?' @ ':''}${p}</span>`,
+  'px.pctFromBE':'% ab Nulllinie','px.pctFromStart':'% ab Beginn des Zeitraums',
   'px.readHint':'Auf eine Kerze tippen, um ihre Werte zu lesen.',
   'px.baseLbl':'Nulllinie','px.maLbl':n=>`SMA ${n}`,
   'px.info':(n,r,kb)=>`${n} Kursreihen · ${r} Handelstage · ${kb} KB`,
@@ -1568,6 +1577,15 @@ function pxScaleOf(lo, hi, mode, base){
     label: p => mode==='pct' ? pctLbl((p/(base||1)-1)*100) : fmt(p)
   };
 }
+/* The bar that covers a date: the last one starting at or before it. A weekly candle is
+   dated by its Monday, so a trade on the Wednesday belongs to that candle and not to the
+   next one; on a daily chart an event booked on a Sunday falls on the Friday that traded.
+   Marker and readout both go through here, so the two can never disagree. */
+function barIdx(rows, d){
+  let k=0;
+  for(let i=0;i<rows.length;i++){ if(rows[i][0]<=d) k=i; else break; }
+  return k;
+}
 function candleSvg(rows, marks, wid, o){
   o = o || {};
   const n=rows.length, MINCW=1.8;
@@ -1609,6 +1627,16 @@ function candleSvg(rows, marks, wid, o){
     out+=`<line class="cs-grid" x1="${x0}" y1="${y}" x2="${x1}" y2="${y}"/>`
        + `<text class="cs-lbl" x="${x1+5}" y="${rd(y+fsz*0.35)}">${esc(S.label(p))}</text>`;
   });
+  /* On the percent axis the zero is the break-even, and it earns a line of its own – the
+     centring has to be visible even when the dashed break-even line is switched off. Where
+     that line is already drawn at the same price the two would sit on top of each other. */
+  if(o.scale==='pct' && o.base>0 && !(o.basePS>0 && Math.abs(o.basePS-o.base)<1e-9)){
+    const y=Y(o.base);
+    /* Labelled, or the line would be a rule with nothing to say – the five ticks are evenly
+       spaced and need not land on the zero themselves. */
+    out+=`<line class="cs-zero" x1="${x0}" y1="${y}" x2="${x1}" y2="${y}"/>`
+       + `<text class="cs-lbl" x="${x1+5}" y="${rd(y+fsz*0.35)}">${esc(pctLbl(0))}</text>`;
+  }
   let lastX=-1e9;
   rows.forEach((r,i)=>{
     if(i && r[0].slice(0,7)===rows[i-1][0].slice(0,7)) return;
@@ -1642,20 +1670,18 @@ function candleSvg(rows, marks, wid, o){
   });
   if(o.basePS>0){
     const y=Y(o.basePS);
-    /* Labelled through the scale, not as a raw price: on the percent axis the break-even
-       belongs in percent too, or the one number in the panel would be in other units. */
+    /* Always the price, never the scale's own label: on the percent axis the break-even is
+       the zero by definition, so "+0.0%" would be true and say nothing, while the price is
+       exactly what a percent axis cannot otherwise tell you. */
     out+=`<line class="cs-base" x1="${x0}" y1="${y}" x2="${x1}" y2="${y}"/>`
-       + `<text class="cs-lbl" x="${x0+3}" y="${rd(y-3)}">${esc(t('px.baseLbl')+' '+S.label(o.basePS))}</text>`;
+       + `<text class="cs-lbl" x="${x0+3}" y="${rd(y-3)}">${esc(t('px.baseLbl')+' '+fmt(o.basePS))}</text>`;
   }
-  /* A purchase or sale rarely falls on a trading day inside the window exactly – the
-     marker goes to the first day that is not before it. */
-  const idxOf=d=>{ for(let i=0;i<n;i++) if(rows[i][0]>=d) return i; return n-1; };
   (o.divs||[]).forEach(d=>{
-    const x=X(idxOf(d.date));
+    const x=X(barIdx(rows,d.date));
     out+=`<polygon class="cs-div" points="${x},${y1-5} ${x+4},${y1} ${x},${y1+5} ${x-4},${y1}"/>`;
   });
   marks.forEach(m=>{
-    const x=X(idxOf(m.date)), cls=m.kind==='sell'?'cs-sell':'cs-buy';
+    const x=X(barIdx(rows,m.date)), cls=m.kind==='sell'?'cs-sell':'cs-buy';
     out+=`<line class="${cls} cs-mark" x1="${x}" y1="${y0}" x2="${x}" y2="${y1}"/>`
        + `<polygon class="${cls}" points="${x-4},${y0-10} ${x+4},${y0-10} ${x},${y0-3}"/>`;
     if(m.price>0){ const y=Y(m.price);
@@ -1709,12 +1735,13 @@ function drawPxCharts(root){
     const weekly=daily.length>PX_WEEKLY;
     const rows=weekly ? toWeekly(daily) : daily;
 
-    const marks=[{date:r.date, price:r.priceN||0, kind:'sell'}];
+    const marks=[{date:r.date, price:r.priceN||0, kind:'sell', sh:r.sharesN}];
     if(mode==='pos'){
       all().filter(x=> x.isin===r.isin && isBuy(x) && x.status==='Executed' && x.date<=r.date)
-           .forEach(x=> marks.push({date:x.date, price:x.priceN||0, kind:'buy'}));
+           .forEach(x=> marks.push({date:x.date, price:x.priceN||0, kind:'buy', sh:x.sharesN}));
     } else {
-      ((RBUY[r.id]||{}).marks||[]).forEach(m=> marks.push({date:m.date, price:m.price, kind:'buy'}));
+      ((RBUY[r.id]||{}).marks||[])
+        .forEach(m=> marks.push({date:m.date, price:m.price, kind:'buy', sh:m.sh}));
     }
     /* Distributions booked for this security inside the window – what the holding paid out
        while it was held belongs in the same picture. */
@@ -1730,31 +1757,54 @@ function drawPxCharts(root){
       if(v200.filter(v=>v>0).length >= rows.length/2)
         ma.push({cls:'cs-ma2', period:200, vals:v200});
     }
-    const opt={ scale:UI.pxScale, base:rows[0][4], vol:UI.pxVol, ma, divs,
-                basePS: UI.pxBase ? ((RBUY[r.id]||{}).basisPS||0) : 0 };
+    /* Zero on the percent axis is the break-even of this sale – the line between losing and
+       making money, and the same reference in both views, since the block is about that one
+       sale. It does not follow the break-even checkbox: that decides whether the line is
+       drawn, and letting it move the axis as well would renumber every label in silence.
+       A sale with no purchase behind it has no break-even and falls back to the start of
+       the period, which the line under the chart then says. */
+    const bev=(RBUY[r.id]||{}).basisPS||0;
+    const base=bev>0 ? bev : rows[0][4];
+    const opt={ scale:UI.pxScale, base, vol:UI.pxVol, ma, divs,
+                basePS: UI.pxBase ? bev : 0 };
+    /* One place decides which bar an event belongs to, and both the drawing and the readout
+       read it from here. */
+    const ev={};
+    const put=(d,e)=>{ const i=barIdx(rows,d); (ev[i]=ev[i]||[]).push(e); };
+    marks.forEach(m=> put(m.date, m));
+    divs.forEach(d=> put(d.date, {kind:'div', amount:d.amount}));
+
     const wid=el.clientWidth || (el.parentElement && el.parentElement.clientWidth) || 320;
     const legend=t(weekly?'px.legendW':'px.legend',
-                   rows.length, dt(rows[0][0]), dt(rows[rows.length-1][0]));
+                   rows.length, dt(rows[0][0]), dt(rows[rows.length-1][0]))
+      + (UI.pxScale==='pct' ? ' · '+t(bev>0?'px.pctFromBE':'px.pctFromStart') : '')
+      + ma.map(s=>' · '+t('px.maLbl',s.period)).join('');
     el.innerHTML=`<div class="scroll">${candleSvg(rows,marks,wid,opt)}</div>`
       + `<p class="px-read"></p>`
-      + `<p class="hint">${legend}${ma.map(s=>' · '+t('px.maLbl',s.period)).join('')}</p>`;
-    bindCross(el, rows, opt, divs);
+      + `<p class="hint">${legend}</p>`;
+    bindCross(el, rows, opt, ev);
   });
 }
 /* Reading values off the chart. On a touch screen only a tap reports – a moving finger is
    how the container is scrolled sideways, and taking that over would trap the chart. */
-function bindCross(el, rows, opt, divs){
+function bindCross(el, rows, opt, ev){
   const svg=el.querySelector('svg.cs'), out=el.querySelector('.px-read');
   if(!svg || !out) return;
   const cross=svg.querySelector('.cs-cross');
   const n=+svg.dataset.n, x0=+svg.dataset.x0, cw=+svg.dataset.cw;
-  const dv={}; (divs||[]).forEach(d=> dv[d.date]=(dv[d.date]||0)+d.amount);
   const line=i=>{
     const r=rows[i];
     let s=t('px.read', dt(r[0]), fmt(r[1]), fmt(r[2]), fmt(r[3]), fmt(r[4]));
     if(opt.scale==='pct' && opt.base) s+=t('px.readPct', (r[4]/opt.base-1)*100);
+    /* What was actually paid or received that day, next to what the market did. Several
+       can fall on one candle – two lots bought the same day, or a whole week of them –
+       so each is written out instead of one winning. */
+    ((ev||{})[i]||[]).forEach(e=>{
+      if(e.kind==='div') s+=t('px.readDiv', eur(e.amount));
+      else s+=t(e.kind==='sell'?'px.readSell':'px.readBuy',
+                e.sh?qty(e.sh):'', e.price>0?fmt(e.price):'');
+    });
     if(r[5]) s+=t('px.readVol', fmt(r[5],0));
-    if(dv[r[0]]) s+=t('px.readDiv', eur(dv[r[0]]));
     return s;
   };
   const rest=()=>{ cross.style.display='none'; out.innerHTML=line(rows.length-1); };
@@ -2783,6 +2833,14 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v37', d:'2026-08-17', items:[
+    {en:'The percent axis now counts from the break-even of the sale: 0% is the line between losing and making money, not the price the period happened to open at.',
+     de:'Die Prozentachse zählt jetzt ab der Nulllinie des Verkaufs: 0% ist die Grenze zwischen Verlust und Gewinn, nicht der Kurs, mit dem der Zeitraum zufällig begann.'},
+    {en:'Tapping a candle also names what was traded that day – purchase or sale, quantity and the price actually paid or received, next to what the market did.',
+     de:'Ein Tippen auf eine Kerze nennt auch, was an dem Tag gehandelt wurde – Kauf oder Verkauf, Stückzahl und der tatsächlich gezahlte oder erhaltene Kurs, neben dem, was der Markt tat.'},
+    {en:'Fixed: on weekly candles a purchase or sale was marked on the following week, and a distribution was never reported when its candle was tapped.',
+     de:'Behoben: Auf Wochenkerzen wurde ein Kauf oder Verkauf auf der folgenden Woche markiert, und eine Ausschüttung wurde beim Antippen ihrer Kerze nie genannt.'}
+  ]},
   {v:'v36', d:'2026-08-17', items:[
     {en:'The price chart has a scale switch: the price as it is, logarithmic so that equal percentage moves are equally tall, or as percent since the start of the period.',
      de:'Der Kurschart hat einen Achsenschalter: der Kurs wie er ist, logarithmisch, damit gleiche prozentuale Bewegungen gleich hoch sind, oder als Prozent seit dem Beginn des Zeitraums.'},
