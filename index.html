@@ -731,15 +731,22 @@ en:{
   'data.noStoreToast':'⚠️ No storage available – data will be lost on reload. Details under “Settings”.',
   'px.title':'Price history',
   'px.intro':'The app fetches nothing by itself. It builds the address, you open it in a browser, save the JSON file and bring it back here.',
-  'px.symbol':'Xetra ticker','px.symSave':'Save','px.symFind':'Copy search address',
-  'px.needSym':'Enter the Xetra ticker of this security first – SAP.DE, ALV.DE, BMW.DE. “Copy search address” gives you a Yahoo address that lists the tickers behind this ISIN.',
+  'px.symbol':'Ticker','px.symSave':'Save','px.symFind':'Copy search address',
+  'px.needSym':'Enter the ticker of this security first – SAP.DE, ALV.DE, BMW.DE. “Copy search address” gives you a Yahoo address that lists every listing behind this ISIN, with its exchange.',
+  'px.venues':'The suffix picks the exchange: .DE Xetra · .F Frankfurt · .MU Munich (gettex) · .SG Stuttgart · .BE Berlin · .DU Düsseldorf · .HM Hamburg · .HA Hanover. Tradegate and EIX have no series of their own here – use Xetra, whose prices they follow, or read in a price CSV from elsewhere.',
   'px.copy':'Copy address','px.copied':'Copied ✓',
   'px.copyFail':'Copying did not work – please select the address by hand.',
   'px.steps':'1 Copy · 2 open in the browser · 3 save the JSON file (or copy its text) · 4 import it here. One file covers every sale of this position.',
   'px.import':'Import price JSON','px.paste':'Paste JSON','px.pasteOk':'Take over',
   'px.pasteHint':'Paste the entire content of the Yahoo page here.',
-  'px.stored':(sym,n,a,b,ex,cur)=>`Stored: ${sym} · ${n} trading days · ${a} to ${b} · ${ex} · ${cur}`,
-  'px.warnExch':(ex,cur)=>`⚠ This series comes from ${ex} in ${cur}, not from Xetra in EUR. The ticker may well name the wrong listing.`,
+  'px.stored':(sym,n,a,b,ex,cur,src)=>`Stored: ${sym} · ${n} trading days · ${a} to ${b} · ${ex} · ${cur} · ${src}`,
+  'px.srcYahoo':'Yahoo','px.srcCsv':'CSV',
+  'px.warnCur':(cur,txc)=>`⚠ This series is quoted in ${cur}, your transactions are in ${txc}. The chart and your buy and sell prices are then in different currencies – the ticker probably names a listing on another market.`,
+  'px.csvHint':'A CSV is read as well: date, open, high, low, close and, if present, volume – one line per day, semicolon or comma separated, dates as 2024-06-20 or 20.06.2024. It is stored under the ticker above, so read it in here in the position, not under Settings.',
+  'px.csvNeedsPos':'A price CSV does not say which security it belongs to. Please read it in inside the position, under its ticker.',
+  'px.csvBadShape':'No usable columns. Expected per line: date, open, high, low, close and, if present, volume.',
+  'px.csvBadDate':(l,s)=>`Line ${l} has no readable date (“${s}”). Expected 2024-06-20 or 20.06.2024.`,
+  'px.csvNoSym':'Enter the ticker first – the CSV is stored under it.',
   'px.sale':(d,q)=>`Sale of ${d} · ${q} shares`,
   'px.modeLots':'This sale','px.modePos':'Whole position',
   'px.noLots':'No purchase of this position could be matched to this sale – the chart begins at the first booking of the position instead.',
@@ -916,15 +923,22 @@ de:{
   'data.noStoreToast':'⚠️ Kein Speicher verfügbar – Daten gehen beim Neuladen verloren. Details unter „Einstellungen“.',
   'px.title':'Kursverlauf',
   'px.intro':'Die App holt nichts von selbst. Sie baut die Adresse, Sie öffnen sie im Browser, sichern die JSON-Datei und bringen sie hierher zurück.',
-  'px.symbol':'Xetra-Kürzel','px.symSave':'Sichern','px.symFind':'Suchadresse kopieren',
-  'px.needSym':'Zuerst das Xetra-Kürzel dieses Wertpapiers eintragen – SAP.DE, ALV.DE, BMW.DE. „Suchadresse kopieren“ liefert eine Yahoo-Adresse, die die Kürzel hinter dieser ISIN auflistet.',
+  'px.symbol':'Kürzel','px.symSave':'Sichern','px.symFind':'Suchadresse kopieren',
+  'px.needSym':'Zuerst das Kürzel dieses Wertpapiers eintragen – SAP.DE, ALV.DE, BMW.DE. „Suchadresse kopieren“ liefert eine Yahoo-Adresse, die jede Notierung hinter dieser ISIN auflistet, mit ihrer Börse.',
+  'px.venues':'Die Endung wählt die Börse: .DE Xetra · .F Frankfurt · .MU München (gettex) · .SG Stuttgart · .BE Berlin · .DU Düsseldorf · .HM Hamburg · .HA Hannover. Tradegate und EIX haben hier keine eigene Reihe – dafür Xetra nehmen, dessen Kursen sie folgen, oder eine Kursdatei als CSV von anderswo einlesen.',
   'px.copy':'Adresse kopieren','px.copied':'Kopiert ✓',
   'px.copyFail':'Kopieren hat nicht geklappt – bitte die Adresse von Hand markieren.',
   'px.steps':'1 Kopieren · 2 im Browser öffnen · 3 JSON-Datei sichern (oder ihren Text kopieren) · 4 hier einlesen. Eine Datei deckt alle Verkäufe dieser Position ab.',
   'px.import':'Kursdatei einlesen','px.paste':'JSON einfügen','px.pasteOk':'Übernehmen',
   'px.pasteHint':'Den gesamten Inhalt der Yahoo-Seite hier einfügen.',
-  'px.stored':(sym,n,a,b,ex,cur)=>`Gespeichert: ${sym} · ${n} Handelstage · ${a} bis ${b} · ${ex} · ${cur}`,
-  'px.warnExch':(ex,cur)=>`⚠ Diese Reihe stammt von ${ex} in ${cur}, nicht von Xetra in EUR. Das Kürzel nennt womöglich die falsche Notierung.`,
+  'px.stored':(sym,n,a,b,ex,cur,src)=>`Gespeichert: ${sym} · ${n} Handelstage · ${a} bis ${b} · ${ex} · ${cur} · ${src}`,
+  'px.srcYahoo':'Yahoo','px.srcCsv':'CSV',
+  'px.warnCur':(cur,txc)=>`⚠ Diese Reihe notiert in ${cur}, Ihre Buchungen stehen in ${txc}. Chart und Kauf-/Verkaufskurse stehen dann in verschiedenen Währungen – das Kürzel nennt vermutlich eine Notierung an einem anderen Markt.`,
+  'px.csvHint':'Eine CSV wird ebenfalls gelesen: Datum, Eröffnung, Hoch, Tief, Schluss und, falls vorhanden, Volume – eine Zeile je Tag, mit Semikolon oder Komma getrennt, Datum als 2024-06-20 oder 20.06.2024. Sie wird unter dem Kürzel oben abgelegt, also hier in der Position einlesen, nicht unter Einstellungen.',
+  'px.csvNeedsPos':'Eine Kursdatei als CSV sagt nicht, zu welchem Papier sie gehört. Bitte in der Position einlesen, unter deren Kürzel.',
+  'px.csvBadShape':'Keine brauchbaren Spalten. Erwartet wird je Zeile: Datum, Eröffnung, Hoch, Tief, Schluss und, falls vorhanden, Volume.',
+  'px.csvBadDate':(l,s)=>`Zeile ${l} hat kein lesbares Datum („${s}“). Erwartet wird 2024-06-20 oder 20.06.2024.`,
+  'px.csvNoSym':'Zuerst das Kürzel eintragen – die CSV wird darunter abgelegt.',
   'px.sale':(d,q)=>`Verkauf vom ${d} · ${q} Stück`,
   'px.modeLots':'Dieser Verkauf','px.modePos':'Ganze Position',
   'px.noLots':'Zu diesem Verkauf ließ sich kein Kauf dieser Position zuordnen – der Chart beginnt stattdessen bei der ersten Buchung der Position.',
@@ -1508,7 +1522,8 @@ function cleanSeries(o){
   if(!rows.length) throw new Error(t('px.errEmpty'));
   rows.sort((a,b)=> a[0]<b[0]?-1:1);
   return {sym, cur:String((o&&o.cur)||'').slice(0,8).toUpperCase(),
-          exch:String((o&&o.exch)||'').slice(0,24), src:'yahoo', rows};
+          exch:String((o&&o.exch)||'').slice(0,24),
+          src: (o&&o.src)==='csv' ? 'csv' : 'yahoo', rows};
 }
 /* The shape Yahoo's chart address returns: parallel arrays, one entry per trading day,
    with null where the exchange was closed or a day was never traded. */
@@ -1532,6 +1547,50 @@ function parseYahoo(text){
      the code "GER", which says far less about whether the ticker is the right one. */
   return cleanSeries({sym:m.symbol, cur:m.currency, exch:m.fullExchangeName||m.exchangeName, rows});
 }
+/* The way out for a venue Yahoo has no series for – Tradegate and EIX among them. Any daily
+   file will do: date, open, high, low, close and, if it is there, volume. The ticker cannot
+   come from the file, so it is the one entered for the position, which is also why this is
+   read in there and not under Settings.
+   The numbers go through the same detectDec()/num() as the transaction import, so a German
+   file (1.234,56) and an English one (1,234.56) are both read correctly. */
+const CSV_HEAD={date:/^(date|datum|day|tag)$/i, o:/^(open|er[öo]ffnung|first)$/i,
+                h:/^(high|hoch|h[öo]chst)/i, l:/^(low|tief|niedrig)/i,
+                c:/^(close|schluss|last|letzter)/i, v:/^(vol|volume|volumen|umsatz|st[üu]ck)/i};
+function parseOhlcCsv(text, sym){
+  if(!SYM_RE.test(String(sym||''))) throw new Error(t('px.csvNoSym'));
+  const lines=String(text).replace(/^\uFEFF/,'').split(/\r?\n/)
+    .map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) throw new Error(t('px.csvBadShape'));
+  /* Whichever separator carves the first line into the most pieces */
+  const sep=[';','\t',','].map(s=>({s, n:lines[0].split(s).length}))
+    .sort((a,b)=> b.n-a.n)[0];
+  if(sep.n<5) throw new Error(t('px.csvBadShape'));
+  const cut=l=> l.split(sep.s).map(c=> c.trim().replace(/^"|"$/g,''));
+  let col={date:0,o:1,h:2,l:3,c:4,v:5}, start=0;
+  const head=cut(lines[0]);
+  if(head.some(c=> CSV_HEAD.date.test(c))){
+    /* Named columns win over the order they happen to sit in */
+    const m={}; head.forEach((c,i)=> Object.keys(CSV_HEAD).forEach(k=>{
+      if(m[k]===undefined && CSV_HEAD[k].test(c)) m[k]=i; }));
+    if(['date','o','h','l','c'].some(k=> m[k]===undefined)) throw new Error(t('px.csvBadShape'));
+    col=m; start=1;
+  }
+  const body=lines.slice(start).map(cut);
+  const dec=detectDec(body.flatMap(p=>[p[col.o],p[col.h],p[col.l],p[col.c]]));
+  const rows=[];
+  body.forEach((p,i)=>{
+    const raw=String(p[col.date]||'');
+    const iso=/^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw
+      : /^(\d{2})\.(\d{2})\.(\d{4})$/.test(raw) ? raw.replace(/^(\d{2})\.(\d{2})\.(\d{4})$/,'$3-$2-$1')
+      : '';
+    if(!iso) throw new Error(t('px.csvBadDate', i+start+1, raw.slice(0,20)));
+    rows.push([iso, num(p[col.o],dec), num(p[col.h],dec), num(p[col.l],dec), num(p[col.c],dec),
+               col.v!==undefined ? num(p[col.v],dec) : 0]);
+  });
+  /* Currency and exchange are not in such a file – left empty rather than guessed, and the
+     stored line then shows a dash for them. */
+  return cleanSeries({sym, cur:'', exch:'', src:'csv', rows});
+}
 /* A second file for the same ticker does not replace the first: both are merged, so a
    window fetched later extends the series instead of cutting the older part away. */
 function mergeSeries(s){
@@ -1542,12 +1601,14 @@ function mergeSeries(s){
   let rows=Object.keys(map).sort().map(k=>map[k]);
   if(rows.length>PX_MAXROWS) rows=rows.slice(rows.length-PX_MAXROWS);
   DB.px[s.sym]={sym:s.sym, cur:s.cur||(cur&&cur.cur)||'', exch:s.exch||(cur&&cur.exch)||'',
-                src:'yahoo', imported:Date.now(),
+                src:s.src||'yahoo', imported:Date.now(),
                 from:rows[0][0], to:rows[rows.length-1][0], rows};
-  /* Exchange and currency of the file belong to the ticker – the chart header reports
-     them, and they are what says whether the ticker really names the Xetra listing. */
+  /* Exchange and currency of the file belong to the ticker – the stored line reports them,
+     and the currency is what says whether the series and the bookings match.
+     A CSV brings neither, so what is already known is kept rather than blanked. */
   Object.keys(DB.sym).forEach(k=>{ if(DB.sym[k].sym===s.sym)
-    DB.sym[k]=Object.assign({}, DB.sym[k], {cur:s.cur, exch:s.exch}); });
+    DB.sym[k]=Object.assign({}, DB.sym[k],
+      s.cur?{cur:s.cur}:{}, s.exch?{exch:s.exch}:{}); });
   save();
   return {n:rows.length, added:Math.max(0, rows.length-before), sym:s.sym};
 }
@@ -1889,9 +1950,14 @@ function pxPanelHtml(isin, p){
     <div class="row" style="margin:10px 0">
       <button class="btn" onclick="document.getElementById('pxFile').click()">${t('px.import')}</button>
       <button class="btn" onclick="pxPasteOpen()">${t('px.paste')}</button>
-    </div>` : `<p class="hint">${t('px.needSym')}</p>`;
-  const warn = series && ((series.cur && series.cur!=='EUR') || (series.exch && !/XETRA|GER/i.test(series.exch)))
-    ? `<p class="hint neg">${t('px.warnExch', esc(series.exch||'?'), esc(series.cur||'?'))}</p>` : '';
+    </div>
+    <p class="hint">${t('px.csvHint')}</p>` : `<p class="hint">${t('px.needSym')}</p>`;
+  /* A listing on another German exchange is a deliberate choice, not a mistake, so the venue
+     alone says nothing any more. What does break the picture is a series quoted in another
+     currency than the bookings: the candles and the markers would then be different money. */
+  const txc=(ss[0] && ss[0].currency) || 'EUR';
+  const warn = series && series.cur && series.cur!==txc
+    ? `<p class="hint neg">${t('px.warnCur', esc(series.cur), esc(txc))}</p>` : '';
   return `<div class="panel">
     <h2>${t('px.title')}</h2>
     <p class="hint">${t('px.intro')}</p>
@@ -1902,17 +1968,20 @@ function pxPanelHtml(isin, p){
       <button class="btn" onclick="pxSetSym('${js(isin)}')">${t('px.symSave')}</button>
       <button class="btn" onclick="pxCopy(this,'${js(pxSearchUrl(isin))}')">${t('px.symFind')}</button>
     </div>
+    <p class="hint">${t('px.venues')}</p>
     ${body}
     ${series?`<p class="hint">${t('px.stored', esc(series.sym), series.rows.length,
-        dt(series.from), dt(series.to), esc(series.exch||'–'), esc(series.cur||'–'))}</p>`:''}
+        dt(series.from), dt(series.to), esc(series.exch||'–'), esc(series.cur||'–'),
+        t(series.src==='csv'?'px.srcCsv':'px.srcYahoo'))}</p>`:''}
     ${warn}
-    <input type="file" id="pxFile" accept=".json,application/json,text/plain" multiple hidden>
+    <input type="file" id="pxFile" accept=".json,.csv,.txt,application/json,text/csv,text/plain" multiple hidden>
     ${ss.map(pxSaleHtml).join('')}
   </div>`;
 }
-function bindPx(root){
+function bindPx(root, isin){
   const f=root.querySelector('#pxFile');
-  if(f) f.onchange=e=>{ pxImportFiles(e.target.files); e.target.value=''; };
+  /* The ticker of this position travels with the file – a CSV cannot name one itself. */
+  if(f) f.onchange=e=>{ pxImportFiles(e.target.files, (DB.sym[isin]||{}).sym||''); e.target.value=''; };
   drawPxCharts(root);
 }
 function pxMode(id, mode){
@@ -1943,8 +2012,16 @@ function pxChart(id){
 }
 
 /* ---------- Import ---------- */
-function pxTake(text){ return mergeSeries(parseYahoo(text)); }
-function pxImportFiles(files){
+/* What kind of file arrived decides itself: anything that opens with a brace or a bracket is
+   Yahoo's JSON, everything else is read as a daily CSV. A CSV carries no ticker, so it can
+   only be read inside a position, where one is entered. */
+function pxTake(text, sym){
+  const s=String(text||'').trim();
+  if(s[0]==='{' || s[0]==='[') return mergeSeries(parseYahoo(s));
+  if(!sym) throw new Error(t('px.csvNeedsPos'));
+  return mergeSeries(parseOhlcCsv(s, sym));
+}
+function pxImportFiles(files, sym){
   const list=[...files]; if(!list.length) return;
   let done=0, ok=0, rows=0, err='';
   const finish=()=>{
@@ -1955,7 +2032,7 @@ function pxImportFiles(files){
   };
   list.forEach(f=>{
     const rd=new FileReader();
-    rd.onload =()=>{ try{ rows+=pxTake(rd.result).n; ok++; }catch(e){ err=e.message||String(e); } finish(); };
+    rd.onload =()=>{ try{ rows+=pxTake(rd.result, sym).n; ok++; }catch(e){ err=e.message||String(e); } finish(); };
     rd.onerror=()=>{ err=t('px.errRead'); finish(); };
     rd.readAsText(f);
   });
@@ -1975,7 +2052,7 @@ function pxPasteOpen(){
 }
 function pxPasteTake(btn){
   const ta=document.getElementById('pxPaste'); if(!ta) return;
-  let res; try{ res=pxTake(ta.value); }
+  let res; try{ res=pxTake(ta.value, (DB.sym[detIsin]||{}).sym||''); }
   catch(e){ return toast(t('px.errImport', e.message||String(e))); }
   btn.closest('.panel').remove();
   toast(t('px.imported',1,res.n));
@@ -2000,7 +2077,15 @@ function pxCopy(btn, text){
     navigator.clipboard.writeText(text).then(done).catch(fallback);
   else fallback();
 }
-function refreshPx(){ render(); if(view==='det' && detIsin) detail(detIsin); }
+/* detail() ends by scrolling to the top, which is right when the position is opened from
+   the list and wrong here: saving a ticker or reading in a file threw the reader back to
+   the head of the page. The place on the page is kept across the redraw. */
+function refreshPx(){
+  const y=window.scrollY;
+  render();
+  if(view==='det' && detIsin) detail(detIsin);
+  window.scrollTo({top:y});
+}
 /* Redraw at the new width – the chart is drawn in pixels, not scaled */
 let pxRedraw=0;
 addEventListener('resize', ()=>{ clearTimeout(pxRedraw); pxRedraw=setTimeout(()=>drawPxCharts(),200); });
@@ -2321,7 +2406,7 @@ function detail(isin){
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
   document.getElementById('v-det').classList.add('on'); view='det'; document.body.dataset.view='det';
   bindComments('isin:'+isin);
-  bindPx(document.getElementById('v-det'));
+  bindPx(document.getElementById('v-det'), isin);
   window.scrollTo({top:0});
 }
 
@@ -2837,6 +2922,16 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v39', d:'2026-08-18', items:[
+    {en:'Any exchange, not just Xetra: the field is simply the ticker now, and the suffix picks the market – .DE Xetra, .F Frankfurt, .MU Munich (gettex), .SG Stuttgart and the rest.',
+     de:'Jede Börse, nicht nur Xetra: Das Feld ist jetzt einfach das Kürzel, und die Endung wählt den Markt – .DE Xetra, .F Frankfurt, .MU München (gettex), .SG Stuttgart und die übrigen.'},
+    {en:'A listing on another exchange is no longer flagged as wrong. The warning now speaks up where it matters: when the series is quoted in a different currency than your bookings.',
+     de:'Eine Notierung an einer anderen Börse gilt nicht mehr als Fehler. Der Hinweis meldet sich jetzt dort, wo es zählt: wenn die Reihe in einer anderen Währung notiert als Ihre Buchungen.'},
+    {en:'A price CSV can be read in as well – date, open, high, low, close and volume, German or English notation – for a venue Yahoo has no series for, such as Tradegate or EIX. It is read in inside the position, under its ticker.',
+     de:'Eine Kursdatei als CSV lässt sich ebenfalls einlesen – Datum, Eröffnung, Hoch, Tief, Schluss und Volume, deutsche oder englische Schreibweise – für einen Handelsplatz, zu dem Yahoo keine Reihe hat, etwa Tradegate oder EIX. Eingelesen wird sie in der Position, unter deren Kürzel.'},
+    {en:'Fixed: saving the ticker or reading in a file threw the page back to the top instead of leaving it where it was.',
+     de:'Behoben: Das Sichern des Kürzels oder das Einlesen einer Datei warf die Seite an den Anfang zurück, statt sie stehen zu lassen.'}
+  ]},
   {v:'v38', d:'2026-08-18', items:[
     {en:'A long press on the chart no longer puts iOS into text selection with the copy and look-up bar over the picture. The line of values under the chart stays selectable.',
      de:'Ein langer Druck auf den Chart versetzt iOS nicht mehr in die Textauswahl mit der Kopieren-und-Nachschlagen-Leiste über dem Bild. Die Wertezeile unter dem Chart bleibt markierbar.'},
