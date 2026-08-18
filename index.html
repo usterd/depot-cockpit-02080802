@@ -146,7 +146,11 @@ html.ts-up .day .d{flex-wrap:wrap}
 /* ---------- Candlestick chart ----------
    Drawn as inline SVG; colours and label size come from the same variables as the rest
    of the app, so it follows the theme and the text-size switch. */
-.cs{display:block}
+/* The axis labels are real <text>, so a long press on the chart put iOS into text selection
+   and raised the copy/look-up bar over the picture. Reading a candle is a press, so the
+   selection and the callout are switched off for the plot itself – the line of values
+   underneath stays selectable, which is the part worth copying. */
+.cs{display:block;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .cs-grid{stroke:var(--line);stroke-width:1}
 .cs-lbl{font-size:var(--fs-10);fill:var(--mut)}
 .cs-up{fill:var(--pos);stroke:var(--pos)}
@@ -930,10 +934,10 @@ de:{
   'px.scaleLin':'Kurs','px.scaleLog':'Log','px.scalePct':'%',
   'px.scaleTitle':{lin:'Lineare Kursachse',log:'Logarithmische Achse – gleiche prozentuale Bewegungen sind gleich hoch',
                    pct:'Prozent seit dem Beginn des Zeitraums'},
-  'px.optBase':'Nulllinie','px.optVol':'Umsatz','px.optMa':'Durchschnitte',
+  'px.optBase':'Nulllinie','px.optVol':'Volume','px.optMa':'Durchschnitte',
   'px.optBaseHint':'Der Kurs, bei dem dieser Verkauf auf null herausgekommen wäre – Kaufkosten der verkauften Stücke plus Gebühr und Steuer des Verkaufs.',
   'px.read':(d,o,h,l,c)=>`${d} · E ${o} · H ${h} · T ${l} · S ${c}`,
-  'px.readVol':v=>` · Umsatz ${v}`,
+  'px.readVol':v=>` · Volume ${v}`,
   'px.readPct':p=>` · ${p>=0?'+':''}${fmt(p,1)}%`,
   'px.readDiv':a=>` · <span class="pos">Ausschüttung ${a}</span>`,
   'px.readBuy':(sh,p)=>` · <span style="color:var(--acc)">Kauf ${sh}${sh&&p?' @ ':''}${p}</span>`,
@@ -2833,6 +2837,12 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v38', d:'2026-08-18', items:[
+    {en:'A long press on the chart no longer puts iOS into text selection with the copy and look-up bar over the picture. The line of values under the chart stays selectable.',
+     de:'Ein langer Druck auf den Chart versetzt iOS nicht mehr in die Textauswahl mit der Kopieren-und-Nachschlagen-Leiste über dem Bild. Die Wertezeile unter dem Chart bleibt markierbar.'},
+    {en:'Volume is called Volume in the German version as well.',
+     de:'Volume heißt auch in der deutschen Fassung Volume.'}
+  ]},
   {v:'v37', d:'2026-08-17', items:[
     {en:'The percent axis now counts from the break-even of the sale: 0% is the line between losing and making money, not the price the period happened to open at.',
      de:'Die Prozentachse zählt jetzt ab der Nulllinie des Verkaufs: 0% ist die Grenze zwischen Verlust und Gewinn, nicht der Kurs, mit dem der Zeitraum zufällig begann.'},
@@ -2847,9 +2857,9 @@ const CHANGELOG=[
     {en:'A dashed line marks the break-even price of the sale – purchase cost of the shares sold plus the fee and tax of the sale, the price at which it would have come out at zero.',
      de:'Eine gestrichelte Linie markiert die Nulllinie des Verkaufs – Kaufkosten der verkauften Stücke plus Gebühr und Steuer des Verkaufs, der Kurs, bei dem er auf null herausgekommen wäre.'},
     {en:'Tapping a candle reads out its day: date, open, high, low, close, turnover, and a distribution if one was booked that day.',
-     de:'Ein Tippen auf eine Kerze liest ihren Tag vor: Datum, Eröffnung, Hoch, Tief, Schluss, Umsatz und eine Ausschüttung, falls an dem Tag eine gebucht wurde.'},
+     de:'Ein Tippen auf eine Kerze liest ihren Tag vor: Datum, Eröffnung, Hoch, Tief, Schluss, Volume und eine Ausschüttung, falls an dem Tag eine gebucht wurde.'},
     {en:'Turnover is drawn as a strip under the candles, distributions as diamonds on the date axis, and moving averages can be switched on.',
-     de:'Der Umsatz steht als Streifen unter den Kerzen, Ausschüttungen als Rauten auf der Datumsachse, und gleitende Durchschnitte lassen sich zuschalten.'},
+     de:'Das Volume steht als Streifen unter den Kerzen, Ausschüttungen als Rauten auf der Datumsachse, und gleitende Durchschnitte lassen sich zuschalten.'},
     {en:'A period longer than 400 trading days is drawn as weekly candles, and the line under the chart says so.',
      de:'Ein Zeitraum von mehr als 400 Handelstagen wird als Wochenkerzen gezeichnet, und die Zeile unter dem Chart sagt es.'}
   ]},
