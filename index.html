@@ -767,10 +767,14 @@ en:{
   'px.pctFromBE':'% from break-even','px.pctFromStart':'% from the start of the period',
   'px.readHint':'Tap a candle to read its values.',
   'px.baseLbl':'break-even','px.maLbl':n=>`SMA ${n}`,
-  'px.info':(n,r,kb)=>`${n} price series · ${r} trading days · ${kb} KB`,
+  'px.info':(n,syms,r,kb)=>`${n} price series${syms?' · '+syms:''} · ${r} trading days · ${kb} KB`,
   'px.wipe':'Delete price data','px.noneStored':'No price data is stored.',
   'px.wiped':n=>`Price data of ${n} ${n===1?'ticker':'tickers'} deleted.`,
-  'px.imported':(f,n)=>`✔ Imported · ${n} trading days stored.`,
+  'px.imported':(sym,n)=>`✔ Imported · ${sym} · ${n} trading days stored.`,
+  'px.adopted':old=>`ticker changed from ${old}`,
+  'px.delOne':'Delete price data',
+  'px.delOneHint':sym=>`removes the stored prices of ${sym}; the ticker stays`,
+  'px.delOneDone':(sym,n)=>`Price data of ${sym} deleted · ${n} trading days.`,
   'px.someFailed':(n,e)=>`${n} not read: ${e}`,
   'px.errImport':e=>`Import failed: ${e}`,
   'px.errJson':'This file is not JSON.',
@@ -959,10 +963,14 @@ de:{
   'px.pctFromBE':'% ab Nulllinie','px.pctFromStart':'% ab Beginn des Zeitraums',
   'px.readHint':'Auf eine Kerze tippen, um ihre Werte zu lesen.',
   'px.baseLbl':'Nulllinie','px.maLbl':n=>`SMA ${n}`,
-  'px.info':(n,r,kb)=>`${n} Kursreihen · ${r} Handelstage · ${kb} KB`,
+  'px.info':(n,syms,r,kb)=>`${n} Kursreihen${syms?' · '+syms:''} · ${r} Handelstage · ${kb} KB`,
   'px.wipe':'Kursdaten löschen','px.noneStored':'Es sind keine Kursdaten gespeichert.',
   'px.wiped':n=>`Kursdaten von ${n} ${n===1?'Kürzel':'Kürzeln'} gelöscht.`,
-  'px.imported':(f,n)=>`✔ Eingelesen · ${n} Handelstage gespeichert.`,
+  'px.imported':(sym,n)=>`✔ Eingelesen · ${sym} · ${n} Handelstage gespeichert.`,
+  'px.adopted':old=>`Kürzel von ${old} geändert`,
+  'px.delOne':'Kursdaten löschen',
+  'px.delOneHint':sym=>`entfernt die gespeicherten Kurse von ${sym}; das Kürzel bleibt`,
+  'px.delOneDone':(sym,n)=>`Kursdaten von ${sym} gelöscht · ${n} Handelstage.`,
   'px.someFailed':(n,e)=>`${n} nicht gelesen: ${e}`,
   'px.errImport':e=>`Einlesen fehlgeschlagen: ${e}`,
   'px.errJson':'Diese Datei ist kein JSON.',
@@ -1974,6 +1982,9 @@ function pxPanelHtml(isin, p){
         dt(series.from), dt(series.to), esc(series.exch||'–'), esc(series.cur||'–'),
         t(series.src==='csv'?'px.srcCsv':'px.srcYahoo'))}</p>`:''}
     ${warn}
+    ${series?`<div class="row" style="margin:10px 0"><button class="btn" id="pxDelOne"
+      data-i18n="px.delOne" style="border-color:#f8514955;color:var(--neg)">${t('px.delOne')}</button>
+      <span class="hint">${t('px.delOneHint', esc(series.sym))}</span></div>`:''}
     <input type="file" id="pxFile" accept=".json,.csv,.txt,application/json,text/csv,text/plain" multiple hidden>
     ${ss.map(pxSaleHtml).join('')}
   </div>`;
@@ -1981,7 +1992,17 @@ function pxPanelHtml(isin, p){
 function bindPx(root, isin){
   const f=root.querySelector('#pxFile');
   /* The ticker of this position travels with the file – a CSV cannot name one itself. */
-  if(f) f.onchange=e=>{ pxImportFiles(e.target.files, (DB.sym[isin]||{}).sym||''); e.target.value=''; };
+  if(f) f.onchange=e=>{ pxImportFiles(e.target.files, isin); e.target.value=''; };
+  /* Rebuilt with the panel on every detail(), so the two-step is armed here rather than once */
+  const del=root.querySelector('#pxDelOne');
+  if(del) armDanger(del, 'data.askDelete', ()=>{
+    const sym=(DB.sym[isin]||{}).sym||'', ser=DB.px[sym];
+    if(!ser) return toast(t('px.noneStored'));
+    const n=ser.rows.length;
+    delete DB.px[sym]; save();
+    toast(t('px.delOneDone', sym, n));
+    refreshPx();
+  });
   drawPxCharts(root);
 }
 function pxMode(id, mode){
@@ -2015,24 +2036,43 @@ function pxChart(id){
 /* What kind of file arrived decides itself: anything that opens with a brace or a bracket is
    Yahoo's JSON, everything else is read as a daily CSV. A CSV carries no ticker, so it can
    only be read inside a position, where one is entered. */
-function pxTake(text, sym){
+function pxTake(text, isin){
+  const have=(DB.sym[isin]||{}).sym||'';
   const s=String(text||'').trim();
-  if(s[0]==='{' || s[0]==='[') return mergeSeries(parseYahoo(s));
-  if(!sym) throw new Error(t('px.csvNeedsPos'));
-  return mergeSeries(parseOhlcCsv(s, sym));
+  let series;
+  if(s[0]==='{' || s[0]==='['){ series=parseYahoo(s); }
+  else {
+    if(!have) throw new Error(t('px.csvNeedsPos'));
+    series=parseOhlcCsv(s, have);
+  }
+  const res=mergeSeries(series);
+  /* The file names the security it is for, and the position follows it. Left apart, the
+     series sits under one name while the chart looks for it under another – which is how an
+     import could report success and leave the chart empty. */
+  const adopted = isin && series.sym!==have;
+  if(adopted) setSym(isin, series.sym);
+  res.was = adopted && have ? have : '';
+  return res;
 }
-function pxImportFiles(files, sym){
+function pxImportFiles(files, isin){
   const list=[...files]; if(!list.length) return;
-  let done=0, ok=0, rows=0, err='';
+  let done=0, ok=0, rows=0, err='', syms=[], was='';
   const finish=()=>{
     if(++done<list.length) return;
     if(!ok) return toast(t('px.errImport', err));
-    toast(t('px.imported', ok, rows) + (ok<list.length ? ' · '+t('px.someFailed', list.length-ok, err) : ''));
+    /* Always naming the ticker it was filed under: a file that lands somewhere other than
+       where the position looks is otherwise reported as a plain success. */
+    toast(t('px.imported', syms.join(', '), rows)
+      + (was ? ' · '+t('px.adopted', was) : '')
+      + (ok<list.length ? ' · '+t('px.someFailed', list.length-ok, err) : ''));
     refreshPx();
   };
   list.forEach(f=>{
     const rd=new FileReader();
-    rd.onload =()=>{ try{ rows+=pxTake(rd.result, sym).n; ok++; }catch(e){ err=e.message||String(e); } finish(); };
+    rd.onload =()=>{ try{ const r=pxTake(rd.result, isin); rows+=r.n; ok++;
+      if(!syms.includes(r.sym)) syms.push(r.sym);
+      if(r.was) was=r.was;
+    }catch(e){ err=e.message||String(e); } finish(); };
     rd.onerror=()=>{ err=t('px.errRead'); finish(); };
     rd.readAsText(f);
   });
@@ -2052,10 +2092,10 @@ function pxPasteOpen(){
 }
 function pxPasteTake(btn){
   const ta=document.getElementById('pxPaste'); if(!ta) return;
-  let res; try{ res=pxTake(ta.value, (DB.sym[detIsin]||{}).sym||''); }
+  let res; try{ res=pxTake(ta.value, detIsin); }
   catch(e){ return toast(t('px.errImport', e.message||String(e))); }
   btn.closest('.panel').remove();
-  toast(t('px.imported',1,res.n));
+  toast(t('px.imported', res.sym, res.n) + (res.was ? ' · '+t('px.adopted', res.was) : ''));
   refreshPx();
 }
 /* Copying instead of a link: the app holds no address that points outward, and nothing
@@ -2236,8 +2276,9 @@ function render(){
     Object.keys(DB.tx).length, Object.keys(DB.cmt).length, (JSON.stringify(DB).length/1024).toFixed(0));
   document.getElementById('csvInfo').textContent = t('data.csvNote',
     filtered().length, Object.keys(DB.tx).length);
+  /* The tickers are named so a series no position points at any more can be seen at all */
   document.getElementById('pxInfo').textContent = t('px.info',
-    Object.keys(DB.px).length,
+    Object.keys(DB.px).length, Object.keys(DB.px).sort().join(', '),
     Object.values(DB.px).reduce((s,x)=>s+((x.rows||[]).length),0),
     (JSON.stringify(DB.px).length/1024).toFixed(0));
   if(view==='dash') dash();
@@ -2922,6 +2963,14 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v40', d:'2026-08-19', items:[
+    {en:'Fixed: a price file whose ticker differed from the one saved on the position was stored under its own name, reported as imported, and left the chart empty. The file now decides the ticker, the position follows it, and the message says which one it was filed under.',
+     de:'Behoben: Eine Kursdatei, deren Kürzel vom gespeicherten der Position abwich, wurde unter ihrem eigenen Namen abgelegt, als eingelesen gemeldet und ließ den Chart leer. Jetzt entscheidet die Datei das Kürzel, die Position folgt ihr, und die Meldung nennt, worunter abgelegt wurde.'},
+    {en:'Price data can be deleted for a single position now, in its own panel. The ticker stays, so the next file needs no retyping.',
+     de:'Kursdaten lassen sich jetzt für eine einzelne Position löschen, in deren eigenem Feld. Das Kürzel bleibt, die nächste Datei braucht also kein erneutes Eintippen.'},
+    {en:'Settings names the tickers it holds prices for, so a series no position points at any more can be seen instead of only being guessed at.',
+     de:'Die Einstellungen nennen die Kürzel, zu denen Kurse liegen, damit eine Reihe, auf die keine Position mehr zeigt, sichtbar wird statt nur vermutet.'}
+  ]},
   {v:'v39', d:'2026-08-18', items:[
     {en:'Any exchange, not just Xetra: the field is simply the ticker now, and the suffix picks the market – .DE Xetra, .F Frankfurt, .MU Munich (gettex), .SG Stuttgart and the rest.',
      de:'Jede Börse, nicht nur Xetra: Das Feld ist jetzt einfach das Kürzel, und die Endung wählt den Markt – .DE Xetra, .F Frankfurt, .MU München (gettex), .SG Stuttgart und die übrigen.'},
