@@ -143,6 +143,44 @@ html.ts-up .day .d{flex-wrap:wrap}
 .ev{display:block;border-radius:4px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar{height:8px;border-radius:4px;background:var(--bg3);overflow:hidden}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+/* ---------- Candlestick chart ----------
+   Drawn as inline SVG; colours and label size come from the same variables as the rest
+   of the app, so it follows the theme and the text-size switch. */
+/* The axis labels are real <text>, so a long press on the chart put iOS into text selection
+   and raised the copy/look-up bar over the picture. Reading a candle is a press, so the
+   selection and the callout are switched off for the plot itself – the line of values
+   underneath stays selectable, which is the part worth copying. */
+.cs{display:block;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.cs-grid{stroke:var(--line);stroke-width:1}
+.cs-lbl{font-size:var(--fs-10);fill:var(--mut)}
+.cs-up{fill:var(--pos);stroke:var(--pos)}
+.cs-dn{fill:var(--neg);stroke:var(--neg)}
+.cs-buy{stroke:var(--acc);fill:var(--acc)}
+.cs-sell{stroke:var(--acc2);fill:var(--acc2)}
+.cs-mark{stroke-dasharray:3 3;opacity:.7;stroke-width:1}
+/* Volume keeps classes of its own: the candles are counted by .cs-up/.cs-dn elsewhere,
+   and a bar sharing those names would quietly be counted as a candle. */
+.cs-vup{fill:var(--pos);opacity:.42}
+.cs-vdn{fill:var(--neg);opacity:.42}
+.cs-ma{fill:none;stroke:var(--acc);stroke-width:1.3;opacity:.85}
+.cs-ma2{fill:none;stroke:var(--mut);stroke-width:1.3;opacity:.7}
+.cs-base{stroke:var(--warn);stroke-width:1.2;stroke-dasharray:6 4}
+/* The zero of the percent axis – brighter than a gridline, so the centring is visible
+   even when the dashed break-even line is switched off */
+.cs-zero{stroke:var(--mut);stroke-width:1.2;opacity:.8}
+.cs-div{stroke:var(--warn);fill:var(--warn)}
+.cs-cross{stroke:var(--fg);stroke-width:1;opacity:.45;pointer-events:none}
+.px-sale{border-top:1px solid var(--line);padding-top:12px;margin-top:14px}
+.px-chart{margin-top:8px}
+.px-seg{margin:8px 0}
+/* Scale switch and the overlay boxes share one line and wrap together on a phone */
+.px-opt{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.px-read{font-size:var(--fs-11);color:var(--mut);margin:6px 0 0;min-height:1.5em;
+  font-variant-numeric:tabular-nums}
+/* The address is long and is meant to be copied, not read – it stays on one line */
+.pxurl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pxurl-in{flex:1 1 200px;min-width:0;font-size:var(--fs-11);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .cmt{background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
 .cmt .meta{font-size:var(--fs-11);color:var(--mut);margin-bottom:6px;display:flex;gap:8px;align-items:center}
 .cmt .meta button{margin-left:auto;background:none;border:none;color:var(--neg);cursor:pointer;font-size:var(--fs-11)}
@@ -474,6 +512,14 @@ table.rsp td.mhead{display:none}
       <!-- The filters of the top bar are out of sight on this tab, so the CSV says
            for itself how much of the stored data it is about to write. -->
       <p id="csvInfo" class="hint" style="margin:0 0 12px"></p>
+      <!-- Price data is loaded inside a position, where the address for it is built.
+           Here it is only imported again, counted and removed. -->
+      <div class="row" style="margin-bottom:6px">
+        <button class="btn" id="pxImp" data-i18n="px.import">Import price JSON</button>
+        <button class="btn" id="pxWipe" data-i18n="px.wipe" style="border-color:#f8514955;color:var(--neg)">Delete price data</button>
+      </div>
+      <p id="pxInfo" class="hint" style="margin:0 0 12px"></p>
+      <input type="file" id="pxFileS" accept=".json,application/json,text/plain" multiple hidden>
       <div class="row" style="margin-bottom:10px">
         <select id="dropTypeSel"></select>
         <button class="btn" id="dropType" data-i18n="data.dropType">Remove type</button>
@@ -542,7 +588,11 @@ const LS = (()=>{
   };
 })();
 const readJSON=(k)=>{ try{ return JSON.parse(LS.get(k) || '{}'); }catch(e){ return {}; } };
-const DB = { tx: readJSON('dc_tx'), cmt: readJSON('dc_cmt') };
+/* px holds the imported daily prices, one merged series per ticker; sym maps an ISIN to
+   the ticker it was typed under. Both sit in DB like the transactions, so a backup carries
+   them along and a restore brings them back. */
+const DB = { tx: readJSON('dc_tx'), cmt: readJSON('dc_cmt'),
+             px: readJSON('dc_px'), sym: readJSON('dc_sym') };
 /* Safari may delete stored data after a long period of disuse – here we ask for persistent storage */
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 /* Settings: number format, status filter (view) and status filter (import) */
@@ -560,7 +610,13 @@ const UI = Object.assign({
   impSkipStatus:[],
   impSkipType:[],
   impSkipUnknownStatus:0,
-  impSkipUnknownType:0
+  impSkipUnknownType:0,
+  /* How the price charts are drawn. One setting for all of them, like the number format:
+     a scale chosen on one sale is the scale the next one opens with. */
+  pxScale:'lin',                    /* 'lin' | 'log' | 'pct' */
+  pxBase:1,                         /* break-even line of the sale */
+  pxVol:1,                          /* volume strip under the candles */
+  pxMa:0                            /* moving averages */
 }, readJSON('dc_ui'));
 const saveUI = () => { try{ LS.set('dc_ui', JSON.stringify(UI)); }catch(e){} };
 
@@ -673,6 +729,61 @@ en:{
   'data.full':'⚠️ Browser storage is full. Please save a backup and remove screenshots – otherwise new entries will be lost on reload.',
   'data.noStore':'<span class="neg">⚠ This browser is not storing anything right now.</span> Safari blocks storage when the file is opened directly from “Files” or a private window is active. The app works, but everything is gone after a reload. Please open the page via a web address (https://…).',
   'data.noStoreToast':'⚠️ No storage available – data will be lost on reload. Details under “Settings”.',
+  'px.title':'Price history',
+  'px.intro':'The app fetches nothing by itself. It builds the address, you open it in a browser, save the JSON file and bring it back here.',
+  'px.symbol':'Ticker','px.symSave':'Save','px.symFind':'Copy search address',
+  'px.needSym':'Enter the ticker of this security first – SAP.DE, ALV.DE, BMW.DE. “Copy search address” gives you a Yahoo address that lists every listing behind this ISIN, with its exchange.',
+  'px.venues':'The suffix picks the exchange: .DE Xetra · .F Frankfurt · .MU Munich (gettex) · .SG Stuttgart · .BE Berlin · .DU Düsseldorf · .HM Hamburg · .HA Hanover. Tradegate and EIX have no series of their own here – use Xetra, whose prices they follow, or read in a price CSV from elsewhere.',
+  'px.copy':'Copy address','px.copied':'Copied ✓',
+  'px.copyFail':'Copying did not work – please select the address by hand.',
+  'px.steps':'1 Copy · 2 open in the browser · 3 save the JSON file (or copy its text) · 4 import it here. One file covers every sale of this position.',
+  'px.import':'Import price JSON','px.paste':'Paste JSON','px.pasteOk':'Take over',
+  'px.pasteHint':'Paste the entire content of the Yahoo page here.',
+  'px.stored':(sym,n,a,b,ex,cur,src)=>`Stored: ${sym} · ${n} trading days · ${a} to ${b} · ${ex} · ${cur} · ${src}`,
+  'px.srcYahoo':'Yahoo','px.srcCsv':'CSV',
+  'px.warnCur':(cur,txc)=>`⚠ This series is quoted in ${cur}, your transactions are in ${txc}. The chart and your buy and sell prices are then in different currencies – the ticker probably names a listing on another market.`,
+  'px.csvHint':'A CSV is read as well: date, open, high, low, close and, if present, volume – one line per day, semicolon or comma separated, dates as 2024-06-20 or 20.06.2024. It is stored under the ticker above, so read it in here in the position, not under Settings.',
+  'px.csvNeedsPos':'A price CSV does not say which security it belongs to. Please read it in inside the position, under its ticker.',
+  'px.csvBadShape':'No usable columns. Expected per line: date, open, high, low, close and, if present, volume.',
+  'px.csvBadDate':(l,s)=>`Line ${l} has no readable date (“${s}”). Expected 2024-06-20 or 20.06.2024.`,
+  'px.csvNoSym':'Enter the ticker first – the CSV is stored under it.',
+  'px.sale':(d,q)=>`Sale of ${d} · ${q} shares`,
+  'px.modeLots':'This sale','px.modePos':'Whole position',
+  'px.noLots':'No purchase of this position could be matched to this sale – the chart begins at the first booking of the position instead.',
+  'px.noData':'No prices for this period yet. Copy the address above, open it in a browser and import the JSON file.',
+  'px.legend':(n,a,b)=>`${n} trading days · ${a} to ${b} · <span style="color:var(--acc)">▌purchase</span> · <span style="color:var(--acc2)">▌sale</span>`,
+  'px.legendW':(n,a,b)=>`${n} weekly candles · ${a} to ${b} · <span style="color:var(--acc)">▌purchase</span> · <span style="color:var(--acc2)">▌sale</span>`,
+  'px.scaleLin':'Price','px.scaleLog':'Log','px.scalePct':'%',
+  'px.scaleTitle':{lin:'Linear price axis',log:'Logarithmic axis – equal percentage moves are equally tall',
+                   pct:'Percent from the start of the period'},
+  'px.optBase':'Break-even','px.optVol':'Volume','px.optMa':'Averages',
+  'px.optBaseHint':'The price at which this sale would have come out at zero – purchase cost of the shares sold plus the fee and tax of the sale.',
+  'px.read':(d,o,h,l,c)=>`${d} · O ${o} · H ${h} · L ${l} · C ${c}`,
+  'px.readVol':v=>` · Vol ${v}`,
+  'px.readPct':p=>` · ${p>=0?'+':''}${fmt(p,1)}%`,
+  'px.readDiv':a=>` · <span class="pos">Distribution ${a}</span>`,
+  'px.readBuy':(sh,p)=>` · <span style="color:var(--acc)">Buy ${sh}${sh&&p?' @ ':''}${p}</span>`,
+  'px.readSell':(sh,p)=>` · <span style="color:var(--acc2)">Sell ${sh}${sh&&p?' @ ':''}${p}</span>`,
+  'px.pctFromBE':'% from break-even','px.pctFromStart':'% from the start of the period',
+  'px.readHint':'Tap a candle to read its values.',
+  'px.baseLbl':'break-even','px.maLbl':n=>`SMA ${n}`,
+  'px.info':(n,syms,r,kb)=>`${n} price series${syms?' · '+syms:''} · ${r} trading days · ${kb} KB`,
+  'px.wipe':'Delete price data','px.noneStored':'No price data is stored.',
+  'px.wiped':n=>`Price data of ${n} ${n===1?'ticker':'tickers'} deleted.`,
+  'px.imported':(sym,n)=>`✔ Imported · ${sym} · ${n} trading days stored.`,
+  'px.adopted':old=>`ticker changed from ${old}`,
+  'px.delOne':'Delete price data',
+  'px.delOneHint':sym=>`removes the stored prices of ${sym}; the ticker stays`,
+  'px.delOneDone':(sym,n)=>`Price data of ${sym} deleted · ${n} trading days.`,
+  'px.someFailed':(n,e)=>`${n} not read: ${e}`,
+  'px.errImport':e=>`Import failed: ${e}`,
+  'px.errJson':'This file is not JSON.',
+  'px.errShape':'This JSON does not look like a Yahoo price series.',
+  'px.errSym':'Unusable ticker. Letters, digits, dot and hyphen are allowed, e.g. SAP.DE',
+  'px.errEmpty':'The file holds no usable trading days.',
+  'px.errRead':'The file could not be read.',
+  'px.more':'Price data is loaded and managed inside the position.',
+  'px.toPos':'To the position','px.chartBtn':'Price history',
   'txt.title':'Text size',
   'txt.note':'Adds the chosen number of pixels to every text of the app, from the smallest label to the largest figure. The setting stays on this device.',
   'ver.title':'Version','ver.history':'Version history','ver.close':'Close','ver.current':'current',
@@ -685,7 +796,8 @@ en:{
   <h3>What it is for</h3>
   <p>A private cockpit for your securities portfolio: positions, realized gains by FIFO,
     distributions, fees and taxes – as an overview, a table and a calendar.
-    No prices are fetched from the internet; everything is calculated purely from what you import.</p>
+    The app fetches nothing from the internet by itself; every figure comes from what you import –
+    the transaction file, and for the candlestick chart of a sale a price file you fetch yourself.</p>
 
   <h3>What you need</h3>
   <p>The transaction export from Scalable Capital as a CSV file.<br>
@@ -705,6 +817,9 @@ en:{
   <p>The app sends no financial data. Everything lives in this browser's storage, on this device.
     There is no server, no account, no background analysis.</p>
   <p>Nothing leaves unless you trigger it yourself – a CSV export or a backup via the share menu.</p>
+  <p class="small">For the price history of a sale the app builds a Yahoo address and hands it to you.
+    Opening it – and thereby telling Yahoo which security you are looking at – is your step, not the
+    app's. The app itself never contacts a server.</p>
   <p class="small"><b>Important:</b> browser storage is not permanent. Save a backup regularly
     under <b>Settings → Save backup (JSON)</b>.</p>`
 },
@@ -810,6 +925,61 @@ de:{
   'data.full':'⚠️ Der Browserspeicher ist voll. Bitte ein Backup sichern und Screenshots entfernen – neue Eingaben gehen sonst beim Neuladen verloren.',
   'data.noStore':'<span class="neg">⚠ Dieser Browser speichert gerade nichts.</span> Safari sperrt den Speicher, wenn die Datei direkt aus „Dateien“ geöffnet wird oder ein privates Fenster aktiv ist. Die App funktioniert, aber alles ist nach dem Neuladen weg. Bitte die Seite über eine Web-Adresse (https://…) öffnen.',
   'data.noStoreToast':'⚠️ Kein Speicher verfügbar – Daten gehen beim Neuladen verloren. Details unter „Einstellungen“.',
+  'px.title':'Kursverlauf',
+  'px.intro':'Die App holt nichts von selbst. Sie baut die Adresse, Sie öffnen sie im Browser, sichern die JSON-Datei und bringen sie hierher zurück.',
+  'px.symbol':'Kürzel','px.symSave':'Sichern','px.symFind':'Suchadresse kopieren',
+  'px.needSym':'Zuerst das Kürzel dieses Wertpapiers eintragen – SAP.DE, ALV.DE, BMW.DE. „Suchadresse kopieren“ liefert eine Yahoo-Adresse, die jede Notierung hinter dieser ISIN auflistet, mit ihrer Börse.',
+  'px.venues':'Die Endung wählt die Börse: .DE Xetra · .F Frankfurt · .MU München (gettex) · .SG Stuttgart · .BE Berlin · .DU Düsseldorf · .HM Hamburg · .HA Hannover. Tradegate und EIX haben hier keine eigene Reihe – dafür Xetra nehmen, dessen Kursen sie folgen, oder eine Kursdatei als CSV von anderswo einlesen.',
+  'px.copy':'Adresse kopieren','px.copied':'Kopiert ✓',
+  'px.copyFail':'Kopieren hat nicht geklappt – bitte die Adresse von Hand markieren.',
+  'px.steps':'1 Kopieren · 2 im Browser öffnen · 3 JSON-Datei sichern (oder ihren Text kopieren) · 4 hier einlesen. Eine Datei deckt alle Verkäufe dieser Position ab.',
+  'px.import':'Kursdatei einlesen','px.paste':'JSON einfügen','px.pasteOk':'Übernehmen',
+  'px.pasteHint':'Den gesamten Inhalt der Yahoo-Seite hier einfügen.',
+  'px.stored':(sym,n,a,b,ex,cur,src)=>`Gespeichert: ${sym} · ${n} Handelstage · ${a} bis ${b} · ${ex} · ${cur} · ${src}`,
+  'px.srcYahoo':'Yahoo','px.srcCsv':'CSV',
+  'px.warnCur':(cur,txc)=>`⚠ Diese Reihe notiert in ${cur}, Ihre Buchungen stehen in ${txc}. Chart und Kauf-/Verkaufskurse stehen dann in verschiedenen Währungen – das Kürzel nennt vermutlich eine Notierung an einem anderen Markt.`,
+  'px.csvHint':'Eine CSV wird ebenfalls gelesen: Datum, Eröffnung, Hoch, Tief, Schluss und, falls vorhanden, Volume – eine Zeile je Tag, mit Semikolon oder Komma getrennt, Datum als 2024-06-20 oder 20.06.2024. Sie wird unter dem Kürzel oben abgelegt, also hier in der Position einlesen, nicht unter Einstellungen.',
+  'px.csvNeedsPos':'Eine Kursdatei als CSV sagt nicht, zu welchem Papier sie gehört. Bitte in der Position einlesen, unter deren Kürzel.',
+  'px.csvBadShape':'Keine brauchbaren Spalten. Erwartet wird je Zeile: Datum, Eröffnung, Hoch, Tief, Schluss und, falls vorhanden, Volume.',
+  'px.csvBadDate':(l,s)=>`Zeile ${l} hat kein lesbares Datum („${s}“). Erwartet wird 2024-06-20 oder 20.06.2024.`,
+  'px.csvNoSym':'Zuerst das Kürzel eintragen – die CSV wird darunter abgelegt.',
+  'px.sale':(d,q)=>`Verkauf vom ${d} · ${q} Stück`,
+  'px.modeLots':'Dieser Verkauf','px.modePos':'Ganze Position',
+  'px.noLots':'Zu diesem Verkauf ließ sich kein Kauf dieser Position zuordnen – der Chart beginnt stattdessen bei der ersten Buchung der Position.',
+  'px.noData':'Für diesen Zeitraum liegen noch keine Kurse vor. Adresse oben kopieren, im Browser öffnen und die JSON-Datei einlesen.',
+  'px.legend':(n,a,b)=>`${n} Handelstage · ${a} bis ${b} · <span style="color:var(--acc)">▌Kauf</span> · <span style="color:var(--acc2)">▌Verkauf</span>`,
+  'px.legendW':(n,a,b)=>`${n} Wochenkerzen · ${a} bis ${b} · <span style="color:var(--acc)">▌Kauf</span> · <span style="color:var(--acc2)">▌Verkauf</span>`,
+  'px.scaleLin':'Kurs','px.scaleLog':'Log','px.scalePct':'%',
+  'px.scaleTitle':{lin:'Lineare Kursachse',log:'Logarithmische Achse – gleiche prozentuale Bewegungen sind gleich hoch',
+                   pct:'Prozent seit dem Beginn des Zeitraums'},
+  'px.optBase':'Nulllinie','px.optVol':'Volume','px.optMa':'Durchschnitte',
+  'px.optBaseHint':'Der Kurs, bei dem dieser Verkauf auf null herausgekommen wäre – Kaufkosten der verkauften Stücke plus Gebühr und Steuer des Verkaufs.',
+  'px.read':(d,o,h,l,c)=>`${d} · E ${o} · H ${h} · T ${l} · S ${c}`,
+  'px.readVol':v=>` · Volume ${v}`,
+  'px.readPct':p=>` · ${p>=0?'+':''}${fmt(p,1)}%`,
+  'px.readDiv':a=>` · <span class="pos">Ausschüttung ${a}</span>`,
+  'px.readBuy':(sh,p)=>` · <span style="color:var(--acc)">Kauf ${sh}${sh&&p?' @ ':''}${p}</span>`,
+  'px.readSell':(sh,p)=>` · <span style="color:var(--acc2)">Verkauf ${sh}${sh&&p?' @ ':''}${p}</span>`,
+  'px.pctFromBE':'% ab Nulllinie','px.pctFromStart':'% ab Beginn des Zeitraums',
+  'px.readHint':'Auf eine Kerze tippen, um ihre Werte zu lesen.',
+  'px.baseLbl':'Nulllinie','px.maLbl':n=>`SMA ${n}`,
+  'px.info':(n,syms,r,kb)=>`${n} Kursreihen${syms?' · '+syms:''} · ${r} Handelstage · ${kb} KB`,
+  'px.wipe':'Kursdaten löschen','px.noneStored':'Es sind keine Kursdaten gespeichert.',
+  'px.wiped':n=>`Kursdaten von ${n} ${n===1?'Kürzel':'Kürzeln'} gelöscht.`,
+  'px.imported':(sym,n)=>`✔ Eingelesen · ${sym} · ${n} Handelstage gespeichert.`,
+  'px.adopted':old=>`Kürzel von ${old} geändert`,
+  'px.delOne':'Kursdaten löschen',
+  'px.delOneHint':sym=>`entfernt die gespeicherten Kurse von ${sym}; das Kürzel bleibt`,
+  'px.delOneDone':(sym,n)=>`Kursdaten von ${sym} gelöscht · ${n} Handelstage.`,
+  'px.someFailed':(n,e)=>`${n} nicht gelesen: ${e}`,
+  'px.errImport':e=>`Einlesen fehlgeschlagen: ${e}`,
+  'px.errJson':'Diese Datei ist kein JSON.',
+  'px.errShape':'Dieses JSON sieht nicht nach einer Yahoo-Kursreihe aus.',
+  'px.errSym':'Unbrauchbares Kürzel. Erlaubt sind Buchstaben, Ziffern, Punkt und Bindestrich, z. B. SAP.DE',
+  'px.errEmpty':'Die Datei enthält keine brauchbaren Handelstage.',
+  'px.errRead':'Die Datei konnte nicht gelesen werden.',
+  'px.more':'Kursdaten werden in der Position geladen und verwaltet.',
+  'px.toPos':'Zur Position','px.chartBtn':'Kursverlauf',
   'txt.title':'Schriftgröße',
   'txt.note':'Legt die gewählte Anzahl Pixel auf jeden Text der App, von der kleinsten Beschriftung bis zur größten Zahl. Die Einstellung bleibt auf diesem Gerät.',
   'ver.title':'Version','ver.history':'Versionsverlauf','ver.close':'Schließen','ver.current':'aktuell',
@@ -822,7 +992,8 @@ de:{
   <h3>Wozu</h3>
   <p>Ein privates Cockpit für dein Wertpapierdepot: Positionen, realisierte Gewinne nach FIFO,
     Ausschüttungen, Gebühren und Steuern – als Übersicht, Tabelle und Kalender.
-    Es werden keine Kurse aus dem Netz geholt; gerechnet wird ausschließlich mit dem, was du importierst.</p>
+    Die App holt von sich aus nichts aus dem Netz; jede Zahl stammt aus dem, was du importierst –
+    der Transaktionsdatei und, für den Kerzenchart eines Verkaufs, einer Kursdatei, die du selbst holst.</p>
 
   <h3>Was du brauchst</h3>
   <p>Den Transaktionsexport von Scalable Capital als CSV-Datei.<br>
@@ -842,6 +1013,9 @@ de:{
   <p>Die App sendet keine Finanzdaten. Alles liegt im Speicher dieses Browsers, auf diesem Gerät.
     Es gibt keinen Server, kein Konto, keine Auswertung im Hintergrund.</p>
   <p>Nach außen geht etwas nur, wenn du es selbst auslöst – CSV-Export oder Backup über das Teilen-Menü.</p>
+  <p class="small">Für den Kursverlauf eines Verkaufs baut die App eine Yahoo-Adresse und reicht sie dir.
+    Sie zu öffnen – und Yahoo damit zu verraten, welches Papier dich interessiert – ist dein Schritt,
+    nicht der der App. Die App selbst spricht mit keinem Server.</p>
   <p class="small"><b>Wichtig:</b> Der Browserspeicher ist nicht dauerhaft. Sichere regelmäßig ein Backup
     unter <b>Einstellungen → Backup (JSON) sichern</b>.</p>`
 }};
@@ -853,6 +1027,8 @@ const save = () => {
   try{
     LS.set('dc_tx',  JSON.stringify(DB.tx));
     LS.set('dc_cmt', JSON.stringify(DB.cmt));
+    LS.set('dc_px',  JSON.stringify(DB.px));
+    LS.set('dc_sym', JSON.stringify(DB.sym));
   }catch(e){ toast(t('data.full')); }
 };
 function toast(m){const el=document.getElementById('toast');el.textContent=m;el.style.display='block';clearTimeout(el._t);el._t=setTimeout(()=>el.style.display='none',5000);}
@@ -1073,8 +1249,13 @@ const isCash = r => r.assetType==='Cash' && !r.isin;
 /* Realized result per transaction (RPL, net) and per day (RPD) – filled by positions().
    RGR holds the same transaction gross, i.e. before fees and taxes – that is the figure
    reported on the overview as “Realized (FIFO)”.
-   ROR holds, per sale, the number of shares for which no matching purchase was found. */
-let RPL={}, RPD={}, RGR={}, ROR={};
+   ROR holds, per sale, the number of shares for which no matching purchase was found.
+   RBUY holds, per sale, the dates of the lots that sale actually consumed – the period the
+   candlestick chart of that sale covers. */
+let RPL={}, RPD={}, RGR={}, ROR={}, RBUY={};
+/* The positions of the last pass, by ISIN – the price charts ask them for the first
+   purchase of a position without recomputing the whole FIFO run. */
+let POSBY={};
 
 /* Proceeds attributable to shares without a purchase record – the figure UI.hideOrphan excludes.
    For hint texts only; the calculation itself lives in positions(). */
@@ -1082,11 +1263,12 @@ const orphanCut = r => (ROR[r.id] && r.sharesN>1e-9)
   ? Math.abs(r.amountN)*Math.min(1, ROR[r.id]/r.sharesN) : 0;
 
 function positions(){
-  RPL={}; RPD={}; RGR={}; ROR={};
+  RPL={}; RPD={}; RGR={}; ROR={}; RBUY={};
   const ex = all().filter(r=>r.status==='Executed').sort((a,b)=> a.dt<b.dt?-1:1);
   const P = {};
   const get = r => P[r.isin] || (P[r.isin]={isin:r.isin,name:r.description,shares:0,cost:0,lots:[],
-      realized:0,div:0,fees:0,taxes:0,buys:0,sells:0,last:0,orphan:0,lastDate:r.date,n:0});
+      realized:0,div:0,fees:0,taxes:0,buys:0,sells:0,last:0,orphan:0,lastDate:r.date,n:0,
+      firstBuy:'',firstDate:r.date});
   ex.forEach(r=>{
     if(!r.isin) return;
     const p=get(r); p.n++; p.lastDate=r.date;
@@ -1095,16 +1277,31 @@ function positions(){
 
     if(isBuy(r)){
       p.shares+=r.sharesN; p.fees+=r.feeN; p.buys+=Math.abs(r.amountN);
-      p.lots.push({sh:r.sharesN, pps: r.sharesN? Math.abs(r.amountN)/r.sharesN : 0});
+      /* The date travels with the lot: a sale that later consumes it can then say from
+         which day on the shares it sold were held. */
+      p.lots.push({sh:r.sharesN, pps: r.sharesN? Math.abs(r.amountN)/r.sharesN : 0,
+                   date:r.date, price: r.priceN || (r.sharesN? Math.abs(r.amountN)/r.sharesN : 0)});
+      if(!p.firstBuy) p.firstBuy=r.date;
       p.cost=p.lots.reduce((s,l)=>s+l.sh*l.pps,0);
 
     } else if(isSell(r)){
-      let rest=r.sharesN, basis=0;
+      let rest=r.sharesN, basis=0, mFirst='', mLast='', marks=[];
       while(rest>1e-9 && p.lots.length){
         const l=p.lots[0], take=Math.min(l.sh,rest);
         basis+=take*l.pps; l.sh-=take; rest-=take;
+        if(l.date){
+          if(!mFirst || l.date<mFirst) mFirst=l.date;
+          if(!mLast  || l.date>mLast)  mLast=l.date;
+          marks.push({date:l.date, price:l.price||l.pps, sh:take});
+        }
         if(l.sh<=1e-9) p.lots.shift();
       }
+      /* The price at which this sale would have come out at exactly zero: what the shares
+         sold had cost, plus the fee and tax of the sale itself. Sold at that price, the
+         realized result below would be 0 – it is the same arithmetic read backwards. */
+      const covShares = r.sharesN - rest;
+      if(mFirst) RBUY[r.id]={first:mFirst, last:mLast, marks,
+                             basisPS: covShares>1e-9 ? (basis + r.feeN + r.taxN)/covShares : 0};
       if(rest>1e-9){ p.orphan+=rest; ROR[r.id]=rest; }
       /* For shares without a matching purchase no cost basis is known – their proceeds would
          count as gain in full. If UI.hideOrphan is set, only the proceeds of covered shares
@@ -1134,7 +1331,8 @@ function positions(){
            corporate action, the supplied counter value for a securities transfer.
            What was paid at the old broker is not in the export. */
         const val = Math.abs(r.amountN) || (r.type==='Security transfer' ? Math.abs(r.priceN)*r.sharesN : 0);
-        p.lots.push({sh:r.sharesN, pps: val/r.sharesN});
+        p.lots.push({sh:r.sharesN, pps: val/r.sharesN, date:r.date, price: r.priceN || val/r.sharesN});
+        if(!p.firstBuy) p.firstBuy=r.date;
         p.shares+=r.sharesN;
         p.cost=p.lots.reduce((s,l)=>s+l.sh*l.pps,0);
 
@@ -1165,6 +1363,7 @@ function positions(){
     p.total  = p.realized + p.div - p.fees - p.taxes;
     p.open   = p.shares>0;
   });
+  POSBY=P;
   return Object.values(P).sort((a,b)=> b.total-a.total);
 }
 
@@ -1242,6 +1441,694 @@ const typeName=k=> tv('type')[k] || L.en.type[k] || k;
 function typeTag(r){
   return `<span class="tag t-${TYPE_CLASS[r.type]||'Sonst'}">${esc(typeName(r.type))}</span>`;
 }
+
+/* ============================ Price history ============================ */
+/* Daily Xetra prices for a sale – without the app ever touching the network.
+   It composes the Yahoo address, the file is fetched by hand in a browser tab and
+   imported here. Three things are gained by that detour:
+   · connect-src 'self' stays as it is, so nothing in this app – injected or not –
+     can reach a foreign host. A whitelisted price server would be an open door.
+   · A browser tab is a top-level navigation, so the same-origin rules that block a
+     fetch() to Yahoo do not apply at all.
+   · The consent page Yahoo shows European visitors can be clicked through once,
+     which a request from inside the app could never do.
+   Everything that comes back is treated like a backup file: checked field by field
+   before it is stored, see cleanSeries(). */
+const PX_HOST='https://query1.finance.yahoo.com';
+const PX_MAXROWS=4000;                       /* about 16 years of trading days per ticker */
+const SYM_RE=/^[A-Za-z0-9][A-Za-z0-9.\-]{0,19}$/;
+const ISIN_RE=/^[A-Za-z0-9]{12}$/;
+let PXMODE={};                               /* per sale: 'lots' (the shares sold) or 'pos' */
+
+const r4=n=> Math.round(n*10000)/10000;
+const dayShift=(iso,n)=>{ const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n);
+                          return d.toISOString().slice(0,10); };
+const dayDiff=(a,b)=> Math.round((Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/864e5);
+const unixOf=iso=> Math.floor(Date.parse(iso+'T00:00:00Z')/1000);
+
+/* Buy to sell plus 5% of that span at each end – enough air to see where the period sits
+   in the move around it. Never beyond today, since there are no prices for tomorrow. */
+function padWindow(from,to){
+  const pad=Math.max(2, Math.round(Math.max(1,dayDiff(from,to))*0.05));
+  const today=isoToday();
+  let end=dayShift(to,pad); if(end>today) end=today;
+  return {from:dayShift(from,-pad), to:end};
+}
+const sellsOf = isin => all().filter(r=>r.isin===isin && isSell(r) && r.status==='Executed');
+
+/* 'lots' spans the purchases this sale actually consumed by FIFO – the period the
+   realized result of that sale is made of. 'pos' spans the whole position. */
+function sellWindow(r, mode, p){
+  const b=RBUY[r.id];
+  const posFrom=(p && (p.firstBuy || p.firstDate)) || '';
+  let from = mode==='pos' ? posFrom : (b && b.first) || posFrom;
+  /* A sale whose shares have no purchase in the file at all leaves nothing to start from –
+     the position begins with the sale itself. A year back is then the honest guess. */
+  if(!from || from>=r.date) from=dayShift(r.date,-365);
+  return padWindow(from, r.date);
+}
+/* One address per position, over every sale it has: a single file then feeds all of
+   their charts, in both views, and nothing has to be fetched twice. */
+function pxWindow(isin, p){
+  const ss=sellsOf(isin); if(!ss.length) return null;
+  let from='', to='';
+  ss.forEach(r=>{ const w=sellWindow(r,'pos',p);
+    if(!from || w.from<from) from=w.from;
+    if(!to   || w.to>to)     to=w.to; });
+  return {from,to};
+}
+const pxSearchUrl = isin => `${PX_HOST}/v1/finance/search?q=${encodeURIComponent(isin)}&quotesCount=10&newsCount=0`;
+function pxUrl(isin, p){
+  const s=DB.sym[isin], w=pxWindow(isin,p);
+  if(!s || !s.sym || !w) return '';
+  return `${PX_HOST}/v8/finance/chart/${encodeURIComponent(s.sym)}`+
+         `?period1=${unixOf(w.from)}&period2=${unixOf(w.to)+86400}&interval=1d`;
+}
+function setSym(isin, raw){
+  const s=String(raw||'').trim().toUpperCase();
+  if(!s){ delete DB.sym[isin]; save(); return true; }
+  if(!SYM_RE.test(s)) return false;
+  DB.sym[isin]=Object.assign({}, DB.sym[isin], {sym:s});
+  save(); return true;
+}
+
+/* A file from outside. Only what is expected is taken over, numbers become numbers,
+   rows missing any of open/high/low/close are dropped – the same posture as cleanBackup(). */
+function cleanSeries(o){
+  const sym=String((o&&o.sym)||'').trim().toUpperCase();
+  if(!SYM_RE.test(sym)) throw new Error(t('px.errSym'));
+  const seen={}, rows=[];
+  (Array.isArray(o&&o.rows)?o.rows:[]).forEach(r=>{
+    if(!Array.isArray(r) || r.length<5) return;
+    const d=String(r[0]||'');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d) || seen[d]) return;
+    const op=fin(r[1]), hi=fin(r[2]), lo=fin(r[3]), cl=fin(r[4]);
+    if([op,hi,lo,cl].some(v=> !(v>0))) return;
+    seen[d]=1;
+    rows.push([d, r4(op), r4(hi), r4(lo), r4(cl), Math.max(0,Math.round(fin(r[5])))]);
+  });
+  if(!rows.length) throw new Error(t('px.errEmpty'));
+  rows.sort((a,b)=> a[0]<b[0]?-1:1);
+  return {sym, cur:String((o&&o.cur)||'').slice(0,8).toUpperCase(),
+          exch:String((o&&o.exch)||'').slice(0,24),
+          src: (o&&o.src)==='csv' ? 'csv' : 'yahoo', rows};
+}
+/* The shape Yahoo's chart address returns: parallel arrays, one entry per trading day,
+   with null where the exchange was closed or a day was never traded. */
+function parseYahoo(text){
+  let d; try{ d=JSON.parse(text); }catch(e){ throw new Error(t('px.errJson')); }
+  const ch=d && d.chart;
+  if(ch && ch.error) throw new Error(String(ch.error.description||ch.error.code||'').slice(0,200) || t('px.errShape'));
+  const res=ch && Array.isArray(ch.result) && ch.result[0];
+  const q=res && res.indicators && Array.isArray(res.indicators.quote) && res.indicators.quote[0];
+  if(!res || !Array.isArray(res.timestamp) || !q) throw new Error(t('px.errShape'));
+  const m=res.meta||{}, off=Number(m.gmtoffset)||0, rows=[];
+  res.timestamp.forEach((ts,i)=>{
+    const v=[q.open&&q.open[i], q.high&&q.high[i], q.low&&q.low[i], q.close&&q.close[i]];
+    if(v.some(x=> x===null || x===undefined || !isFinite(x))) return;
+    /* The stamp names the opening of the exchange; with its offset added the UTC date
+       is the trading day, also for a session that opens before midnight UTC. */
+    rows.push([new Date((Number(ts)+off)*1000).toISOString().slice(0,10),
+               v[0], v[1], v[2], v[3], (q.volume && q.volume[i]) || 0]);
+  });
+  /* fullExchangeName is the readable one – for the Xetra listing exchangeName is only
+     the code "GER", which says far less about whether the ticker is the right one. */
+  return cleanSeries({sym:m.symbol, cur:m.currency, exch:m.fullExchangeName||m.exchangeName, rows});
+}
+/* The way out for a venue Yahoo has no series for – Tradegate and EIX among them. Any daily
+   file will do: date, open, high, low, close and, if it is there, volume. The ticker cannot
+   come from the file, so it is the one entered for the position, which is also why this is
+   read in there and not under Settings.
+   The numbers go through the same detectDec()/num() as the transaction import, so a German
+   file (1.234,56) and an English one (1,234.56) are both read correctly. */
+const CSV_HEAD={date:/^(date|datum|day|tag)$/i, o:/^(open|er[öo]ffnung|first)$/i,
+                h:/^(high|hoch|h[öo]chst)/i, l:/^(low|tief|niedrig)/i,
+                c:/^(close|schluss|last|letzter)/i, v:/^(vol|volume|volumen|umsatz|st[üu]ck)/i};
+function parseOhlcCsv(text, sym){
+  if(!SYM_RE.test(String(sym||''))) throw new Error(t('px.csvNoSym'));
+  const lines=String(text).replace(/^\uFEFF/,'').split(/\r?\n/)
+    .map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) throw new Error(t('px.csvBadShape'));
+  /* Whichever separator carves the first line into the most pieces */
+  const sep=[';','\t',','].map(s=>({s, n:lines[0].split(s).length}))
+    .sort((a,b)=> b.n-a.n)[0];
+  if(sep.n<5) throw new Error(t('px.csvBadShape'));
+  const cut=l=> l.split(sep.s).map(c=> c.trim().replace(/^"|"$/g,''));
+  let col={date:0,o:1,h:2,l:3,c:4,v:5}, start=0;
+  const head=cut(lines[0]);
+  if(head.some(c=> CSV_HEAD.date.test(c))){
+    /* Named columns win over the order they happen to sit in */
+    const m={}; head.forEach((c,i)=> Object.keys(CSV_HEAD).forEach(k=>{
+      if(m[k]===undefined && CSV_HEAD[k].test(c)) m[k]=i; }));
+    if(['date','o','h','l','c'].some(k=> m[k]===undefined)) throw new Error(t('px.csvBadShape'));
+    col=m; start=1;
+  }
+  const body=lines.slice(start).map(cut);
+  const dec=detectDec(body.flatMap(p=>[p[col.o],p[col.h],p[col.l],p[col.c]]));
+  const rows=[];
+  body.forEach((p,i)=>{
+    const raw=String(p[col.date]||'');
+    const iso=/^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw
+      : /^(\d{2})\.(\d{2})\.(\d{4})$/.test(raw) ? raw.replace(/^(\d{2})\.(\d{2})\.(\d{4})$/,'$3-$2-$1')
+      : '';
+    if(!iso) throw new Error(t('px.csvBadDate', i+start+1, raw.slice(0,20)));
+    rows.push([iso, num(p[col.o],dec), num(p[col.h],dec), num(p[col.l],dec), num(p[col.c],dec),
+               col.v!==undefined ? num(p[col.v],dec) : 0]);
+  });
+  /* Currency and exchange are not in such a file – left empty rather than guessed, and the
+     stored line then shows a dash for them. */
+  return cleanSeries({sym, cur:'', exch:'', src:'csv', rows});
+}
+/* A second file for the same ticker does not replace the first: both are merged, so a
+   window fetched later extends the series instead of cutting the older part away. */
+function mergeSeries(s){
+  const cur=DB.px[s.sym], map={};
+  if(cur && Array.isArray(cur.rows)) cur.rows.forEach(r=> map[r[0]]=r);
+  const before=Object.keys(map).length;
+  s.rows.forEach(r=> map[r[0]]=r);
+  let rows=Object.keys(map).sort().map(k=>map[k]);
+  if(rows.length>PX_MAXROWS) rows=rows.slice(rows.length-PX_MAXROWS);
+  DB.px[s.sym]={sym:s.sym, cur:s.cur||(cur&&cur.cur)||'', exch:s.exch||(cur&&cur.exch)||'',
+                src:s.src||'yahoo', imported:Date.now(),
+                from:rows[0][0], to:rows[rows.length-1][0], rows};
+  /* Exchange and currency of the file belong to the ticker – the stored line reports them,
+     and the currency is what says whether the series and the bookings match.
+     A CSV brings neither, so what is already known is kept rather than blanked. */
+  Object.keys(DB.sym).forEach(k=>{ if(DB.sym[k].sym===s.sym)
+    DB.sym[k]=Object.assign({}, DB.sym[k],
+      s.cur?{cur:s.cur}:{}, s.exch?{exch:s.exch}:{}); });
+  save();
+  return {n:rows.length, added:Math.max(0, rows.length-before), sym:s.sym};
+}
+const sliceRows=(sym,w)=>{
+  const s=DB.px[sym];
+  return s ? s.rows.filter(r=> r[0]>=w.from && r[0]<=w.to) : [];
+};
+
+/* ---------- Drawing ----------
+   Inline SVG, drawn by hand: there is no charting library here, none can be added
+   without a build step, and the CSP rules out one from a foreign address. The colours
+   and label sizes come from the same variables as the rest of the app, so the chart
+   follows the text-size switch. Drawn at the measured pixel width of its box, so the
+   labels keep their real size instead of being scaled down with the picture. */
+/* Two geometries, three sets of labels. Percent is an affine transform of the price, so it
+   puts every candle exactly where the linear axis does and only the labels change; the
+   logarithmic axis is the one that actually moves things, and it makes equal percentage
+   moves equally tall. Its padding has to be a ratio – subtracting a span from a low price
+   could push the bottom to zero or below, where the logarithm has nothing to say. */
+const pctLbl = v => (v>=0?'+':'')+fmt(v, Math.abs(v)<10?1:0)+'%';
+function pxScaleOf(lo, hi, mode, base){
+  const log = mode==='log';
+  if(log){ lo/=1.03; hi*=1.03; if(!(lo>0)) lo=Math.max(1e-6, hi/1000); }
+  else { const pad=(hi-lo)*0.06 || Math.max(0.01, Math.abs(hi)*0.01); lo-=pad; hi+=pad; }
+  const m = v => log ? Math.log(Math.max(v,1e-9)) : v;
+  const a = m(lo), span = (m(hi)-a) || 1;
+  return {
+    lo, hi, log,
+    frac: p => (m(p)-a)/span,
+    ticks: [0,1,2,3,4].map(k=> log ? Math.exp(a+span*k/4) : lo+(hi-lo)*k/4),
+    label: p => mode==='pct' ? pctLbl((p/(base||1)-1)*100) : fmt(p)
+  };
+}
+/* The bar that covers a date: the last one starting at or before it. A weekly candle is
+   dated by its Monday, so a trade on the Wednesday belongs to that candle and not to the
+   next one; on a daily chart an event booked on a Sunday falls on the Friday that traded.
+   Marker and readout both go through here, so the two can never disagree. */
+function barIdx(rows, d){
+  let k=0;
+  for(let i=0;i<rows.length;i++){ if(rows[i][0]<=d) k=i; else break; }
+  return k;
+}
+function candleSvg(rows, marks, wid, o){
+  o = o || {};
+  const n=rows.length, MINCW=1.8;
+  const showVol = !!(o.vol && rows.some(r=> r[5]>0));
+  let lo=Infinity, hi=-Infinity;
+  const span=v=>{ if(v>0){ if(v<lo)lo=v; if(v>hi)hi=v; } };
+  rows.forEach(r=>{ span(r[3]); span(r[2]); });
+  marks.forEach(m=> span(m.price));
+  span(o.basePS);
+  /* The averages are part of the picture, so the axis has to hold them too – otherwise the
+     line leaves the panel wherever it runs above or below the candles. */
+  (o.ma||[]).forEach(s=> s.vals.forEach(span));
+  if(!isFinite(lo) || !isFinite(hi)) return '';
+  if(hi-lo < 1e-9){ const d=Math.max(0.01, lo*0.01); hi=lo+d; lo=Math.max(1e-6, lo-d); }
+  const S=pxScaleOf(lo, hi, o.scale||'lin', o.base||rows[0][4]);
+
+  /* The labels grow with the text-size switch, so the margins that hold them are measured
+     from the same number of pixels instead of being fixed – otherwise a wide price or a
+     larger type size runs off the edge. */
+  const fsz=10+(+UI.textsize||0), cwc=fsz*0.62;
+  const PADR=Math.round(8+Math.max(...S.ticks.map(p=>S.label(p).length))*cwc);
+  const PADL=6, PADT=Math.round(fsz+8), PADB=Math.round(fsz+14);
+  const H=Math.round((showVol?344:300)+fsz*2);
+  let W=Math.max(280, Math.round(wid));
+  if(n*MINCW > W-PADL-PADR) W=Math.min(9000, Math.ceil(n*MINCW)+PADL+PADR);
+  const x0=PADL, x1=W-PADR, y0=PADT, y1=H-PADB, pw=x1-x0, ph=y1-y0;
+  /* With the volume strip the candles keep the upper three quarters and the bars sit below
+     a gap; without it the price uses the whole box. */
+  const yp1 = showVol ? Math.round(y0+ph*0.74) : y1;
+  const yv0 = showVol ? Math.round(y0+ph*0.82) : y1;
+  const cw=pw/n, bw=Math.max(1, Math.min(9, cw*0.68));
+  const rd=v=> Math.round(v*10)/10;
+  const X=i=> rd(x0+(i+0.5)*cw);
+  const Y=p=> rd(yp1-S.frac(p)*(yp1-y0));
+
+  let out='';
+  S.ticks.forEach(p=>{
+    const y=Y(p);
+    out+=`<line class="cs-grid" x1="${x0}" y1="${y}" x2="${x1}" y2="${y}"/>`
+       + `<text class="cs-lbl" x="${x1+5}" y="${rd(y+fsz*0.35)}">${esc(S.label(p))}</text>`;
+  });
+  /* On the percent axis the zero is the break-even, and it earns a line of its own – the
+     centring has to be visible even when the dashed break-even line is switched off. Where
+     that line is already drawn at the same price the two would sit on top of each other. */
+  if(o.scale==='pct' && o.base>0 && !(o.basePS>0 && Math.abs(o.basePS-o.base)<1e-9)){
+    const y=Y(o.base);
+    /* Labelled, or the line would be a rule with nothing to say – the five ticks are evenly
+       spaced and need not land on the zero themselves. */
+    out+=`<line class="cs-zero" x1="${x0}" y1="${y}" x2="${x1}" y2="${y}"/>`
+       + `<text class="cs-lbl" x="${x1+5}" y="${rd(y+fsz*0.35)}">${esc(pctLbl(0))}</text>`;
+  }
+  let lastX=-1e9;
+  rows.forEach((r,i)=>{
+    if(i && r[0].slice(0,7)===rows[i-1][0].slice(0,7)) return;
+    const x=X(i); if(x-lastX<cwc*8) return; lastX=x;
+    /* A label at either end would hang over the edge if it were centred on its month */
+    const lbl=`${MON()[+r[0].slice(5,7)-1].slice(0,3)} ${r[0].slice(2,4)}`;
+    const half=lbl.length*cwc/2;
+    const at = x-half<x0 ? {x:x0, a:'start'} : x+half>x1 ? {x:x1, a:'end'} : {x, a:'middle'};
+    out+=`<line class="cs-grid" x1="${x}" y1="${y0}" x2="${x}" y2="${y1}"/>`
+       + `<text class="cs-lbl" x="${at.x}" y="${H-4}" text-anchor="${at.a}">${esc(lbl)}</text>`;
+  });
+  if(showVol){
+    const vmax=Math.max(...rows.map(r=>r[5]||0), 1), vh=y1-yv0;
+    rows.forEach((r,i)=>{
+      const h=Math.max(0.6, (r[5]||0)/vmax*vh), x=X(i);
+      out+=`<rect class="${r[4]>=r[1]?'cs-vup':'cs-vdn'}" x="${rd(x-bw/2)}" y="${rd(y1-h)}" `
+         + `width="${rd(bw)}" height="${rd(h)}"/>`;
+    });
+  }
+  rows.forEach((r,i)=>{
+    const x=X(i), cls=r[4]>=r[1]?'cs-up':'cs-dn';
+    const ya=Y(Math.max(r[1],r[4])), yb=Y(Math.min(r[1],r[4]));
+    out+=`<line class="${cls}" x1="${x}" y1="${Y(r[2])}" x2="${x}" y2="${Y(r[3])}" stroke-width="1"/>`
+       + `<rect class="${cls}" x="${rd(x-bw/2)}" y="${ya}" `
+       + `width="${rd(bw)}" height="${Math.max(1, rd(yb-ya))}"/>`;
+  });
+  (o.ma||[]).forEach(s=>{
+    const pts=[];
+    s.vals.forEach((v,i)=>{ if(v>0) pts.push(X(i)+','+Y(v)); });
+    if(pts.length>1) out+=`<polyline class="${s.cls}" points="${pts.join(' ')}"/>`;
+  });
+  if(o.basePS>0){
+    const y=Y(o.basePS);
+    /* Always the price, never the scale's own label: on the percent axis the break-even is
+       the zero by definition, so "+0.0%" would be true and say nothing, while the price is
+       exactly what a percent axis cannot otherwise tell you. */
+    out+=`<line class="cs-base" x1="${x0}" y1="${y}" x2="${x1}" y2="${y}"/>`
+       + `<text class="cs-lbl" x="${x0+3}" y="${rd(y-3)}">${esc(t('px.baseLbl')+' '+fmt(o.basePS))}</text>`;
+  }
+  (o.divs||[]).forEach(d=>{
+    const x=X(barIdx(rows,d.date));
+    out+=`<polygon class="cs-div" points="${x},${y1-5} ${x+4},${y1} ${x},${y1+5} ${x-4},${y1}"/>`;
+  });
+  marks.forEach(m=>{
+    const x=X(barIdx(rows,m.date)), cls=m.kind==='sell'?'cs-sell':'cs-buy';
+    out+=`<line class="${cls} cs-mark" x1="${x}" y1="${y0}" x2="${x}" y2="${y1}"/>`
+       + `<polygon class="${cls}" points="${x-4},${y0-10} ${x+4},${y0-10} ${x},${y0-3}"/>`;
+    if(m.price>0){ const y=Y(m.price);
+      out+=`<line class="${cls}" x1="${x-6}" y1="${y}" x2="${x+6}" y2="${y}" stroke-width="1.6"/>`
+         + `<circle class="${cls}" cx="${x}" cy="${y}" r="2.6"/>`;
+    }
+  });
+  out+=`<line class="cs-cross" x1="0" y1="${y0}" x2="0" y2="${y1}" style="display:none"/>`;
+  /* The reader needs the geometry back to turn a touch into a candle */
+  return `<svg class="cs" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img"`
+    + ` data-n="${n}" data-x0="${x0}" data-cw="${rd(cw)}"`
+    + ` aria-label="${esc(t('px.title'))}"><title>${esc(t('px.readHint'))}</title>${out}</svg>`;
+}
+/* Beyond this many bars a window is aggregated to weeks – ten years of daily candles are
+   4000 pixels of scrolling and nothing can be seen in them anyway. */
+const PX_WEEKLY=400;
+function toWeekly(rows){
+  const out=[];
+  let cur=null, key='';
+  rows.forEach(r=>{
+    const d=new Date(r[0]+'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));      // back to Monday
+    const k=d.toISOString().slice(0,10);
+    if(k!==key){ key=k; cur=[r[0],r[1],r[2],r[3],r[4],r[5]||0]; out.push(cur); return; }
+    if(r[2]>cur[2]) cur[2]=r[2];                              // high
+    if(r[3]<cur[3]) cur[3]=r[3];                              // low
+    cur[4]=r[4];                                              // close of the last day
+    cur[5]+=r[5]||0;
+  });
+  return out;
+}
+/* The average is computed on the whole stored series, not on the window: cut to the window
+   first, a 50-day line would only begin fifty candles in and say nothing about the start. */
+function smaByDate(series, period){
+  const out={}; let sum=0;
+  for(let i=0;i<series.length;i++){
+    sum+=series[i][4];
+    if(i>=period) sum-=series[i-period][4];
+    if(i>=period-1) out[series[i][0]]=sum/period;
+  }
+  return out;
+}
+function drawPxCharts(root){
+  (root||document).querySelectorAll('.px-chart').forEach(el=>{
+    const r=DB.tx[el.dataset.id];
+    if(!r){ el.innerHTML=''; return; }
+    const p=POSBY[r.isin], sm=DB.sym[r.isin]||{}, mode=PXMODE[r.id]||'lots';
+    const w=sellWindow(r,mode,p);
+    const daily=sm.sym ? sliceRows(sm.sym,w) : [];
+    if(daily.length<2){ el.innerHTML=`<p class="hint">${t('px.noData')}</p>`; return; }
+    const weekly=daily.length>PX_WEEKLY;
+    const rows=weekly ? toWeekly(daily) : daily;
+
+    const marks=[{date:r.date, price:r.priceN||0, kind:'sell', sh:r.sharesN}];
+    if(mode==='pos'){
+      all().filter(x=> x.isin===r.isin && isBuy(x) && x.status==='Executed' && x.date<=r.date)
+           .forEach(x=> marks.push({date:x.date, price:x.priceN||0, kind:'buy', sh:x.sharesN}));
+    } else {
+      ((RBUY[r.id]||{}).marks||[])
+        .forEach(m=> marks.push({date:m.date, price:m.price, kind:'buy', sh:m.sh}));
+    }
+    /* Distributions booked for this security inside the window – what the holding paid out
+       while it was held belongs in the same picture. */
+    const divs=all().filter(x=> x.isin===r.isin && isDiv(x) && x.status==='Executed'
+                             && x.date>=rows[0][0] && x.date<=w.to)
+                    .map(x=>({date:x.date, amount:x.amountN}));
+    const ma=[];
+    if(UI.pxMa && DB.px[sm.sym]){
+      const full=DB.px[sm.sym].rows;
+      const m50=smaByDate(full,50), v50=rows.map(x=>m50[x[0]]||0);
+      if(v50.some(v=>v>0)) ma.push({cls:'cs-ma', period:50, vals:v50});
+      const m200=smaByDate(full,200), v200=rows.map(x=>m200[x[0]]||0);
+      if(v200.filter(v=>v>0).length >= rows.length/2)
+        ma.push({cls:'cs-ma2', period:200, vals:v200});
+    }
+    /* Zero on the percent axis is the break-even of this sale – the line between losing and
+       making money, and the same reference in both views, since the block is about that one
+       sale. It does not follow the break-even checkbox: that decides whether the line is
+       drawn, and letting it move the axis as well would renumber every label in silence.
+       A sale with no purchase behind it has no break-even and falls back to the start of
+       the period, which the line under the chart then says. */
+    const bev=(RBUY[r.id]||{}).basisPS||0;
+    const base=bev>0 ? bev : rows[0][4];
+    const opt={ scale:UI.pxScale, base, vol:UI.pxVol, ma, divs,
+                basePS: UI.pxBase ? bev : 0 };
+    /* One place decides which bar an event belongs to, and both the drawing and the readout
+       read it from here. */
+    const ev={};
+    const put=(d,e)=>{ const i=barIdx(rows,d); (ev[i]=ev[i]||[]).push(e); };
+    marks.forEach(m=> put(m.date, m));
+    divs.forEach(d=> put(d.date, {kind:'div', amount:d.amount}));
+
+    const wid=el.clientWidth || (el.parentElement && el.parentElement.clientWidth) || 320;
+    const legend=t(weekly?'px.legendW':'px.legend',
+                   rows.length, dt(rows[0][0]), dt(rows[rows.length-1][0]))
+      + (UI.pxScale==='pct' ? ' · '+t(bev>0?'px.pctFromBE':'px.pctFromStart') : '')
+      + ma.map(s=>' · '+t('px.maLbl',s.period)).join('');
+    el.innerHTML=`<div class="scroll">${candleSvg(rows,marks,wid,opt)}</div>`
+      + `<p class="px-read"></p>`
+      + `<p class="hint">${legend}</p>`;
+    bindCross(el, rows, opt, ev);
+  });
+}
+/* Reading values off the chart. On a touch screen only a tap reports – a moving finger is
+   how the container is scrolled sideways, and taking that over would trap the chart. */
+function bindCross(el, rows, opt, ev){
+  const svg=el.querySelector('svg.cs'), out=el.querySelector('.px-read');
+  if(!svg || !out) return;
+  const cross=svg.querySelector('.cs-cross');
+  const n=+svg.dataset.n, x0=+svg.dataset.x0, cw=+svg.dataset.cw;
+  const line=i=>{
+    const r=rows[i];
+    let s=t('px.read', dt(r[0]), fmt(r[1]), fmt(r[2]), fmt(r[3]), fmt(r[4]));
+    if(opt.scale==='pct' && opt.base) s+=t('px.readPct', (r[4]/opt.base-1)*100);
+    /* What was actually paid or received that day, next to what the market did. Several
+       can fall on one candle – two lots bought the same day, or a whole week of them –
+       so each is written out instead of one winning. */
+    ((ev||{})[i]||[]).forEach(e=>{
+      if(e.kind==='div') s+=t('px.readDiv', eur(e.amount));
+      else s+=t(e.kind==='sell'?'px.readSell':'px.readBuy',
+                e.sh?qty(e.sh):'', e.price>0?fmt(e.price):'');
+    });
+    if(r[5]) s+=t('px.readVol', fmt(r[5],0));
+    return s;
+  };
+  const rest=()=>{ cross.style.display='none'; out.innerHTML=line(rows.length-1); };
+  const at=e=>{
+    const rc=svg.getBoundingClientRect();
+    const sc=(rc.width/(+svg.getAttribute('width'))) || 1;
+    const i=Math.max(0, Math.min(n-1, Math.round(((e.clientX-rc.left)/sc - x0)/cw - 0.5)));
+    const x=x0+(i+0.5)*cw;
+    cross.setAttribute('x1',x); cross.setAttribute('x2',x); cross.style.display='';
+    out.innerHTML=line(i);
+  };
+  svg.addEventListener('pointerdown', at);
+  if(!TOUCH){
+    svg.addEventListener('pointermove', at);
+    svg.addEventListener('pointerleave', rest);
+  }
+  rest();
+}
+
+/* ---------- The panel ---------- */
+function pxSaleHtml(r){
+  const mode=PXMODE[r.id]||'lots';
+  const b=RBUY[r.id];
+  const on=m=> m===mode?' class="on"':'';
+  return `<div class="px-sale" data-id="${esc(r.id)}">
+    <div class="row" style="justify-content:space-between">
+      <b>${t('px.sale', dt(r.date), qty(r.sharesN))}</b>
+      <span>${RPL[r.id]!==undefined?sign(RPL[r.id]):''}</span>
+    </div>
+    <div class="seg px-seg">
+      <button data-m="lots"${on('lots')} onclick="pxMode('${js(r.id)}','lots')">${t('px.modeLots')}</button>
+      <button data-m="pos"${on('pos')} onclick="pxMode('${js(r.id)}','pos')">${t('px.modePos')}</button>
+    </div>
+    ${b?'':`<p class="hint neg">${t('px.noLots')}</p>`}
+    ${pxOptHtml(b)}
+    <div class="px-chart" data-id="${esc(r.id)}"></div>
+  </div>`;
+}
+/* How the chart is drawn. The switch sits on every sale, but the choice is one setting for
+   the whole app – like the number format, a scale chosen here is the scale the next chart
+   opens with. */
+function pxOptHtml(hasLots){
+  const sc=t('px.scaleTitle');
+  const seg=['lin','log','pct'].map(m=>
+    `<button data-s="${m}"${UI.pxScale===m?' class="on"':''} title="${esc(sc[m]||'')}"
+      onclick="pxOpt('pxScale','${m}')">${t('px.scale'+m[0].toUpperCase()+m.slice(1))}</button>`).join('');
+  const box=(k,lbl,title)=>`<label class="chk" title="${esc(title||'')}">
+    <input type="checkbox" ${UI[k]?'checked':''} onchange="pxOpt('${k}', this.checked?1:0)">
+    <span>${lbl}</span></label>`;
+  return `<div class="px-opt"><div class="seg">${seg}</div>
+    ${hasLots?box('pxBase',t('px.optBase'),t('px.optBaseHint')):''}
+    ${box('pxVol',t('px.optVol'))}
+    ${box('pxMa',t('px.optMa'))}</div>`;
+}
+/* Only the charts are redrawn, never the whole view: a full render would send the page
+   back to the top on every tick, the same reason pxMode() redraws in place. */
+function pxOpt(key, val){
+  UI[key]=val; saveUI();
+  document.querySelectorAll('.px-opt').forEach(row=>{
+    row.querySelectorAll('.seg button').forEach(b=> b.classList.toggle('on', b.dataset.s===UI.pxScale));
+    row.querySelectorAll('input[type=checkbox]').forEach(i=>{
+      const m=/pxOpt\('(\w+)'/.exec(i.getAttribute('onchange')||'');
+      if(m) i.checked=!!UI[m[1]];
+    });
+  });
+  drawPxCharts();
+}
+function pxPanelHtml(isin, p){
+  const ss=sellsOf(isin);
+  if(!ss.length) return '';
+  const sm=DB.sym[isin]||{}, series=sm.sym?DB.px[sm.sym]:null, url=pxUrl(isin,p);
+  const body = url ? `
+    <div class="pxurl">
+      <input class="pxurl-in" readonly value="${esc(url)}" onclick="this.select()" aria-label="${esc(t('px.title'))}">
+      <button class="btn pri" onclick="pxCopy(this,'${js(url)}')">${t('px.copy')}</button>
+    </div>
+    <p class="hint">${t('px.steps')}</p>
+    <div class="row" style="margin:10px 0">
+      <button class="btn" onclick="document.getElementById('pxFile').click()">${t('px.import')}</button>
+      <button class="btn" onclick="pxPasteOpen()">${t('px.paste')}</button>
+    </div>
+    <p class="hint">${t('px.csvHint')}</p>` : `<p class="hint">${t('px.needSym')}</p>`;
+  /* A listing on another German exchange is a deliberate choice, not a mistake, so the venue
+     alone says nothing any more. What does break the picture is a series quoted in another
+     currency than the bookings: the candles and the markers would then be different money. */
+  const txc=(ss[0] && ss[0].currency) || 'EUR';
+  const warn = series && series.cur && series.cur!==txc
+    ? `<p class="hint neg">${t('px.warnCur', esc(series.cur), esc(txc))}</p>` : '';
+  return `<div class="panel">
+    <h2>${t('px.title')}</h2>
+    <p class="hint">${t('px.intro')}</p>
+    <div class="row" style="margin:10px 0">
+      <label class="hint" for="pxSym">${t('px.symbol')}</label>
+      <input id="pxSym" value="${esc(sm.sym||'')}" placeholder="SAP.DE" size="9"
+             autocapitalize="characters" autocorrect="off" spellcheck="false">
+      <button class="btn" onclick="pxSetSym('${js(isin)}')">${t('px.symSave')}</button>
+      <button class="btn" onclick="pxCopy(this,'${js(pxSearchUrl(isin))}')">${t('px.symFind')}</button>
+    </div>
+    <p class="hint">${t('px.venues')}</p>
+    ${body}
+    ${series?`<p class="hint">${t('px.stored', esc(series.sym), series.rows.length,
+        dt(series.from), dt(series.to), esc(series.exch||'–'), esc(series.cur||'–'),
+        t(series.src==='csv'?'px.srcCsv':'px.srcYahoo'))}</p>`:''}
+    ${warn}
+    ${series?`<div class="row" style="margin:10px 0"><button class="btn" id="pxDelOne"
+      data-i18n="px.delOne" style="border-color:#f8514955;color:var(--neg)">${t('px.delOne')}</button>
+      <span class="hint">${t('px.delOneHint', esc(series.sym))}</span></div>`:''}
+    <input type="file" id="pxFile" accept=".json,.csv,.txt,application/json,text/csv,text/plain" multiple hidden>
+    ${ss.map(pxSaleHtml).join('')}
+  </div>`;
+}
+function bindPx(root, isin){
+  const f=root.querySelector('#pxFile');
+  /* The ticker of this position travels with the file – a CSV cannot name one itself. */
+  if(f) f.onchange=e=>{ pxImportFiles(e.target.files, isin); e.target.value=''; };
+  /* Rebuilt with the panel on every detail(), so the two-step is armed here rather than once */
+  const del=root.querySelector('#pxDelOne');
+  if(del) armDanger(del, 'data.askDelete', ()=>{
+    const sym=(DB.sym[isin]||{}).sym||'', ser=DB.px[sym];
+    if(!ser) return toast(t('px.noneStored'));
+    const n=ser.rows.length;
+    delete DB.px[sym]; save();
+    toast(t('px.delOneDone', sym, n));
+    refreshPx();
+  });
+  drawPxCharts(root);
+}
+function pxMode(id, mode){
+  PXMODE[id]=mode;
+  document.querySelectorAll('.px-sale').forEach(el=>{
+    if(el.dataset.id!==id) return;
+    el.querySelectorAll('.px-seg button').forEach(b=> b.classList.toggle('on', b.dataset.m===mode));
+    drawPxCharts(el);
+  });
+}
+function pxSetSym(isin){
+  const el=document.getElementById('pxSym'); if(!el) return;
+  if(!setSym(isin, el.value)) return toast(t('px.errSym'));
+  refreshPx();
+}
+/* The chart of a single sale, reachable from the transactions table */
+function pxChart(id){
+  const r=DB.tx[id]; if(!r || !r.isin) return;
+  const box=document.createElement('div');
+  box.className='panel modal wide';
+  box.innerHTML=`<div class="modal-hd"><h2>${esc(r.description||r.isin)}</h2>
+      <button class="btn ico" onclick="this.closest('.panel').remove()">✕</button></div>
+    ${pxSaleHtml(r)}
+    <p class="hint">${t('px.more')}</p>
+    <div class="row"><button class="btn" onclick="this.closest('.panel').remove();detail('${js(r.isin)}')">${t('px.toPos')}</button></div>`;
+  document.body.appendChild(box);
+  drawPxCharts(box);
+}
+
+/* ---------- Import ---------- */
+/* What kind of file arrived decides itself: anything that opens with a brace or a bracket is
+   Yahoo's JSON, everything else is read as a daily CSV. A CSV carries no ticker, so it can
+   only be read inside a position, where one is entered. */
+function pxTake(text, isin){
+  const have=(DB.sym[isin]||{}).sym||'';
+  const s=String(text||'').trim();
+  let series;
+  if(s[0]==='{' || s[0]==='['){ series=parseYahoo(s); }
+  else {
+    if(!have) throw new Error(t('px.csvNeedsPos'));
+    series=parseOhlcCsv(s, have);
+  }
+  const res=mergeSeries(series);
+  /* The file names the security it is for, and the position follows it. Left apart, the
+     series sits under one name while the chart looks for it under another – which is how an
+     import could report success and leave the chart empty. */
+  const adopted = isin && series.sym!==have;
+  if(adopted) setSym(isin, series.sym);
+  res.was = adopted && have ? have : '';
+  return res;
+}
+function pxImportFiles(files, isin){
+  const list=[...files]; if(!list.length) return;
+  let done=0, ok=0, rows=0, err='', syms=[], was='';
+  const finish=()=>{
+    if(++done<list.length) return;
+    if(!ok) return toast(t('px.errImport', err));
+    /* Always naming the ticker it was filed under: a file that lands somewhere other than
+       where the position looks is otherwise reported as a plain success. */
+    toast(t('px.imported', syms.join(', '), rows)
+      + (was ? ' · '+t('px.adopted', was) : '')
+      + (ok<list.length ? ' · '+t('px.someFailed', list.length-ok, err) : ''));
+    refreshPx();
+  };
+  list.forEach(f=>{
+    const rd=new FileReader();
+    rd.onload =()=>{ try{ const r=pxTake(rd.result, isin); rows+=r.n; ok++;
+      if(!syms.includes(r.sym)) syms.push(r.sym);
+      if(r.was) was=r.was;
+    }catch(e){ err=e.message||String(e); } finish(); };
+    rd.onerror=()=>{ err=t('px.errRead'); finish(); };
+    rd.readAsText(f);
+  });
+}
+function pxPasteOpen(){
+  const box=document.createElement('div');
+  box.className='panel modal';
+  box.innerHTML=`<div class="modal-hd"><h2>${t('px.paste')}</h2>
+      <button class="btn ico" onclick="this.closest('.panel').remove()">✕</button></div>
+    <p class="hint">${t('px.pasteHint')}</p>
+    <textarea id="pxPaste" style="min-height:160px" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn pri" onclick="pxPasteTake(this)">${t('px.pasteOk')}</button>
+    </div>`;
+  document.body.appendChild(box);
+  box.querySelector('textarea').focus();
+}
+function pxPasteTake(btn){
+  const ta=document.getElementById('pxPaste'); if(!ta) return;
+  let res; try{ res=pxTake(ta.value, detIsin); }
+  catch(e){ return toast(t('px.errImport', e.message||String(e))); }
+  btn.closest('.panel').remove();
+  toast(t('px.imported', res.sym, res.n) + (res.was ? ' · '+t('px.adopted', res.was) : ''));
+  refreshPx();
+}
+/* Copying instead of a link: the app holds no address that points outward, and nothing
+   here navigates away on its own. */
+function pxCopy(btn, text){
+  const back=btn.textContent;
+  const done=()=>{ btn.textContent=t('px.copied'); clearTimeout(btn._t);
+                   btn._t=setTimeout(()=>{ btn.textContent=back; },2000); };
+  const fallback=()=>{
+    const ta=document.createElement('textarea');
+    ta.value=text; ta.setAttribute('readonly','');
+    ta.style.cssText='position:fixed;top:-1000px;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    try{ ta.setSelectionRange(0,text.length); }catch(e){}
+    let ok=false; try{ ok=document.execCommand('copy'); }catch(e){}
+    ta.remove(); ok ? done() : toast(t('px.copyFail'));
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(text).then(done).catch(fallback);
+  else fallback();
+}
+/* detail() ends by scrolling to the top, which is right when the position is opened from
+   the list and wrong here: saving a ticker or reading in a file threw the reader back to
+   the head of the page. The place on the page is kept across the redraw. */
+function refreshPx(){
+  const y=window.scrollY;
+  render();
+  if(view==='det' && detIsin) detail(detIsin);
+  window.scrollTo({top:y});
+}
+/* Redraw at the new width – the chart is drawn in pixels, not scaled */
+let pxRedraw=0;
+addEventListener('resize', ()=>{ clearTimeout(pxRedraw); pxRedraw=setTimeout(()=>drawPxCharts(),200); });
 
 /* ============================ Navigation ============================ */
 let view='dash';
@@ -1389,6 +2276,11 @@ function render(){
     Object.keys(DB.tx).length, Object.keys(DB.cmt).length, (JSON.stringify(DB).length/1024).toFixed(0));
   document.getElementById('csvInfo').textContent = t('data.csvNote',
     filtered().length, Object.keys(DB.tx).length);
+  /* The tickers are named so a series no position points at any more can be seen at all */
+  document.getElementById('pxInfo').textContent = t('px.info',
+    Object.keys(DB.px).length, Object.keys(DB.px).sort().join(', '),
+    Object.values(DB.px).reduce((s,x)=>s+((x.rows||[]).length),0),
+    (JSON.stringify(DB.px).length/1024).toFixed(0));
   if(view==='dash') dash();
   if(view==='pos')  posView();
   if(view==='tx')   txView();
@@ -1528,8 +2420,11 @@ document.getElementById('posSearch').oninput=posView;
 document.getElementById('showClosed').onchange=posView;
 
 /* --- Detail --- */
+/* Which position is on screen – an import of price data redraws exactly this one */
+let detIsin='';
 function detail(isin){
   const p=positions().find(x=>x.isin===isin); if(!p) return;
+  detIsin=isin;
   const rows=all().filter(r=>r.isin===isin);
   const stat=[[t('det.holding'),t('det.shares',fmt(p.shares,p.shares%1?6:0))],[t('det.costOpen'),eur(p.cost)],
     [t('det.avg'),eur(p.shares?p.cost/p.shares:0)],[t('det.last'),eur(p.last)],
@@ -1543,6 +2438,7 @@ function detail(isin){
       ${p.orphan?`<p class="hint neg">${t('det.orphan',qty(p.orphan))}${UI.hideOrphan?t('det.orphanOn'):t('det.orphanOff')}</p>`:''}
       <div class="cards">${stat.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v" style="font-size:var(--fs-17)">${v}</div></div>`).join('')}</div>
     </div>
+    ${pxPanelHtml(isin,p)}
     <div class="panel"><h2>${t('det.all',rows.length)}</h2><div class="scroll">${txTableHtml(rows)}</div></div>
     <div class="panel"><h2>${t('det.notes')}</h2>${commentHtml('isin:'+isin)}</div>`;
   /* The detail is reached from the positions and its back button returns there,
@@ -1551,6 +2447,7 @@ function detail(isin){
   document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
   document.getElementById('v-det').classList.add('on'); view='det'; document.body.dataset.view='det';
   bindComments('isin:'+isin);
+  bindPx(document.getElementById('v-det'), isin);
   window.scrollTo({top:0});
 }
 
@@ -1592,7 +2489,7 @@ function txTableHtml(rows, notes=true){
       <td class="num mut" ${l(9)}>${r.feeN?fmt(r.feeN):''}</td>
       <td class="num mut" ${l(10)}>${r.taxN?fmt(r.taxN):''}</td>
       <td class="mut" style="font-size:var(--fs-11)" ${l(11)}>${esc(r.reference).slice(0,22)}</td>
-      ${notes?`<td ${l(12)}><button class="btn note" onclick="txNote(this.dataset.id)" data-id="${esc(r.id)}">💬${c?' '+c:''}</button></td>`:''}
+      ${notes?`<td ${l(12)}>${isSell(r)?`<button class="btn note" onclick="pxChart(this.dataset.id)" data-id="${esc(r.id)}" title="${esc(t('px.chartBtn'))}">📈</button> `:''}<button class="btn note" onclick="txNote(this.dataset.id)" data-id="${esc(r.id)}">💬${c?' '+c:''}</button></td>`:''}
     </tr>`}).join('')+'</tbody>';
   return '<table class="rsp">'+head+body+'</table>';
 }
@@ -1851,7 +2748,24 @@ function cleanBackup(d){
     })).filter(c=> c.text || c.imgs.length);
     if(list.length) cmt[str(k).slice(0,400)]=list;
   });
-  return {tx,cmt};
+  /* Price series and tickers go through the same sieve as everything else. A series that
+     does not survive cleanSeries() is dropped whole rather than half-stored. */
+  const px={}, sym={};
+  const ps=(d && typeof d==='object' && d.px && typeof d.px==='object') ? d.px : {};
+  Object.values(ps).forEach(o=>{
+    try{
+      const s=cleanSeries(o);
+      px[s.sym]={...s, imported:fin(o.imported)||Date.now(),
+                 from:s.rows[0][0], to:s.rows[s.rows.length-1][0]};
+    }catch(e){}
+  });
+  const sy=(d && typeof d==='object' && d.sym && typeof d.sym==='object') ? d.sym : {};
+  Object.entries(sy).forEach(([k,v])=>{
+    const isin=str(k).toUpperCase(), s=str(v && v.sym).trim().toUpperCase();
+    if(!ISIN_RE.test(isin) || !SYM_RE.test(s)) return;
+    sym[isin]={sym:s, cur:str(v && v.cur).slice(0,8).toUpperCase(), exch:str(v && v.exch).slice(0,24)};
+  });
+  return {tx,cmt,px,sym};
 }
 document.getElementById('jsonFile').onchange=e=>{
   const rd=new FileReader(); rd.onload=()=>{ try{
@@ -1859,9 +2773,11 @@ document.getElementById('jsonFile').onchange=e=>{
     const c=cleanBackup(d);
     const dropTx  = Object.keys((d&&d.tx)||{}).length  - Object.keys(c.tx).length;
     const dropCmt = Object.keys((d&&d.cmt)||{}).length - Object.keys(c.cmt).length;
-    if(!Object.keys(c.tx).length && !Object.keys(c.cmt).length)
+    if(!Object.keys(c.tx).length && !Object.keys(c.cmt).length
+       && !Object.keys(c.px).length && !Object.keys(c.sym).length)
       return toast(t('data.emptyBackup'));
     Object.assign(DB.tx,c.tx); Object.assign(DB.cmt,c.cmt);
+    Object.assign(DB.px,c.px); Object.assign(DB.sym,c.sym);
     migrateIds(); save(); render();
     toast(t('data.restored')+((dropTx>0||dropCmt>0)
       ? t('data.dropped',Math.max(dropTx,0),Math.max(dropCmt,0)) : ''));
@@ -1950,12 +2866,22 @@ armDanger(document.getElementById('dropCancelled'), 'data.askDelete', ()=>{
   toast(t('data.cancelledGone',ids.length));
 });
 armDanger(document.getElementById('wipe'), 'data.askWipe', ()=>{
-  DB.tx={}; DB.cmt={};
+  DB.tx={}; DB.cmt={}; DB.px={}; DB.sym={};
   save();
   /* Remove the keys as well, so that nothing can possibly come back after a reload */
-  try{ localStorage.removeItem('dc_tx'); localStorage.removeItem('dc_cmt'); }catch(e){}
+  try{ ['dc_tx','dc_cmt','dc_px','dc_sym'].forEach(k=>localStorage.removeItem(k)); }catch(e){}
   render();
   toast(t('data.wiped'));
+});
+document.getElementById('pxImp').onclick=()=>document.getElementById('pxFileS').click();
+document.getElementById('pxFileS').onchange=e=>{ pxImportFiles(e.target.files); e.target.value=''; };
+armDanger(document.getElementById('pxWipe'), 'data.askDelete', ()=>{
+  const n=Object.keys(DB.px).length;
+  if(!n) return toast(t('px.noneStored'));
+  DB.px={}; save();
+  try{ localStorage.removeItem('dc_px'); }catch(e){}
+  render();
+  toast(t('px.wiped',n));
 });
 
 /* ============================ Startup ============================ */
@@ -2037,6 +2963,60 @@ if(!LS.ok){
    top is always the version currently running. One line per feature, kept short,
    in both languages. */
 const CHANGELOG=[
+  {v:'v40', d:'2026-08-19', items:[
+    {en:'Fixed: a price file whose ticker differed from the one saved on the position was stored under its own name, reported as imported, and left the chart empty. The file now decides the ticker, the position follows it, and the message says which one it was filed under.',
+     de:'Behoben: Eine Kursdatei, deren Kürzel vom gespeicherten der Position abwich, wurde unter ihrem eigenen Namen abgelegt, als eingelesen gemeldet und ließ den Chart leer. Jetzt entscheidet die Datei das Kürzel, die Position folgt ihr, und die Meldung nennt, worunter abgelegt wurde.'},
+    {en:'Price data can be deleted for a single position now, in its own panel. The ticker stays, so the next file needs no retyping.',
+     de:'Kursdaten lassen sich jetzt für eine einzelne Position löschen, in deren eigenem Feld. Das Kürzel bleibt, die nächste Datei braucht also kein erneutes Eintippen.'},
+    {en:'Settings names the tickers it holds prices for, so a series no position points at any more can be seen instead of only being guessed at.',
+     de:'Die Einstellungen nennen die Kürzel, zu denen Kurse liegen, damit eine Reihe, auf die keine Position mehr zeigt, sichtbar wird statt nur vermutet.'}
+  ]},
+  {v:'v39', d:'2026-08-18', items:[
+    {en:'Any exchange, not just Xetra: the field is simply the ticker now, and the suffix picks the market – .DE Xetra, .F Frankfurt, .MU Munich (gettex), .SG Stuttgart and the rest.',
+     de:'Jede Börse, nicht nur Xetra: Das Feld ist jetzt einfach das Kürzel, und die Endung wählt den Markt – .DE Xetra, .F Frankfurt, .MU München (gettex), .SG Stuttgart und die übrigen.'},
+    {en:'A listing on another exchange is no longer flagged as wrong. The warning now speaks up where it matters: when the series is quoted in a different currency than your bookings.',
+     de:'Eine Notierung an einer anderen Börse gilt nicht mehr als Fehler. Der Hinweis meldet sich jetzt dort, wo es zählt: wenn die Reihe in einer anderen Währung notiert als Ihre Buchungen.'},
+    {en:'A price CSV can be read in as well – date, open, high, low, close and volume, German or English notation – for a venue Yahoo has no series for, such as Tradegate or EIX. It is read in inside the position, under its ticker.',
+     de:'Eine Kursdatei als CSV lässt sich ebenfalls einlesen – Datum, Eröffnung, Hoch, Tief, Schluss und Volume, deutsche oder englische Schreibweise – für einen Handelsplatz, zu dem Yahoo keine Reihe hat, etwa Tradegate oder EIX. Eingelesen wird sie in der Position, unter deren Kürzel.'},
+    {en:'Fixed: saving the ticker or reading in a file threw the page back to the top instead of leaving it where it was.',
+     de:'Behoben: Das Sichern des Kürzels oder das Einlesen einer Datei warf die Seite an den Anfang zurück, statt sie stehen zu lassen.'}
+  ]},
+  {v:'v38', d:'2026-08-18', items:[
+    {en:'A long press on the chart no longer puts iOS into text selection with the copy and look-up bar over the picture. The line of values under the chart stays selectable.',
+     de:'Ein langer Druck auf den Chart versetzt iOS nicht mehr in die Textauswahl mit der Kopieren-und-Nachschlagen-Leiste über dem Bild. Die Wertezeile unter dem Chart bleibt markierbar.'},
+    {en:'Volume is called Volume in the German version as well.',
+     de:'Volume heißt auch in der deutschen Fassung Volume.'}
+  ]},
+  {v:'v37', d:'2026-08-17', items:[
+    {en:'The percent axis now counts from the break-even of the sale: 0% is the line between losing and making money, not the price the period happened to open at.',
+     de:'Die Prozentachse zählt jetzt ab der Nulllinie des Verkaufs: 0% ist die Grenze zwischen Verlust und Gewinn, nicht der Kurs, mit dem der Zeitraum zufällig begann.'},
+    {en:'Tapping a candle also names what was traded that day – purchase or sale, quantity and the price actually paid or received, next to what the market did.',
+     de:'Ein Tippen auf eine Kerze nennt auch, was an dem Tag gehandelt wurde – Kauf oder Verkauf, Stückzahl und der tatsächlich gezahlte oder erhaltene Kurs, neben dem, was der Markt tat.'},
+    {en:'Fixed: on weekly candles a purchase or sale was marked on the following week, and a distribution was never reported when its candle was tapped.',
+     de:'Behoben: Auf Wochenkerzen wurde ein Kauf oder Verkauf auf der folgenden Woche markiert, und eine Ausschüttung wurde beim Antippen ihrer Kerze nie genannt.'}
+  ]},
+  {v:'v36', d:'2026-08-17', items:[
+    {en:'The price chart has a scale switch: the price as it is, logarithmic so that equal percentage moves are equally tall, or as percent since the start of the period.',
+     de:'Der Kurschart hat einen Achsenschalter: der Kurs wie er ist, logarithmisch, damit gleiche prozentuale Bewegungen gleich hoch sind, oder als Prozent seit dem Beginn des Zeitraums.'},
+    {en:'A dashed line marks the break-even price of the sale – purchase cost of the shares sold plus the fee and tax of the sale, the price at which it would have come out at zero.',
+     de:'Eine gestrichelte Linie markiert die Nulllinie des Verkaufs – Kaufkosten der verkauften Stücke plus Gebühr und Steuer des Verkaufs, der Kurs, bei dem er auf null herausgekommen wäre.'},
+    {en:'Tapping a candle reads out its day: date, open, high, low, close, turnover, and a distribution if one was booked that day.',
+     de:'Ein Tippen auf eine Kerze liest ihren Tag vor: Datum, Eröffnung, Hoch, Tief, Schluss, Volume und eine Ausschüttung, falls an dem Tag eine gebucht wurde.'},
+    {en:'Turnover is drawn as a strip under the candles, distributions as diamonds on the date axis, and moving averages can be switched on.',
+     de:'Das Volume steht als Streifen unter den Kerzen, Ausschüttungen als Rauten auf der Datumsachse, und gleitende Durchschnitte lassen sich zuschalten.'},
+    {en:'A period longer than 400 trading days is drawn as weekly candles, and the line under the chart says so.',
+     de:'Ein Zeitraum von mehr als 400 Handelstagen wird als Wochenkerzen gezeichnet, und die Zeile unter dem Chart sagt es.'}
+  ]},
+  {v:'v35', d:'2026-08-16', items:[
+    {en:'A sold position now carries a candlestick chart of the daily Xetra prices over the period it was held, with the purchases and the sale marked in it.',
+     de:'Eine verkaufte Position trägt jetzt einen Kerzenchart der täglichen Xetra-Kurse über ihre Haltedauer, mit Käufen und Verkauf darin markiert.'},
+    {en:'The chart switches between the purchases this sale actually consumed and the whole position, and reaches 5% of that period beyond each end.',
+     de:'Der Chart wechselt zwischen den Käufen, die dieser Verkauf tatsächlich aufgebraucht hat, und der ganzen Position, und reicht an beiden Enden 5% dieses Zeitraums darüber hinaus.'},
+    {en:'The app still fetches nothing itself: it builds the address for the prices, you open it in a browser and import the file – so it keeps sending nothing anywhere on its own.',
+     de:'Die App holt weiterhin nichts selbst: Sie baut die Adresse für die Kurse, Sie öffnen sie im Browser und lesen die Datei ein – so sendet sie von sich aus nach wie vor nichts.'},
+    {en:'Imported prices are stored on the device like every other entry, travel in the backup and can be removed again under Settings.',
+     de:'Eingelesene Kurse liegen wie jede andere Eingabe auf dem Gerät, wandern ins Backup und lassen sich unter Einstellungen wieder entfernen.'}
+  ]},
   {v:'v34', d:'2026-08-16', items:[
     {en:'“Import / Data” is now called Settings – it holds the import filters, the stored data, the text size and the version.',
      de:'„Import / Daten“ heißt jetzt Einstellungen – dort liegen Importfilter, gespeicherte Daten, Schriftgröße und Version.'},
